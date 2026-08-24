@@ -248,6 +248,7 @@ export const cards = pgTable(
     effort: smallint("effort"),
     coverColor: text("cover_color"),
     coverImagePublicId: text("cover_image_public_id"),
+    focusedOn: date("focused_on"),
     createdBy: uuid("created_by").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -264,7 +265,32 @@ export const cards = pgTable(
     index("cards_board_position_idx").on(c.boardId, c.position),
     index("cards_column_position_idx").on(c.columnId, c.position),
     index("cards_project_due_idx").on(c.projectId, c.dueAt),
+    index("cards_focused_idx").on(c.focusedOn),
   ],
+);
+
+export const dayReviews = pgTable(
+  "day_reviews",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    note: text("note"),
+    closed: boolean("closed").notNull().default(false),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (dr) => [uniqueIndex("day_reviews_user_date_uq").on(dr.userId, dr.date)],
 );
 
 export const labels = pgTable(
@@ -653,6 +679,7 @@ export const cardLinks = pgTable(
 export type LearningItem = typeof learningItems.$inferSelect;
 export type ExpenseCategory = typeof expenseCategories.$inferSelect;
 export type Expense = typeof expenses.$inferSelect;
+export type DayReview = typeof dayReviews.$inferSelect;
 
 
 export type Board = typeof boards.$inferSelect;

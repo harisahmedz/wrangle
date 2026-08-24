@@ -50,6 +50,19 @@ _(cycle 5 — 2026-08-24, full code/UX audit swept the whole build. Findings pro
 
 ---
 
+## Grill round 6 — DECIDED (closed 2026-08-24, silence = defaults shipped)
+
+| # | Decision |
+|---|---|
+| G6-01 | ✅ **The Loop committed** as the post-MVP flagship; Weekly Review B56 folds into the Shutdown family |
+| G6-02 | ✅ Dump v1 ships **heuristics-only**; AI classify waits for the gate (B68) |
+| G6-03 | ✅ Wrapped is monthly + yearly edition, unlocks at **15 active days** with a quiet progress meter |
+| G6-04 | ✅ Streak stance locked: consistency-rate + cumulative counts + never-miss-twice. **No breakable streaks ever** |
+| G6-05 | ✅ On-device split brain is the standing AI architecture — no server-side LLM calls, no metering, ever |
+| G6-06 | ✅ "Let go" = clear due date without completing or deleting — the guilt-free third state |
+| G6-07 | Day timeline view → backlog **B73**, after the Loop |
+| G6-08 | MCP server → backlog **B72** |
+
 ## Grill round 5 — opened cycle 5 (UX audit + feature-expansion decisions)
 
 | # | Question | Default |
