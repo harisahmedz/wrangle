@@ -28,6 +28,8 @@ Full product thinking lives in `docs/` — read in this order:
 | 6 | Learning tracker: pipeline, milestones → progress %, session logs, journal, board links | ✅ |
 | 7 | PWA: manifest + shortcuts + Share Target, offline SW, install prompts, skeletons, hotkeys | ✅ |
 | 8+ | Notifications, realtime, budgets/recurring/CSV, global search, command palette | ⬜ backlog |
+| F1–F3 | Flagship "The Loop": Dump v1, Shutdown, Life Wrapped (see `docs/FLAGSHIP-2026.md`) | ✅ |
+| F4 | Dump v2 + Wrapped narrative (on-device Gemini Nano) | ⛔ AI-gated (§1.3) |
 
 ## Stack
 
@@ -81,6 +83,8 @@ app/
   (app)/                AUTHENTICATED shell group (proxy.ts guards, layout re-checks)
     layout.tsx          topbar + right sidebar + bottom tabs + hotkeys + toast provider
     today/              cross-project due/overdue/next-7-days, tick-off, onboarding
+    shutdown/           The Loop · Shutdown: plan-today focus, evening close, consistency
+    wrapped/            The Loop · Life Wrapped: monthly recap + 9:16 share cards
     boards/             project grid
     money/              month switcher, summary, donut/trend, expense list
     learn/              Want/Learning/Learned pipeline + ?item= detail sheet
@@ -97,7 +101,10 @@ components/
 lib/
   authz.ts              requireMembership(projectId, minRole) — THE authz gate (404s strangers)
   kanban/               actions (server), detail-actions, phase3-actions, activity, search, score, seed, types
-  actions/              projects, invites, expenses, learning, auth, types (ActionResult)
+  actions/              projects, invites, expenses, learning, shutdown, dump, wrapped, auth, types (ActionResult)
+  dump/                 Dump v1 heuristic parser + Web Speech hook
+  shutdown/             pure consistency stats (anti-streak)
+  wrapped/              month windows, pure recap stats, deterministic archetype
   sharing/              permissions matrix (pure), tokens (hash), ratelimit (Postgres fixed-window)
   validation/           zod schemas per domain
   money.ts, dates.ts, markdown.ts, cloudinary.ts, uuid.ts
@@ -136,12 +143,14 @@ scripts/                migrate, backfill-boards, selftest, gen-icons
 
 ## Testing
 
-- `npm test` — 25 unit tests (authz matrix, permissions, dates/timezones, money, markdown sanitizer, learning logic, board seeding integration vs real Neon).
+- `npm test` — 84 unit tests (authz matrix, permissions, dates/timezones, money, markdown sanitizer, learning logic, board seeding integration vs real Neon; Loop: shutdown consistency stats ×11, dump parser ×19, wrapped stats/archetype ×29).
 - `npm run test:e2e` — anonymous smoke + authz redirects (full two-user OAuth e2e is still open — needs test credentials or a test-auth strategy).
 - `node scripts/selftest.mjs` — injects two temp users + sessions into Neon, hits every protected route over HTTP (including the stranger→404 IDOR checks), cleans up after. Run against any live server with `SERVER_URL`.
 
 ## Known gaps / next steps
 
+- **Flagship next**: weekly rollup chapter of the Shutdown family (B56/B40) — Sunday week review between day closes and month wraps.
+- **AI gate** (REQUIREMENTS §1.3): Dump v2 (Prompt API classify) + Wrapped narrative line stay blocked until 2 real weeks of MVP use.
 - **CI**: first run may need Playwright browser install tuning (`npx playwright install --with-deps chromium` is in the workflow).
 - **Lighthouse pass** (§3.11 budgets) not yet run on real hardware.
 - Backlog: column soft-delete purge cron, global search, command palette (⌘K), optimistic comments/checklists, budgets/recurring/CSV export, notifications (Phase 8), realtime (Phase 8).
