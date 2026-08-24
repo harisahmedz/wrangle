@@ -37,7 +37,7 @@ export const appleWebApp = {
   statusBarStyle: "black-translucent" as const,
 };
 
-const themeInitScript = `try{var t=localStorage.getItem('wrangle-theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}`;
+const themeInitScript = `try{var d=document.documentElement,m=window.matchMedia('(prefers-color-scheme: light)'),t=null;try{t=localStorage.getItem('wrangle-theme')}catch(e){}d.classList.toggle('light',t==='light'||(t!=='dark'&&m.matches));if(m.addEventListener)m.addEventListener('change',function(e){var s=null;try{s=localStorage.getItem('wrangle-theme')}catch(err){}if(s!=='light'&&s!=='dark')d.classList.toggle('light',e.matches)})}catch(e){}`;
 
 export default function RootLayout({
   children,

@@ -24,7 +24,7 @@ export default function GlobalError({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('wrangle-theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}`,
+            __html: `try{var d=document.documentElement,m=window.matchMedia('(prefers-color-scheme: light)'),t=null;try{t=localStorage.getItem('wrangle-theme')}catch(e){}d.classList.toggle('light',t==='light'||(t!=='dark'&&m.matches))}catch(e){}`,
           }}
         />
       </head>
