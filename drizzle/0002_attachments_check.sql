@@ -1,0 +1,1 @@
+ALTER TABLE attachments ADD CONSTRAINT attachments_one_parent_check CHECK (((case when card_id is null then 0 else 1 end) + (case when expense_id is null then 0 else 1 end) + (case when learning_item_id is null then 0 else 1 end)) = 1);
