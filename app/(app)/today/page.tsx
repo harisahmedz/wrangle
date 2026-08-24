@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { and, asc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { boards, cards, memberships, projects, users } from "@/db/schema";
@@ -105,6 +106,16 @@ export default async function TodayPage({ searchParams }: Props) {
         <QuickAddTrigger prefill={sp.title ? `${sp.title} ${sharedText ?? ""}`.trim() : (sharedText ?? "")} />
       )}
       <h1 className="text-2xl font-bold tracking-tight">Today</h1>
+
+      <Link
+        href="/shutdown"
+        className="block rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:bg-surface-2"
+      >
+        <span className="block text-sm font-medium">Close the day →</span>
+        <span className="mt-0.5 block text-xs text-muted">
+          The Shutdown — plan tomorrow, let go of the rest.
+        </span>
+      </Link>
 
       {onboarding ? (
         <section className="space-y-3 rounded-xl border border-border bg-surface p-5">
