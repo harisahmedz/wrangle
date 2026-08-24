@@ -140,6 +140,9 @@ scripts/                migrate, backfill-boards, selftest, gen-icons
 5. `react-hooks/purity` flags `Date.now()` in render — compute time in SQL (`now()`) or behind a timeout when it's genuinely per-request data.
 6. Inline `"use server"` functions are **not allowed in client components** — put them in `lib/actions/*` files instead.
 7. Raw SQL scripts must supply UUIDs explicitly — Drizzle's `$defaultFn` is JS-side only.
+8. **Migrations have two namespaces** in `drizzle/`: `0xxx` = drizzle-kit generated (rename semantic before committing), `1xxx_supplement_*` = hand-written raw SQL (CHECK constraints, FTS/trgm indexes). Both applied by `scripts/migrate.mjs`, tracked by filename in `drizzle_migrations`. Renaming an already-applied file requires updating its hash row too.
+9. **The migrate script doesn't load `.env.local` by itself** — run `node --env-file=.env.local scripts/migrate.mjs`.
+10. Theme persistence: one mechanism — `localStorage['wrangle-theme']` (`dark|light|system`, missing ≡ system) + `html.light`; the init script in `app/layout.tsx` live-follows OS changes while in system mode. Settings and top-bar toggle both write this pair; keep it that way.
 
 ## Testing
 
