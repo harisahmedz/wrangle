@@ -192,6 +192,12 @@ One sentence: *"what to do, what I'm thinking about, what I'm learning, what I'm
 | auth attempts | 20 / IP / 10min |
 | comment length | 5,000 chars |
 
+### 3.13 The Loop — flagship (✅ ⚡ slices shipped, see `FLAGSHIP-2026.md`)
+- **The Dump v1** (B67): hold ➕ FAB / quick-add mic / "Sort this…" → say or paste anything → heuristic parse (chrono-node dates, amount regex, prefix cues) → review tray with recast/edit/remove → confirm-before-save into cards / expenses / learning_sessions. Assistive, never autonomous. Speech via Web Speech API (`processLocally` where supported).
+- **The Shutdown** (B70/B71): `/shutdown` — morning plan-today (focus ≤3 cards via `cards.focused_on`), evening leftovers with exactly three verbs (**→ tomorrow · ✓ done · let go**), one-glance day summary (closes · learning minutes · spend), one-line day note, close-the-day ritual persisted in `day_reviews`. Anti-streak by design: consistency rate ("closed 5 of 7 days"), non-resetting cumulative counts, never-miss-twice nudge — **no breakable streaks ever**.
+- **Life Wrapped** (B69): `/wrapped` monthly recap — deterministic archetype, cross-domain plot-twist stat, all-time counters; 9:16 story cards rendered to canvas → Web Share (files) with download fallback; unlocks at **15 active days** shown as a quiet progress meter. Free forever.
+- ⛔ Dump v2 / narrative line (on-device Gemini Nano etc.) stay behind the AI gate (§1.3) — architecture locked to on-device-only, no server LLM calls, no metering (G6-05).
+
 ---
 
 ## 4. Tech stack
@@ -317,8 +323,10 @@ Weekly `pg_dump` to your own storage — scripted, one command, documented in th
 | 2026-08-21 | **Share Target API + app shortcuts** in PWA scope | capture speed = the whole product |
 | 2026-08-21 | Card detail is **URL-addressable** (`?card=`) | back button + sharing |
 | 2026-08-21 | Non-goals list written (§1.3) | scope control |
+| 2026-08-25 | **The Loop committed as flagship**; G6 defaults shipped: heuristics-first Dump, 15-day Wrapped unlock, no breakable streaks ever, on-device-only AI architecture, "let go" third state | grill round 6 |
+| 2026-08-25 | ⚡ flagship slices shipped: Dump v1, Shutdown, Life Wrapped (`day_reviews` + `cards.focused_on` migration) | PLAN flagship track 1–3 |
 
 ---
 
 ## 9. Open questions
-Live in `DISCOVERY-LOOP.md` → **Grill round 3**. Every one has a stated default, so silence still ships.
+Live in `DISCOVERY-LOOP.md`. Grill rounds 3–6 are decided/closed on silence; the standing questions (§G there) run every cycle.

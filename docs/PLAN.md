@@ -147,10 +147,10 @@ Recurring tasks · calendar view · saved filters · bulk actions · command pal
 
 ## The flagship track — **The Loop** (post-Phase-7, research-backed, see `FLAGSHIP-2026.md`)
 Ordered slices; each is independently shippable and the ⚡ ones need no AI (they dodge the §1.3 AI gate):
-1. ⚡ **Shutdown** — plan-today (pick 3, `focused_on`), evening close (tomorrow / done / let go), `day_reviews`, consistency stats (B70/B71)
-2. ⚡ **Dump v1** — hold-FAB voice/text brain dump → heuristic sorted tray (chrono-node + amount regex) (B67)
-3. ⚡ **Life Wrapped** — monthly 9:16 share cards after a month of Shutdown data (B69)
-4. **Dump v2 + Wrapped narrative** — on-device Prompt API, desktop, only after the AI gate opens (B68)
+1. ✅ ⚡ **Shutdown** — plan-today (pick 3, `focused_on`), evening close (tomorrow / done / let go), `day_reviews`, consistency stats (B70/B71) — shipped: `/shutdown`, Today CTA, `S` hotkey
+2. ✅ ⚡ **Dump v1** — hold-FAB voice/text brain dump → heuristic sorted tray (chrono-node + amount regex) (B67) — shipped: hold ➕ / mic in quick-add / "Sort this…"
+3. ✅ ⚡ **Life Wrapped** — monthly 9:16 share cards after a month of Shutdown data (B69) — shipped: `/wrapped`, user-menu entry, canvas share + download fallback
+4. ⬜ **Dump v2 + Wrapped narrative** — on-device Prompt API, desktop, only after the AI gate opens (B68)
 
 ---
 

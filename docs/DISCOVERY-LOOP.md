@@ -207,7 +207,7 @@ _(cycle 5 — 2026-08-24, full code/UX audit swept the whole build. Findings pro
 | B37 | Timezone-correct due dates | cycle 2 | now (phase 2) |
 | B38 | Card cover images | cycle 2 | nice-to-have |
 | B39 | Archive vs delete distinction for projects | cycle 2 | phase 1 |
-| B40 | Weekly review screen (what got done, what slipped, what you spent, hours learned) | cycle 2 | 🔶 needs decision — could be the app's signature feature |
+| B40 | Weekly review screen (what got done, what slipped, what you spent, hours learned) | cycle 2 | ✅ folded into Shutdown family — weekly rollup next |
 | B41 | Column delete → soft-delete + restore (undo) instead of hard delete | cycle 4 audit | **now-ish** (R14 violation) |
 | B42 | Optimistic comments/checklist/labels mutations | cycle 4 | later (perf polish, phase 7) |
 | B43 | Card meta (created/updated/by) shown in detail | cycle 4 | phase 2b leftover |
@@ -223,7 +223,7 @@ _(cycle 5 — 2026-08-24, full code/UX audit swept the whole build. Findings pro
 | B53 | 🐛 Learn uses UTC instead of `users.timezone` | cycle 5 audit | **now** (bug) |
 | B54 | Filter state in URL (shareable, survives nav; unlocks B18) | cycle 5 audit | later |
 | B55 | Column drag-reorder + project drag-reorder | cycle 5 audit | later |
-| B56 | **Weekly Review** screen (promotes B40) — flagship candidate | FEATURES §3.1 | 🔶 G5-01 |
+| B56 | **Weekly Review** screen (promotes B40) — flagship candidate | FEATURES §3.1 | next — the weekly chapter of the Shutdown family (day close shipped via B70) |
 | B57 | Project true cost: wire `expenses.project_id` + hours rollup | FEATURES §3.2 | later (after Phase 5 proves out) |
 | B58 | ICS calendar feed (subscribe in Google Calendar) | FEATURES §4 | later (tiny effort, high value) |
 | B59 | Public read-only project page (expands B7; first growth loop) | FEATURES §5 | later |
@@ -234,11 +234,11 @@ _(cycle 5 — 2026-08-24, full code/UX audit swept the whole build. Findings pro
 | B64 | 🐛 Migration journal drift: 3 hand-written SQL files outside drizzle journal, colliding prefixes | cycle 5 audit | **now** (ops risk) |
 | B65 | Icon system: lucide-react, kill glyph-buttons, `next/image` avatars | cycle 5 audit | next (G5-04) |
 | B66 | `--success`/`--warning` tokens, one palette source, wire motion tokens | cycle 5 audit | later |
-| B67 | ⚡ **The Dump v1** — hold-FAB brain dump → sorted tray (heuristics: chrono-node + amount regex) | FLAGSHIP §2 | next-ish (with Phase 7) |
+| B67 | ⚡ **The Dump v1** — hold-FAB brain dump → sorted tray (heuristics: chrono-node + amount regex) | FLAGSHIP §2 | ✅ shipped (heuristic parser, review tray, speech capture) |
 | B68 | On-device AI split brain: Prompt API (desktop) · transformers.js/WebGPU (Android) · heuristics fallback | FLAGSHIP §2 | ⛔ gated (AI gate §1.3) |
-| B69 | ⚡ **Life Wrapped** — monthly 9:16 share cards, archetype + plot-twist stat, 15-day unlock | FLAGSHIP §4 | later (needs a month of Shutdown data) |
-| B70 | ⚡ **The Shutdown** — plan-today (pick 3) + evening close (tomorrow/done/let go) + `day_reviews` | FLAGSHIP §3 | next (absorbs B56/B40) |
-| B71 | Anti-streak momentum stats: consistency %, cumulative counts, never-miss-twice | FLAGSHIP §3 | with B70 |
+| B69 | ⚡ **Life Wrapped** — monthly 9:16 share cards, archetype + plot-twist stat, 15-day unlock | FLAGSHIP §4 | ✅ shipped (`/wrapped`, canvas share cards, gate + quiet meter) |
+| B70 | ⚡ **The Shutdown** — plan-today (pick 3) + evening close (tomorrow/done/let go) + `day_reviews` | FLAGSHIP §3 | ✅ shipped (`/shutdown`, Today CTA, S hotkey; absorbs B56/B40 day-close chapter) |
+| B71 | Anti-streak momentum stats: consistency %, cumulative counts, never-miss-twice | FLAGSHIP §3 | ✅ shipped with B70 |
 | B72 | Wrangle MCP server (drive boards from Claude/ChatGPT) | FLAGSHIP research | later (G6-08) |
 | B73 | Day timeline / lightweight time-block view — the category's most-paywalled feature, free here | FLAGSHIP research | later (G6-07) |
 
@@ -257,3 +257,4 @@ Statuses: `now` · `next` · `later` · `never` · `🔶 needs decision`
 | 2026-08-23 | 4 | Phases 0–2 built and verified. AUTH_SECRET set; `/api/auth/providers` verified 200 (Google+GitHub live). Cycle 4 run pre-usage: 8 friction items captured to inbox; grill round 4 opened (G4-01…08, all defaults applied → logged as decisions); backlog +B41–B44. Phase 3 scope locked: remembered board tab, ideas scoring + promote, filters, project search (FTS+trgm), Today/Upcoming with tick-off, quick-add. `columns.is_done` schema gap fixed this phase per G4-08. |
 | 2026-08-24 | 5 | Full code/UX audit (agent-swept, every route/component/action). Two new docs: **`UI-UX.md`** (interface contract: tokens, component contracts, four-states rule, optimistic tiers, voice, P0–P2 audit) and **`FEATURES.md`** (proposal pool: ★ cross-module features as the moat, flagship = Weekly Review, growth loops, monetization constraints incl. Vercel Hobby non-commercial). Backlog +B45–B66; grill round 5 opened (G5-01…08, defaults stated). Bugs: receipts unviewable (B45), zero error boundaries (B46), Learn on UTC (B53), migration drift (B64). `PLAN.md` gained Phase 3.5 (UX hardening) from the P0 list. |
 | 2026-08-24 | 5b | **Market research pass** — three parallel sweeps of 2025–2026 sources (productivity-app features/pricing/sentiment · viral recap & habit mechanics · web-platform + on-device AI status). Convergence written up as **`FLAGSHIP-2026.md`: The Loop** (Dump → Shutdown → Life Wrapped). Key facts: Todoist Ramble = the loved AI pattern (assistive voice capture, $5/mo); Sunsama sells the shutdown ritual at $16–20/mo; Spotify Wrapped 2025 biggest ever, Strava's paywalled recap backlash makes *free* recaps a story; Chrome Prompt API (Gemini Nano) stable for web Q2 2026 desktop-only, WebGPU default in all browsers → unlimited private $0 on-device AI is a real 2026-only window; streak-guilt is documented churn. Backlog +B67–B73; grill round 6 opened (G6-01…08). B56/B40 fold into the Shutdown family. |
+| 2026-08-25 | 6 | **Grill 6 closed on silence (defaults shipped) — flagship ⚡ slices built** via three parallel agents. Foundation: `day_reviews` table + `cards.focused_on` (migration `0006_loop_foundation`), chrono-node dep, G6 decisions logged above. **Slice 1 Shutdown (B70/B71):** `/shutdown` — plan-today focus picker (≤3), leftovers with tomorrow/done/let go verbs, day summary (closed · minutes · spend), debounced day note, close/reopen, consistency strip + never-miss-twice nudge; Today CTA + `S` hotkey. **Slice 2 Dump v1 (B67):** pure heuristic parser (chrono-node dates w/ tz-aware resolution, amount regex incl. comma decimals, cue/prefix classification learning→expense→idea→task), review tray with recast/edit/remove, transactional saveDump into cards/expenses/learning_sessions, hold-FAB + quick-add mic/"Sort this…" handoff, Web Speech hook (`processLocally` where supported). **Slice 3 Life Wrapped (B69):** `/wrapped?m=YYYY-MM` — tz-aware month windows, pure stats module (weekly productivity/spend buckets), deterministic archetype (8 outcomes), plot-twist pick-order (cheapest-week≈most-productive first), 15-active-day gate with quiet meter, 1080×1920 canvas share cards (Web Share files → download fallback); user-menu entry. Verification: typecheck ✓ eslint ✓ vitest **84/84** ✓ (59 new unit tests across the three slices). Remaining in family: weekly rollup chapter (B56/B40). B68 stays behind the AI gate. |

@@ -60,10 +60,20 @@ cards            id, column_id, board_id (denormalised for fast board queries),
                  due_at timestamptz NULL, is_all_day bool,
                  completed_at timestamptz NULL,
                  impact smallint NULL, effort smallint NULL,   -- ideas board
+                 focused_on date NULL,                          -- Shutdown plan-today (≤3/user/day)
                  cover_color, cover_image_public_id,
                  created_by, created_at, updated_at, deleted_at
 ```
 `project_id` on cards is denormalised on purpose: the Today view and every authz check need it without a 3-table join. Enforce with a trigger or always-write-both in one transaction.
+
+### The Loop (flagship)
+```
+day_reviews      id, user_id, date date, note text NULL,
+                 closed bool default false, closed_at timestamptz NULL,
+                 created_at, updated_at
+                 UNIQUE (user_id, date)
+```
+One row per user per local calendar day — the Shutdown ritual's durable output (note + close flag). Everything else on the Shutdown screen is computed from existing rows (`cards.completed_at`, `learning_sessions`, `expenses`). Anti-streak stats are derived here: consistency rate over trailing 7 days, cumulative closes, never-miss-twice — never a breakable streak.
 
 ```
 labels           id, project_id, name, color            -- per-project palette
