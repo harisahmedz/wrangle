@@ -12,7 +12,7 @@ export default function GlobalAppError({
       <span className="text-4xl" aria-hidden>
         💥
       </span>
-      <h2 className="text-lg font-semibold">Something broke</h2>
+      <h2 className="text-lg font-semibold">That broke.</h2>
       <p className="max-w-sm text-sm text-muted">
         {error.message || "An unexpected error occurred."}
       </p>
