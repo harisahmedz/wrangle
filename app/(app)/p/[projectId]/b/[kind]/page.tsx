@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -27,7 +28,13 @@ import { CardDetail } from "@/components/kanban/card-detail";
 
 type Props = {
   params: Promise<{ projectId: string; kind: string }>;
-  searchParams: Promise<{ card?: string }>;
+  searchParams: Promise<{
+    card?: string;
+    q?: string;
+    label?: string | string[];
+    assignee?: string | string[];
+    due?: string;
+  }>;
 };
 
 export const metadata: Metadata = { title: "Board" };
@@ -135,7 +142,8 @@ export default async function BoardPage({ params, searchParams }: Props) {
       .where(eq(memberships.projectId, projectId)),
   ]);
 
-  const detailCardId = (await searchParams).card;
+  const sp = await searchParams;
+  const detailCardId = sp.card;
 
   return (
     <div className="space-y-5">
@@ -169,29 +177,31 @@ export default async function BoardPage({ params, searchParams }: Props) {
         </div>
       </div>
 
-      <BoardView
-        projectId={projectId}
-        boardId={board.id}
-        boardKind={boardKind}
-        columns={boardColumns}
-        filterLabels={filterLabels}
-        filterMembers={filterMembers}
-        cards={boardCards.map((c) => ({
-          id: c.id,
-          columnId: c.columnId,
-          title: c.title,
-          hasDescription: Boolean(c.description),
-          dueAt: c.dueAt ? c.dueAt.toISOString() : null,
-          completedAt: c.completedAt ? c.completedAt.toISOString() : null,
-          position: c.position,
-          coverColor: c.coverColor,
-          labelColors: labelDots.get(c.id) ?? [],
-          labelIds: labelIdsByCard.get(c.id) ?? [],
-          assigneeIds: assigneeIdsByCard.get(c.id) ?? [],
-          impact: c.impact,
-          effort: c.effort,
-        }))}
-      />
+      <Suspense fallback={null}>
+        <BoardView
+          projectId={projectId}
+          boardId={board.id}
+          boardKind={boardKind}
+          columns={boardColumns}
+          filterLabels={filterLabels}
+          filterMembers={filterMembers}
+          cards={boardCards.map((c) => ({
+            id: c.id,
+            columnId: c.columnId,
+            title: c.title,
+            hasDescription: Boolean(c.description),
+            dueAt: c.dueAt ? c.dueAt.toISOString() : null,
+            completedAt: c.completedAt ? c.completedAt.toISOString() : null,
+            position: c.position,
+            coverColor: c.coverColor,
+            labelColors: labelDots.get(c.id) ?? [],
+            labelIds: labelIdsByCard.get(c.id) ?? [],
+            assigneeIds: assigneeIdsByCard.get(c.id) ?? [],
+            impact: c.impact,
+            effort: c.effort,
+          }))}
+        />
+      </Suspense>
 
       {detailCardId && (
         <CardDetailView
@@ -322,6 +332,7 @@ async function CardDetailView({
       activeLabelIds={activeLabelRows.map((l) => l.labelId)}
       members={members}
       activeAssigneeIds={activeAssigneeRows.map((a) => a.userId)}
+      viewerName={members.find((m) => m.userId === userId)?.name ?? undefined}
       comments={commentRows.map((c) => ({
         id: c.id,
         authorName: c.authorName ?? "Member",

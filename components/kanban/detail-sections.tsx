@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useRef,
+  useState,
+  useOptimistic,
+  useTransition,
+} from "react";
 import {
   addChecklistItem,
   addComment,
@@ -41,6 +47,32 @@ const LABEL_COLORS = [
   "#8b5cf6", "#ec4899", "#14b8a6", "#64748b",
 ];
 
+const TOAST_TICK_FAILED = "Couldn't tick that — retry?";
+const TOAST_LABELS_FAILED = "Couldn't save labels — retry?";
+const TOAST_ASSIGNEES_FAILED = "Couldn't save assignees — retry?";
+const TOAST_COMMENT_FAILED = "Couldn't post the comment — retry?";
+
+function usePendingGuard() {
+  const pending = useRef(new Set<string>());
+  const begin = (key: string) => {
+    if (pending.current.has(key)) return false;
+    pending.current.add(key);
+    return true;
+  };
+  const end = (key: string) => {
+    pending.current.delete(key);
+  };
+  return { begin, end };
+}
+
+function escapeCommentHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br />");
+}
+
 export function ChecklistSection({
   cardId,
   items,
@@ -48,10 +80,22 @@ export function ChecklistSection({
   cardId: string;
   items: ChecklistRow[];
 }) {
+  const router = useRouter();
+  const pushToast = useToast();
+  const guard = usePendingGuard();
   const [text, setText] = useState("");
+  const [optimisticItems, toggleOptimistic] = useOptimistic(
+    items,
+    (current: ChecklistRow[], itemId: string) =>
+      current.map((i) => (i.id === itemId ? { ...i, isDone: !i.isDone } : i)),
+  );
   const [, startTransition] = useTransition();
-  const doneCount = items.filter((i) => i.isDone).length;
-  const pct = items.length === 0 ? 0 : Math.round((doneCount / items.length) * 100);
+
+  const doneCount = optimisticItems.filter((i) => i.isDone).length;
+  const pct =
+    optimisticItems.length === 0
+      ? 0
+      : Math.round((doneCount / optimisticItems.length) * 100);
 
   const add = () => {
     if (!text.trim()) return;
@@ -69,10 +113,10 @@ export function ChecklistSection({
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Checklist</p>
         <span className="text-xs text-muted">
-          {doneCount}/{items.length}
+          {doneCount}/{optimisticItems.length}
         </span>
       </div>
-      {items.length > 0 && (
+      {optimisticItems.length > 0 && (
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
           <div
             className={cn(
@@ -84,14 +128,24 @@ export function ChecklistSection({
         </div>
       )}
       <ul className="space-y-1">
-        {items.map((item) => (
+        {optimisticItems.map((item) => (
           <li key={item.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-surface-2">
             <button
               onClick={() => {
-                const fd = new FormData();
-                fd.set("itemId", item.id);
+                if (!guard.begin(item.id)) return;
                 startTransition(async () => {
-                  await toggleChecklistItem(fd);
+                  toggleOptimistic(item.id);
+                  const fd = new FormData();
+                  fd.set("itemId", item.id);
+                  try {
+                    const res = await toggleChecklistItem(fd);
+                    if (!res.ok) {
+                      pushToast({ message: TOAST_TICK_FAILED });
+                      router.refresh();
+                    }
+                  } finally {
+                    guard.end(item.id);
+                  }
                 });
               }}
               aria-pressed={item.isDone}
@@ -149,22 +203,37 @@ export function LabelsSection({
   activeIds: string[];
   canManage: boolean;
 }) {
+  const router = useRouter();
   const pushToast = useToast();
+  const guard = usePendingGuard();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [color, setColor] = useState(LABEL_COLORS[3]);
+  const [optimisticIds, applyOptimisticIds] = useOptimistic(
+    activeIds,
+    (_current: string[], next: string[]) => next,
+  );
   const [, startTransition] = useTransition();
 
   const toggle = (labelId: string) => {
-    const next = activeIds.includes(labelId)
-      ? activeIds.filter((id) => id !== labelId)
-      : [...activeIds, labelId];
-    const fd = new FormData();
-    fd.set("cardId", cardId);
-    fd.set("labelIds", JSON.stringify(next));
+    if (!guard.begin(`label:${labelId}`)) return;
+    const next = optimisticIds.includes(labelId)
+      ? optimisticIds.filter((id) => id !== labelId)
+      : [...optimisticIds, labelId];
     startTransition(async () => {
-      const res = await setCardLabels(fd);
-      if (!res.ok) pushToast({ message: res.error });
+      applyOptimisticIds(next);
+      const fd = new FormData();
+      fd.set("cardId", cardId);
+      fd.set("labelIds", JSON.stringify(next));
+      try {
+        const res = await setCardLabels(fd);
+        if (!res.ok) {
+          pushToast({ message: TOAST_LABELS_FAILED });
+          router.refresh();
+        }
+      } finally {
+        guard.end(`label:${labelId}`);
+      }
     });
   };
 
@@ -230,7 +299,7 @@ export function LabelsSection({
       )}
       <div className="flex flex-wrap gap-1.5">
         {labels.map((label) => {
-          const active = activeIds.includes(label.id);
+          const active = optimisticIds.includes(label.id);
           return (
             <button
               key={label.id}
@@ -273,19 +342,34 @@ export function AssigneesSection({
   members: MemberRow[];
   activeIds: string[];
 }) {
+  const router = useRouter();
   const pushToast = useToast();
+  const guard = usePendingGuard();
+  const [optimisticIds, applyOptimisticIds] = useOptimistic(
+    activeIds,
+    (_current: string[], next: string[]) => next,
+  );
   const [, startTransition] = useTransition();
 
   const toggle = (userId: string) => {
-    const next = activeIds.includes(userId)
-      ? activeIds.filter((id) => id !== userId)
-      : [...activeIds, userId];
-    const fd = new FormData();
-    fd.set("cardId", cardId);
-    fd.set("userIds", JSON.stringify(next));
+    if (!guard.begin(`assignee:${userId}`)) return;
+    const next = optimisticIds.includes(userId)
+      ? optimisticIds.filter((id) => id !== userId)
+      : [...optimisticIds, userId];
     startTransition(async () => {
-      const res = await setCardAssignees(fd);
-      if (!res.ok) pushToast({ message: res.error });
+      applyOptimisticIds(next);
+      const fd = new FormData();
+      fd.set("cardId", cardId);
+      fd.set("userIds", JSON.stringify(next));
+      try {
+        const res = await setCardAssignees(fd);
+        if (!res.ok) {
+          pushToast({ message: TOAST_ASSIGNEES_FAILED });
+          router.refresh();
+        }
+      } finally {
+        guard.end(`assignee:${userId}`);
+      }
     });
   };
 
@@ -294,7 +378,7 @@ export function AssigneesSection({
       <p className="text-sm font-medium">Assignees</p>
       <div className="flex flex-wrap gap-1.5">
         {members.map((m) => {
-          const active = activeIds.includes(m.userId);
+          const active = optimisticIds.includes(m.userId);
           const initial = m.name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
           return (
             <button
@@ -329,20 +413,51 @@ export function AssigneesSection({
 export function CommentsSection({
   cardId,
   comments,
+  viewerName,
 }: {
   cardId: string;
   comments: CommentRow[];
+  viewerName?: string;
 }) {
+  const router = useRouter();
+  const pushToast = useToast();
+  const guard = usePendingGuard();
   const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [optimisticComments, appendOptimisticComment] = useOptimistic(
+    comments,
+    (current: CommentRow[], comment: CommentRow) => [...current, comment],
+  );
   const [, startTransition] = useTransition();
 
   const post = () => {
-    if (!body.trim()) return;
-    const fd = new FormData();
-    fd.set("cardId", cardId);
-    fd.set("body", body.trim());
+    const trimmed = body.trim();
+    if (!trimmed || sending) return;
+    if (!guard.begin("comment")) return;
+    setSending(true);
+    const temp: CommentRow = {
+      id: `temp-${crypto.randomUUID()}`,
+      authorName: viewerName ?? "You",
+      bodyHtml: escapeCommentHtml(trimmed),
+      createdAt: new Date().toISOString(),
+      isMine: true,
+      canDelete: false,
+    };
     startTransition(async () => {
-      await addComment(fd);
+      appendOptimisticComment(temp);
+      const fd = new FormData();
+      fd.set("cardId", cardId);
+      fd.set("body", trimmed);
+      try {
+        const res = await addComment(fd);
+        if (!res.ok) {
+          pushToast({ message: TOAST_COMMENT_FAILED });
+          router.refresh();
+        }
+      } finally {
+        guard.end("comment");
+        setSending(false);
+      }
     });
     setBody("");
   };
@@ -365,13 +480,14 @@ export function CommentsSection({
       {body.trim() && (
         <button
           onClick={post}
-          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg"
+          disabled={sending}
+          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg disabled:opacity-50"
         >
           Comment
         </button>
       )}
       <ul className="space-y-3">
-        {comments.map((c) => (
+        {optimisticComments.map((c) => (
           <li key={c.id} className="group rounded-lg border border-border bg-surface-2/50 p-3">
             <div className="mb-1 flex items-center justify-between text-xs text-muted">
               <span className="font-medium text-text">{c.authorName}</span>

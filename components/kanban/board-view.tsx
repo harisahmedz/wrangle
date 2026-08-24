@@ -11,8 +11,8 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { generateKeyBetween } from "fractional-indexing";
 import { AddColumn, Column } from "@/components/kanban/column";
 import {
@@ -23,29 +23,18 @@ import { useToast } from "@/components/ui/toast";
 import type { BoardKind } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { scoreOf } from "@/lib/kanban/score";
-import type {
-  BoardCardData,
-  BoardColumnData,
+import {
+  EMPTY_BOARD_FILTERS,
+  parseBoardFilters,
+  type BoardCardData,
+  type BoardColumnData,
+  type BoardFilters,
+  type BoardSearchRecord,
+  type DueFilter,
 } from "@/lib/kanban/types";
 
-type DueFilter = "any" | "overdue" | "today" | "week" | "none";
-
-type Filters = {
-  text: string;
-  labelIds: string[];
-  assigneeIds: string[];
-  due: DueFilter;
-};
-
-const EMPTY_FILTERS: Filters = {
-  text: "",
-  labelIds: [],
-  assigneeIds: [],
-  due: "any",
-};
-
-function matchesDue(card: BoardCardData, due: DueFilter): boolean {
-  if (due === "any") return true;
+function matchesDue(card: BoardCardData, due: DueFilter | null): boolean {
+  if (!due) return true;
   if (due === "none") return card.dueAt === null;
   if (!card.dueAt) return false;
   const t = new Date(card.dueAt).getTime();
@@ -62,9 +51,9 @@ function matchesDue(card: BoardCardData, due: DueFilter): boolean {
 
 const DAY_MS = 86_400_000;
 
-function passesFilters(card: BoardCardData, f: Filters): boolean {
-  if (f.text) {
-    const q = f.text.toLowerCase();
+function passesFilters(card: BoardCardData, f: BoardFilters): boolean {
+  if (f.q) {
+    const q = f.q.toLowerCase();
     if (
       !card.title.toLowerCase().includes(q)
     ) {
@@ -93,31 +82,68 @@ type Props = {
   filterMembers: Array<{ userId: string; name: string | null }>;
 };
 
+type UpdateFilters = (mutate: (f: BoardFilters) => BoardFilters) => void;
+
+const FILTER_PARAM_KEYS = ["q", "label", "assignee", "due"] as const;
+
+const FILTER_DEBOUNCE_MS = 250;
+
 function FilterBar({
   filters,
-  setFilters,
+  update,
   labels,
   members,
   activeCount,
 }: {
-  filters: Filters;
-  setFilters: (f: Filters) => void;
+  filters: BoardFilters;
+  update: UpdateFilters;
   labels: Array<{ id: string; name: string }>;
   members: Array<{ userId: string; name: string | null }>;
   activeCount: number;
 }) {
+  const [text, setText] = useState(filters.q);
+  const [syncedQ, setSyncedQ] = useState(filters.q);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  if (syncedQ !== filters.q) {
+    setSyncedQ(filters.q);
+    setText(filters.q);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const onTextChange = (value: string) => {
+    setText(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      update((f) => ({ ...f, q: value }));
+    }, FILTER_DEBOUNCE_MS);
+  };
+
+  const toggleId = (ids: string[], id: string) =>
+    ids.includes(id) ? ids.filter((v) => v !== id) : [...ids, id];
+
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
       <input
-        value={filters.text}
-        onChange={(e) => setFilters({ ...filters, text: e.target.value })}
+        value={text}
+        onChange={(e) => onTextChange(e.target.value)}
         placeholder="Filter by text…"
         aria-label="Filter cards by text"
         className="h-8 w-40 rounded-md border border-border bg-surface-2 px-2 text-sm"
       />
       <select
-        value={filters.due}
-        onChange={(e) => setFilters({ ...filters, due: e.target.value as DueFilter })}
+        value={filters.due ?? "any"}
+        onChange={(e) =>
+          update((f) => ({
+            ...f,
+            due: e.target.value === "any" ? null : (e.target.value as DueFilter),
+          }))
+        }
         aria-label="Filter by due date"
         className="h-8 rounded-md border border-border bg-surface-2 px-1.5 text-sm"
       >
@@ -134,14 +160,7 @@ function FilterBar({
             return (
               <button
                 key={l.id}
-                onClick={() =>
-                  setFilters({
-                    ...filters,
-                    labelIds: active
-                      ? filters.labelIds.filter((id) => id !== l.id)
-                      : [...filters.labelIds, l.id],
-                  })
-                }
+                onClick={() => update((f) => ({ ...f, labelIds: toggleId(f.labelIds, l.id) }))}
                 aria-pressed={active}
                 className={cn(
                   "rounded-full border border-border px-2 py-0.5 text-xs",
@@ -158,12 +177,7 @@ function FilterBar({
               <button
                 key={m.userId}
                 onClick={() =>
-                  setFilters({
-                    ...filters,
-                    assigneeIds: active
-                      ? filters.assigneeIds.filter((id) => id !== m.userId)
-                      : [...filters.assigneeIds, m.userId],
-                  })
+                  update((f) => ({ ...f, assigneeIds: toggleId(f.assigneeIds, m.userId) }))
                 }
                 aria-pressed={active}
                 className={cn(
@@ -179,7 +193,7 @@ function FilterBar({
       )}
       {activeCount > 0 && (
         <button
-          onClick={() => setFilters(EMPTY_FILTERS)}
+          onClick={() => update(() => EMPTY_BOARD_FILTERS)}
           className="ml-auto text-xs text-muted hover:text-danger"
         >
           Clear ({activeCount})
@@ -199,12 +213,12 @@ export function BoardView({
   filterMembers,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const pushToast = useToast();
   const [columns, setColumns] = useState(serverColumns);
   const [cards, setCards] = useState(serverCards);
   const [syncedColumns, setSyncedColumns] = useState(serverColumns);
   const [syncedCards, setSyncedCards] = useState(serverCards);
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [sortByScore, setSortByScore] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -217,11 +231,38 @@ export function BoardView({
     setCards(serverCards);
   }
 
+  const spRecord = useMemo<BoardSearchRecord>(() => {
+    const rec: BoardSearchRecord = {};
+    for (const key of new Set(searchParams.keys())) {
+      const all = searchParams.getAll(key);
+      rec[key] = all.length > 1 ? all : all[0];
+    }
+    return rec;
+  }, [searchParams]);
+
+  const filters = useMemo(() => parseBoardFilters(spRecord), [spRecord]);
+
+  const writeFilters = (next: BoardFilters) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const key of FILTER_PARAM_KEYS) params.delete(key);
+    if (next.q) params.set("q", next.q);
+    for (const id of next.labelIds) params.append("label", id);
+    for (const id of next.assigneeIds) params.append("assignee", id);
+    if (next.due) params.set("due", next.due);
+    const qs = params.toString();
+    const href = `/p/${projectId}/b/${boardKind}${qs ? `?${qs}` : ""}`;
+    startTransition(() => router.replace(href, { scroll: false }));
+  };
+
+  const updateFilters: UpdateFilters = (mutate) => {
+    writeFilters(mutate(parseBoardFilters(spRecord)));
+  };
+
   const activeFilterCount =
-    (filters.text ? 1 : 0) +
+    (filters.q ? 1 : 0) +
     filters.labelIds.length +
     filters.assigneeIds.length +
-    (filters.due !== "any" ? 1 : 0);
+    (filters.due !== null ? 1 : 0);
 
   const byColumn = (() => {
     const map = new Map<string, BoardCardData[]>();
@@ -255,7 +296,11 @@ export function BoardView({
   );
 
   const openCard = (id: string) => {
-    router.push(`/p/${projectId}/b/${boardKind}?card=${id}`, { scroll: false });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("card", id);
+    router.push(`/p/${projectId}/b/${boardKind}?${params.toString()}`, {
+      scroll: false,
+    });
   };
 
   const addColumn = (name: string) => {
@@ -368,7 +413,7 @@ export function BoardView({
       {filterLabels.length > 0 || filterMembers.length > 0 ? (
         <FilterBar
           filters={filters}
-          setFilters={setFilters}
+          update={updateFilters}
           labels={filterLabels}
           members={filterMembers}
           activeCount={activeFilterCount}
