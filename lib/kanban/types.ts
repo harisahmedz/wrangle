@@ -6,6 +6,7 @@ export type BoardCardData = {
   dueAt: string | null;
   completedAt: string | null;
   position: string;
+  coverColor: string | null;
   labelColors: string[];
   labelIds: string[];
   assigneeIds: string[];
@@ -17,4 +18,8 @@ export type BoardColumnData = {
   id: string;
   name: string;
   position: string;
+  color: string | null;
+  wipLimit: number | null;
+  isDone: boolean;
+  isCollapsed: boolean;
 };

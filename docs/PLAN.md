@@ -1,7 +1,7 @@
 # Build Plan — Wrangle
 
 > Every phase ends with something you can click. Ship one slice, verify it, then move.
-> Stack in `REQUIREMENTS.md` §4 · schema in `DATA-MODEL.md` · process in `DISCOVERY-LOOP.md`.
+> Stack in `REQUIREMENTS.md` §4 · schema in `DATA-MODEL.md` · process in `DISCOVERY-LOOP.md` · interface rules in `UI-UX.md` · proposal pool in `FEATURES.md`.
 > **Rule: no phase starts before `node_modules/next/dist/docs/` has been checked for that phase's APIs.**
 
 ---
@@ -74,6 +74,18 @@ Stop and *use it for a week* at the end of Phase 3 and again at Phase 7. Cycle t
 
 > 🛑 **Discovery loop cycle here.** Use it for 5+ days. Capture friction. Re-triage before Phase 4.
 
+## Phase 3.5 — UX hardening (cycle-5 audit P0s, detail in `UI-UX.md` §9)
+- [ ] 🐛 Receipts viewable: write `receipt_url` on confirm; edit preserves/replaces the receipt (B45)
+- [ ] 🐛 Learn uses `users.timezone`, not UTC (B53)
+- [ ] `error.tsx` + `not-found.tsx` + `global-error.tsx` in house style; `loading.tsx` for board + trash routes (B46/B47)
+- [ ] Dialog focus trap + scroll lock + `inert` in `ui/dialog.tsx`; kill the last native `confirm()` (B50/B51)
+- [ ] `/boards` becomes a real hub — no placeholder copy in primary nav (B48)
+- [ ] Settings page: persist theme to `users.theme` (+ system option), timezone, currency (B49)
+- [ ] Migration journal reconciled — one source of truth for applied SQL (B64)
+- [ ] README rewritten: setup, env, migrate, seed, deploy (B63)
+
+**Done when:** working rule 2 holds on every shipped route, and nothing in the app says "lands in Phase 2".
+
 ## Phase 4 — Sharing
 - [ ] Invite create UI: role, expiry, max uses; token shown once; active-invite list + revoke
 - [ ] `/join/[token]`: logged out → OAuth → join → land in project; idempotent; expired/revoked/used-up states
@@ -107,7 +119,7 @@ Stop and *use it for a week* at the end of Phase 3 and again at Phase 7. Cycle t
 
 ## Phase 7 — PWA + mobile polish
 - [ ] Manifest (maskable icons, theme color, **shortcuts**: New task / Today / New expense)
-- [ ] Serwist SW: app-shell precache, SWR data cache, offline banner, update-available prompt
+- [ ] SW hardening: hand-rolled `public/sw.js` already ships precache/offline-fallback/update-prompt — keep it or adopt Serwist (G5-07); add SWR data caching either way
 - [ ] **Share Target**: share a link into Wrangle → quick-add prefilled
 - [ ] Install prompt handling (Android `beforeinstallprompt`, iOS A2HS hint)
 - [ ] Offline read of last-seen boards; graceful write failure ("saved when you're back" is Phase 8, not now — fail loudly instead)
@@ -132,6 +144,13 @@ Stop and *use it for a week* at the end of Phase 3 and again at Phase 7. Cycle t
 
 ## Phase 10 — Nice-to-haves backlog
 Recurring tasks · calendar view · saved filters · bulk actions · command palette ⌘K · project templates · public read-only share view · budgets · expense splitting · streaks · i18n · card→card dependencies · offline editing with sync queue.
+
+## The flagship track — **The Loop** (post-Phase-7, research-backed, see `FLAGSHIP-2026.md`)
+Ordered slices; each is independently shippable and the ⚡ ones need no AI (they dodge the §1.3 AI gate):
+1. ⚡ **Shutdown** — plan-today (pick 3, `focused_on`), evening close (tomorrow / done / let go), `day_reviews`, consistency stats (B70/B71)
+2. ⚡ **Dump v1** — hold-FAB voice/text brain dump → heuristic sorted tray (chrono-node + amount regex) (B67)
+3. ⚡ **Life Wrapped** — monthly 9:16 share cards after a month of Shutdown data (B69)
+4. **Dump v2 + Wrapped narrative** — on-device Prompt API, desktop, only after the AI gate opens (B68)
 
 ---
 

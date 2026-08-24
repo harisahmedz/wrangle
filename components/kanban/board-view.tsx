@@ -275,6 +275,10 @@ export function BoardView({
           id: res.data.columnId,
           name,
           position: generateKeyBetween(lastPos, null),
+          color: null,
+          wipLimit: null,
+          isDone: false,
+          isCollapsed: false,
         },
       ]);
     });

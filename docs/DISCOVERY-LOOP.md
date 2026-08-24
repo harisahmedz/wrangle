@@ -31,6 +31,38 @@ _(cycle 4 — 2026-08-23, captured building/reviewing Phases 0–2, pre-usage:_
 - _Ideas board has zero idea-specific value yet (no impact/effort/score)._
 _)_
 
+_(cycle 5 — 2026-08-24, full code/UX audit swept the whole build. Findings promoted straight to backlog **B45–B66**; prioritized detail in `UI-UX.md` §9. Two new companion docs created: **`UI-UX.md`** (interface contract + audit) and **`FEATURES.md`** (sellable/expansion proposal pool). Headline bugs: receipts unviewable (B45), zero error boundaries (B46), Learn ignores timezone (B53), migration journal drift (B64).)_
+
+---
+
+## Grill round 6 — opened cycle 5 research pass (The Loop, see `FLAGSHIP-2026.md`)
+
+| # | Question | Default |
+|---|---|---|
+| G6-01 | Commit to **The Loop** (Dump · Shutdown · Life Wrapped) as the post-MVP flagship, with Weekly Review (B56) folding into the Shutdown family? | Yes — it's the researched convergence of capture + ritual + growth |
+| G6-02 | Dump v1 ships **heuristics-only** (chrono-node dates + amount regex + prefix keywords), AI classify later? | Yes — respects the AI gate (§1.3), still feels magic for dates/amounts |
+| G6-03 | Wrapped cadence + unlock gate? | Monthly, unlocks at 15 active days (quiet progress meter, never guilt); yearly edition automatic |
+| G6-04 | Streak stance locked: consistency-rate + non-resetting cumulative counts + "never miss twice", **no breakable streaks ever**? | Yes — 2026 research says streak-guilt is churn |
+| G6-05 | On-device-AI split brain (Prompt API desktop / transformers.js-WebGPU Android / heuristics everywhere) as the standing AI architecture — no server-side LLM calls, no metering, ever? | Yes — it's the moat *and* the cost model |
+| G6-06 | "Let go" verb in Shutdown clears the due date without completing or deleting — acceptable third state? | Yes — guilt-free deferral is the ritual's point |
+| G6-07 | Day timeline / time-block view (the category's most-paywalled feature) — worth a free lightweight version? | Backlog (B73) — after the Loop, not before |
+| G6-08 | Wrangle MCP server (drive your boards from Claude/ChatGPT — TickTick/Linear shipped this in 2026)? | Backlog (B72) — an afternoon of fun once the API surface stabilizes |
+
+---
+
+## Grill round 5 — opened cycle 5 (UX audit + feature-expansion decisions)
+
+| # | Question | Default |
+|---|---|---|
+| G5-01 | Flagship next big feature — **Weekly Review** (FEATURES §3.1)? | Yes — schedule after Phase 6; it's the four-in-one payoff |
+| G5-02 | Any intent to ever charge? (changes Vercel Hobby legality + infra floor, FEATURES §7) | No for now — revisit after 1 month of real multi-user use |
+| G5-03 | Buy a real domain now (OAuth callbacks + share-link permanence)? | Yes — cheap insurance even if never charging |
+| G5-04 | Icons: keep 8 hand-rolled SVGs + glyph buttons, or adopt lucide-react? | Adopt lucide during the a11y pass (B65) |
+| G5-05 | Optimistic strategy for checklist/labels/comments (B42)? | React `useOptimistic` per mutation; board drag keeps its manual state |
+| G5-06 | Geist Mono + `tabular-nums` for all money/hours/score numbers? | Yes (UI-UX §2) |
+| G5-07 | Service worker: keep hand-rolled `sw.js` or migrate to Serwist? | Keep hand-rolled until Phase 7 offline work outgrows it |
+| G5-08 | Trash says "N days left" but the purge cron doesn't exist yet | Cron ships Phase 9 as planned; until then copy reads "kept at least 30 days" |
+
 ---
 
 ## Grill round 4 — opened cycle 4 (Phase 3 decisions)
@@ -167,6 +199,35 @@ _)_
 | B42 | Optimistic comments/checklist/labels mutations | cycle 4 | later (perf polish, phase 7) |
 | B43 | Card meta (created/updated/by) shown in detail | cycle 4 | phase 2b leftover |
 | B44 | Global cross-project search | cycle 4 | later (after per-project search proves out) |
+| B45 | 🐛 Receipts unviewable: `receipt_url` never written, edit drops receipts | cycle 5 audit | **now** (bug) |
+| B46 | Error boundaries: `error.tsx` + `not-found.tsx` + `global-error.tsx` (zero exist) | cycle 5 audit | **now** (plan rule 2) |
+| B47 | Board route `loading.tsx` (heaviest page has no skeleton) | cycle 5 audit | **now** |
+| B48 | `/boards` real hub — placeholder copy is live in primary nav | cycle 5 audit | next |
+| B49 | User settings page: theme persist + system option, timezone, currency, avatar | cycle 5 audit | next |
+| B50 | Dialog a11y: focus trap + scroll lock + `inert` (fix once in `ui/dialog`) | cycle 5 audit | next (R17) |
+| B51 | Replace native `confirm()` in members-table with Modal | cycle 5 audit | next |
+| B52 | Expense category management UI (actions exist, unreachable) | cycle 5 audit | next |
+| B53 | 🐛 Learn uses UTC instead of `users.timezone` | cycle 5 audit | **now** (bug) |
+| B54 | Filter state in URL (shareable, survives nav; unlocks B18) | cycle 5 audit | later |
+| B55 | Column drag-reorder + project drag-reorder | cycle 5 audit | later |
+| B56 | **Weekly Review** screen (promotes B40) — flagship candidate | FEATURES §3.1 | 🔶 G5-01 |
+| B57 | Project true cost: wire `expenses.project_id` + hours rollup | FEATURES §3.2 | later (after Phase 5 proves out) |
+| B58 | ICS calendar feed (subscribe in Google Calendar) | FEATURES §4 | later (tiny effort, high value) |
+| B59 | Public read-only project page (expands B7; first growth loop) | FEATURES §5 | later |
+| B60 | Recurring expenses + subscriptions total chip (`recurrence` JSONB) | FEATURES §4 | later |
+| B61 | Capture rungs: NL dates (chrono-node) · email-in · Telegram bot | FEATURES §3.3 | later (NL dates with Phase 7) |
+| B62 | Spaced-repetition review prompts on learned items | FEATURES §4 | later |
+| B63 | README rewrite (still create-next-app boilerplate) | cycle 5 audit | **now** |
+| B64 | 🐛 Migration journal drift: 3 hand-written SQL files outside drizzle journal, colliding prefixes | cycle 5 audit | **now** (ops risk) |
+| B65 | Icon system: lucide-react, kill glyph-buttons, `next/image` avatars | cycle 5 audit | next (G5-04) |
+| B66 | `--success`/`--warning` tokens, one palette source, wire motion tokens | cycle 5 audit | later |
+| B67 | ⚡ **The Dump v1** — hold-FAB brain dump → sorted tray (heuristics: chrono-node + amount regex) | FLAGSHIP §2 | next-ish (with Phase 7) |
+| B68 | On-device AI split brain: Prompt API (desktop) · transformers.js/WebGPU (Android) · heuristics fallback | FLAGSHIP §2 | ⛔ gated (AI gate §1.3) |
+| B69 | ⚡ **Life Wrapped** — monthly 9:16 share cards, archetype + plot-twist stat, 15-day unlock | FLAGSHIP §4 | later (needs a month of Shutdown data) |
+| B70 | ⚡ **The Shutdown** — plan-today (pick 3) + evening close (tomorrow/done/let go) + `day_reviews` | FLAGSHIP §3 | next (absorbs B56/B40) |
+| B71 | Anti-streak momentum stats: consistency %, cumulative counts, never-miss-twice | FLAGSHIP §3 | with B70 |
+| B72 | Wrangle MCP server (drive boards from Claude/ChatGPT) | FLAGSHIP research | later (G6-08) |
+| B73 | Day timeline / lightweight time-block view — the category's most-paywalled feature, free here | FLAGSHIP research | later (G6-07) |
 
 Statuses: `now` · `next` · `later` · `never` · `🔶 needs decision`
 
@@ -181,3 +242,5 @@ Statuses: `now` · `next` · `later` · `never` · `🔶 needs decision`
 | 2026-08-21 | 2 | **DB locked = Neon** (0.5 GB free, no inactivity pause). Added `DATA-MODEL.md`. New requirements R12–R17 (currency in minor units, undo/trash, Today view, export/delete, a11y). Non-goals + success criteria written. Backlog expanded B11–B40. Grill round 3 opened (35 questions, all with defaults). |
 | 2026-08-21 | 3 | Improv set promoted to `docs/` root as single source of truth (`improv/` deleted). Cite artifacts stripped; ORM ref fixed G3-24→G3-31; currency re-locked to **USD** (G3-17 default updated). Neon free-tier claims verified against neon.com: 0.5 GB storage, 100 CU-h/project/mo, 100 projects, 10 branches, scale-to-zero 5 min, 6-h restore window, limits suspend compute until next cycle. `.env.example` + local `.env` scaffolded. |
 | 2026-08-23 | 4 | Phases 0–2 built and verified. AUTH_SECRET set; `/api/auth/providers` verified 200 (Google+GitHub live). Cycle 4 run pre-usage: 8 friction items captured to inbox; grill round 4 opened (G4-01…08, all defaults applied → logged as decisions); backlog +B41–B44. Phase 3 scope locked: remembered board tab, ideas scoring + promote, filters, project search (FTS+trgm), Today/Upcoming with tick-off, quick-add. `columns.is_done` schema gap fixed this phase per G4-08. |
+| 2026-08-24 | 5 | Full code/UX audit (agent-swept, every route/component/action). Two new docs: **`UI-UX.md`** (interface contract: tokens, component contracts, four-states rule, optimistic tiers, voice, P0–P2 audit) and **`FEATURES.md`** (proposal pool: ★ cross-module features as the moat, flagship = Weekly Review, growth loops, monetization constraints incl. Vercel Hobby non-commercial). Backlog +B45–B66; grill round 5 opened (G5-01…08, defaults stated). Bugs: receipts unviewable (B45), zero error boundaries (B46), Learn on UTC (B53), migration drift (B64). `PLAN.md` gained Phase 3.5 (UX hardening) from the P0 list. |
+| 2026-08-24 | 5b | **Market research pass** — three parallel sweeps of 2025–2026 sources (productivity-app features/pricing/sentiment · viral recap & habit mechanics · web-platform + on-device AI status). Convergence written up as **`FLAGSHIP-2026.md`: The Loop** (Dump → Shutdown → Life Wrapped). Key facts: Todoist Ramble = the loved AI pattern (assistive voice capture, $5/mo); Sunsama sells the shutdown ritual at $16–20/mo; Spotify Wrapped 2025 biggest ever, Strava's paywalled recap backlash makes *free* recaps a story; Chrome Prompt API (Gemini Nano) stable for web Q2 2026 desktop-only, WebGPU default in all browsers → unlimited private $0 on-device AI is a real 2026-only window; streak-guilt is documented churn. Backlog +B67–B73; grill round 6 opened (G6-01…08). B56/B40 fold into the Shutdown family. |

@@ -7,9 +7,11 @@ import { db } from "@/db";
 import {
   activities,
   boards,
+  cardLabels,
   cards,
   columns,
 } from "@/db/schema";
+import type { BoardKind } from "@/db/schema";
 import { requireMembership } from "@/lib/authz";
 import {
   cardIdSchema,
@@ -378,6 +380,223 @@ export async function restoreCard(formData: FormData): Promise<ActionResult> {
     .set({ deletedAt: null })
     .where(eq(cards.id, parsed.data.cardId));
 
+  refresh();
+  return { ok: true };
+}
+
+export async function duplicateCard(
+  formData: FormData,
+): Promise<ActionResult<{ newCardId: string }>> {
+  const parsed = cardIdSchema.safeParse({ cardId: formData.get("cardId") });
+  if (!parsed.success) return failure("Invalid card");
+
+  const [source] = await db
+    .select()
+    .from(cards)
+    .where(and(eq(cards.id, parsed.data.cardId), isNull(cards.deletedAt)))
+    .limit(1);
+  if (!source) return failure("Card not found");
+  const { userId } = await requireMembership(source.projectId, "member");
+
+  const [next] = await db
+    .select({ position: cards.position })
+    .from(cards)
+    .where(and(eq(cards.columnId, source.columnId), isNull(cards.deletedAt)))
+    .orderBy(asc(cards.position))
+    .limit(1);
+
+  const [copy] = await db
+    .insert(cards)
+    .values({
+      columnId: source.columnId,
+      boardId: source.boardId,
+      projectId: source.projectId,
+      title: `${source.title} (copy)`,
+      description: source.description,
+      position: generateKeyBetween(null, next?.position ?? null),
+      dueAt: source.dueAt,
+      isAllDay: source.isAllDay,
+      impact: source.impact,
+      effort: source.effort,
+      coverColor: source.coverColor,
+      createdBy: userId,
+    })
+    .returning({ id: cards.id });
+
+  const sourceLabels = await db
+    .select({ labelId: cardLabels.labelId })
+    .from(cardLabels)
+    .where(eq(cardLabels.cardId, source.id));
+  if (sourceLabels.length > 0) {
+    await db
+      .insert(cardLabels)
+      .values(sourceLabels.map((l) => ({ cardId: copy.id, labelId: l.labelId })));
+  }
+
+  await logActivity(source.projectId, userId, "card", copy.id, "created", {
+    duplicatedFrom: source.id,
+  });
+  refresh();
+  return { ok: true, data: { newCardId: copy.id } };
+}
+
+export async function moveCardToBoard(
+  formData: FormData,
+): Promise<ActionResult> {
+  const cardId = String(formData.get("cardId") ?? "");
+  const boardKind = String(formData.get("boardKind") ?? "");
+  if (!/^(todo|ideas|work)$/.test(boardKind)) return failure("Invalid board");
+
+  const [source] = await db
+    .select({ projectId: cards.projectId })
+    .from(cards)
+    .where(and(eq(cards.id, cardId), isNull(cards.deletedAt)))
+    .limit(1);
+  if (!source) return failure("Card not found");
+  const { userId } = await requireMembership(source.projectId, "member");
+
+  const [targetBoard] = await db
+    .select({ id: boards.id })
+    .from(boards)
+    .where(
+      and(
+        eq(boards.projectId, source.projectId),
+        eq(boards.kind, boardKind as BoardKind),
+      ),
+    )
+    .limit(1);
+  if (!targetBoard) return failure("Board missing");
+
+  const [firstColumn] = await db
+    .select({ id: columns.id, isDone: columns.isDone })
+    .from(columns)
+    .where(and(eq(columns.boardId, targetBoard.id), isNull(columns.deletedAt)))
+    .orderBy(asc(columns.position))
+    .limit(1);
+  if (!firstColumn) return failure("No columns on target board");
+
+  const [last] = await db
+    .select({ position: cards.position })
+    .from(cards)
+    .where(and(eq(cards.columnId, firstColumn.id), isNull(cards.deletedAt)))
+    .orderBy(asc(cards.position))
+    .limit(1);
+
+  await db
+    .update(cards)
+    .set({
+      boardId: targetBoard.id,
+      columnId: firstColumn.id,
+      position: generateKeyBetween(last?.position ?? null, null),
+      completedAt: firstColumn.isDone ? new Date() : null,
+    })
+    .where(eq(cards.id, cardId));
+
+  await logActivity(source.projectId, userId, "card", cardId, "moved", {
+    to_board: boardKind,
+  });
+  refresh();
+  return { ok: true };
+}
+
+export async function setCardCover(
+  formData: FormData,
+): Promise<ActionResult> {
+  const parsed = cardIdSchema.safeParse({ cardId: formData.get("cardId") });
+  if (!parsed.success) return failure("Invalid card");
+
+  const raw = String(formData.get("coverColor") ?? "");
+  const coverColor = /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : null;
+
+  const [source] = await db
+    .select({ projectId: cards.projectId })
+    .from(cards)
+    .where(eq(cards.id, parsed.data.cardId))
+    .limit(1);
+  if (!source) return failure("Card not found");
+  await requireMembership(source.projectId, "member");
+
+  await db
+    .update(cards)
+    .set({ coverColor })
+    .where(eq(cards.id, parsed.data.cardId));
+
+  refresh();
+  return { ok: true };
+}
+
+export async function updateColumnStyle(
+  formData: FormData,
+): Promise<ActionResult> {
+  const columnId = String(formData.get("columnId") ?? "");
+  const color = String(formData.get("color") ?? "");
+  const wipRaw = formData.get("wipLimit");
+  const isCollapsed = formData.get("isCollapsed");
+
+  const ctxRow = await columnContext(columnId);
+  if (!ctxRow) return failure("Column not found");
+  await requireMembership(ctxRow.projectId, "admin");
+
+  const patch: { color?: string | null; wipLimit?: number | null; isCollapsed?: boolean } = {};
+  if (color === "" || /^#[0-9a-fA-F]{6}$/.test(color)) patch.color = color || null;
+  if (wipRaw !== null) {
+    const n = Number(wipRaw);
+    patch.wipLimit = Number.isInteger(n) && n > 0 && n <= 99 ? n : null;
+  }
+  if (isCollapsed !== null) patch.isCollapsed = String(isCollapsed) === "true";
+
+  await db.update(columns).set(patch).where(eq(columns.id, columnId));
+  refresh();
+  return { ok: true };
+}
+
+export async function moveColumn(formData: FormData): Promise<ActionResult> {
+  const columnId = String(formData.get("columnId") ?? "");
+  const direction = String(formData.get("direction") ?? "");
+  if (!/^(left|right)$/.test(direction)) return failure("Invalid direction");
+
+  const ctxRow = await columnContext(columnId);
+  if (!ctxRow) return failure("Column not found");
+  await requireMembership(ctxRow.projectId, "admin");
+
+  const siblings = await db
+    .select({ id: columns.id, position: columns.position })
+    .from(columns)
+    .where(and(eq(columns.boardId, ctxRow.boardId), isNull(columns.deletedAt)))
+    .orderBy(asc(columns.position));
+
+  const index = siblings.findIndex((c) => c.id === columnId);
+  if (index === -1) return failure("Not found");
+
+  let newPosition: string | null = null;
+  if (direction === "left" && index > 0) {
+    newPosition = generateKeyBetween(
+      siblings[index - 2]?.position ?? null,
+      siblings[index - 1].position,
+    );
+  } else if (direction === "right" && index < siblings.length - 1) {
+    newPosition = generateKeyBetween(
+      siblings[index + 1].position,
+      siblings[index + 2]?.position ?? null,
+    );
+  }
+  if (!newPosition) return { ok: true };
+
+  await db.update(columns).set({ position: newPosition }).where(eq(columns.id, columnId));
+  refresh();
+  return { ok: true };
+}
+
+export async function restoreColumn(formData: FormData): Promise<ActionResult> {
+  const columnId = String(formData.get("columnId") ?? "");
+  const ctxRow = await columnContext(columnId);
+  if (!ctxRow) return failure("Column not found");
+  await requireMembership(ctxRow.projectId, "admin");
+
+  await db
+    .update(columns)
+    .set({ deletedAt: null })
+    .where(eq(columns.id, columnId));
   refresh();
   return { ok: true };
 }

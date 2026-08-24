@@ -214,6 +214,29 @@ export async function createCategory(
   return { ok: true, data: { id: row.id } };
 }
 
+export async function updateCategory(
+  formData: FormData,
+): Promise<ActionResult> {
+  const userId = await requireUser();
+  const id = String(formData.get("categoryId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const emoji = String(formData.get("emoji") ?? "").slice(0, 4) || null;
+  const color = String(formData.get("color") ?? "#8b5cf6");
+  if (!name || name.length > 40) return failure("Name required (≤40)");
+
+  const result = await db
+    .update(expenseCategories)
+    .set({ name, emoji, color })
+    .where(
+      and(eq(expenseCategories.id, id), eq(expenseCategories.userId, userId)),
+    )
+    .returning({ id: expenseCategories.id });
+
+  if (result.length === 0) return failure("Category not found");
+  refresh();
+  return { ok: true };
+}
+
 export async function archiveCategory(
   formData: FormData,
 ): Promise<ActionResult> {

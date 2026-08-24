@@ -1,14 +1,37 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { createCard, deleteColumn, renameColumn } from "@/lib/kanban/actions";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  createCard,
+  deleteColumn,
+  moveColumn,
+  renameColumn,
+  restoreColumn,
+  updateColumnStyle,
+} from "@/lib/kanban/actions";
 import { CardChip } from "@/components/kanban/card-chip";
 import { Modal } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
 import type {
   BoardCardData,
   BoardColumnData,
 } from "@/lib/kanban/types";
+import { cn } from "@/lib/utils";
+
+const COLUMN_COLORS = [
+  null,
+  "#ef4444",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+];
 
 export function Column({
   column,
@@ -31,10 +54,13 @@ export function Column({
   const [targetColumnId, setTargetColumnId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  const pushToast = useToast();
 
   const { setNodeRef } = useSortable({ id: column.id });
 
   const others = siblings.filter((c) => c.id !== column.id);
+  const overWip =
+    column.wipLimit !== null && cards.length > column.wipLimit;
 
   const submit = () => {
     const trimmed = title.trim();
@@ -57,6 +83,25 @@ export function Column({
     });
   };
 
+  const style = (patch: Record<string, string>) => {
+    const fd = new FormData();
+    fd.set("columnId", column.id);
+    for (const [k, v] of Object.entries(patch)) fd.set(k, v);
+    startTransition(async () => {
+      await updateColumnStyle(fd);
+    });
+  };
+
+  const shift = (direction: "left" | "right") => {
+    setMenuOpen(false);
+    const fd = new FormData();
+    fd.set("columnId", column.id);
+    fd.set("direction", direction);
+    startTransition(async () => {
+      await moveColumn(fd);
+    });
+  };
+
   const doDelete = () => {
     if (cards.length > 0 && !targetColumnId) {
       setError("Choose where the cards should go");
@@ -67,15 +112,58 @@ export function Column({
     if (targetColumnId) fd.set("targetColumnId", targetColumnId);
     startTransition(async () => {
       const res = await deleteColumn(fd);
-      if (!res.ok) setError(res.error);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setDeleting(false);
+      pushToast({
+        message: `Column “${column.name}” deleted`,
+        actionLabel: "Undo",
+        onAction: () => {
+          const undoFd = new FormData();
+          undoFd.set("columnId", column.id);
+          void restoreColumn(undoFd);
+        },
+      });
     });
-    setDeleting(false);
   };
+
+  if (column.isCollapsed) {
+    return (
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "flex w-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-2 rounded-xl border-l-4 bg-surface-2/60 py-3",
+          column.isDone && "border-emerald-500",
+        )}
+        style={column.color ? { borderLeftColor: column.color } : undefined}
+        onClick={() => style({ isCollapsed: "false" })}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && style({ isCollapsed: "false" })}
+        aria-label={`Expand ${column.name}`}
+        title={column.name}
+      >
+        <span
+          className="text-sm font-semibold"
+          style={{ writingMode: "vertical-rl" }}
+        >
+          {column.name}
+        </span>
+        <span className="text-xs text-muted">{cards.length}</span>
+      </div>
+    );
+  }
 
   return (
     <div
       ref={setNodeRef}
-      className="flex w-[272px] shrink-0 snap-start flex-col rounded-xl bg-surface-2/60 p-2"
+      className={cn(
+        "flex w-[272px] shrink-0 snap-start flex-col rounded-xl border-l-4 bg-surface-2/60 p-2",
+        column.isDone && "border-emerald-500",
+      )}
+      style={column.color ? { borderLeftColor: column.color } : undefined}
     >
       <div className="group relative mb-2 flex items-center justify-between px-1">
         {renaming ? (
@@ -98,9 +186,18 @@ export function Column({
             className="cursor-text truncate text-sm font-semibold"
           >
             {column.name}
-            <span className="ml-2 text-xs font-normal text-muted">
+            <span
+              className={cn(
+                "ml-2 text-xs font-normal tabular-nums",
+                overWip ? "text-danger" : "text-muted",
+              )}
+            >
               {cards.length}
+              {column.wipLimit !== null && `/${column.wipLimit}`}
             </span>
+            {column.isDone && (
+              <span className="ml-1.5 text-xs text-emerald-500">✓</span>
+            )}
           </h2>
         )}
         <button
@@ -112,23 +209,68 @@ export function Column({
           ⋯
         </button>
         {menuOpen && (
-          <div className="absolute right-0 top-7 z-20 w-36 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg">
+          <div className="absolute right-0 top-7 z-20 w-48 overflow-hidden rounded-lg border border-border bg-surface py-1.5 shadow-lg">
+            <div className="flex justify-between gap-1 px-2.5 pb-1.5">
+              {COLUMN_COLORS.map((c, i) => (
+                <button
+                  key={i}
+                  onClick={() => style({ color: c ?? "" })}
+                  aria-label={c ? `Color ${c}` : "No color"}
+                  className={cn(
+                    "h-5 w-5 rounded-full border",
+                    c ? "border-transparent" : "border-dashed border-muted",
+                    (column.color ?? null) === c && "ring-2 ring-text",
+                  )}
+                  style={c ? { backgroundColor: c } : undefined}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2 border-t border-border px-2.5 py-1.5 text-xs text-muted">
+              WIP limit
+              <input
+                type="number"
+                min={1}
+                max={99}
+                defaultValue={column.wipLimit ?? ""}
+                placeholder="–"
+                aria-label="WIP limit"
+                onBlur={(e) => style({ wipLimit: e.target.value })}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && style({ wipLimit: e.currentTarget.value })
+                }
+                className="h-6 w-14 rounded border border-border bg-surface-2 px-1 text-xs tabular-nums"
+              />
+            </div>
             <button
               onClick={() => {
                 setMenuOpen(false);
-                setRenaming(true);
+                style({ isCollapsed: String(!column.isCollapsed) });
               }}
               className="block w-full px-3 py-2 text-left text-sm text-muted hover:bg-surface-2 hover:text-text"
             >
-              Rename
+              Collapse column
             </button>
+            <div className="flex border-t border-border text-xs">
+              <button
+                onClick={() => shift("left")}
+                className="flex-1 px-3 py-2 text-left text-muted hover:bg-surface-2 hover:text-text"
+              >
+                ◀ Move
+              </button>
+              <button
+                onClick={() => shift("right")}
+                className="flex-1 px-3 py-2 text-right text-muted hover:bg-surface-2 hover:text-text"
+              >
+                Move ▶
+              </button>
+            </div>
             <button
               onClick={() => {
                 setMenuOpen(false);
                 setError(null);
                 setDeleting(true);
               }}
-              className="block w-full px-3 py-2 text-left text-sm text-danger hover:bg-surface-2"
+              className="block w-full border-t border-border px-3 py-2 text-left text-sm text-danger hover:bg-surface-2"
             >
               Delete column
             </button>

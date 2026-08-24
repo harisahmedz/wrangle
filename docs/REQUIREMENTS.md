@@ -2,7 +2,7 @@
 
 > Living document. Every discovery-loop cycle updates this file.
 > Status legend: ✅ decided · 🔶 proposed (needs your call) · ❓ open question · ⛔ explicit non-goal
-> Companions: `PLAN.md` (build order) · `DATA-MODEL.md` (schema) · `DISCOVERY-LOOP.md` (process + open grill)
+> Companions: `PLAN.md` (build order) · `DATA-MODEL.md` (schema) · `DISCOVERY-LOOP.md` (process + open grill) · `UI-UX.md` (interface rules + audit) · `FEATURES.md` (sellable/expansion proposal pool) · `FLAGSHIP-2026.md` (the researched big swing: The Loop)
 
 ---
 

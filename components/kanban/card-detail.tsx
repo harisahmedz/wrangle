@@ -4,8 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   archiveCard,
+  duplicateCard,
   moveCard,
+  moveCardToBoard,
   restoreCard,
+  setCardCover,
   toggleCardComplete,
   updateCard,
 } from "@/lib/kanban/actions";
@@ -38,6 +41,9 @@ type CardDetailData = {
   completedAt: Date | null;
   impact: number | null;
   effort: number | null;
+  coverColor: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type Props = {
@@ -54,6 +60,7 @@ type Props = {
   cloudinaryReady: boolean;
   canManageLabels: boolean;
   isIdeasBoard?: boolean;
+  history?: Array<{ text: string; when: string }>;
 };
 
 function toLocalInput(dueAt: Date | null, allDay: boolean): string {
@@ -80,6 +87,7 @@ export function CardDetail({
   cloudinaryReady,
   canManageLabels,
   isIdeasBoard = false,
+  history = [],
 }: Props) {
   const router = useRouter();
   const pushToast = useToast();
@@ -95,6 +103,7 @@ export function CardDetail({
   const [pendingSave, startSaveTransition] = useTransition();
   const [pendingToggle, startToggleTransition] = useTransition();
   const [, startRemoveTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const done = card.completedAt !== null;
 
@@ -195,6 +204,57 @@ export function CardDetail({
     });
   };
 
+  const duplicate = () => {
+    const fd = new FormData();
+    fd.set("cardId", card.id);
+    startTransition(async () => {
+      const res = await duplicateCard(fd);
+      if (!res.ok) {
+        pushToast({ message: res.error });
+        return;
+      }
+      close();
+      router.push(
+        `/p/${projectId}/b/${boardKind}?card=${res.data.newCardId}`,
+        { scroll: false },
+      );
+    });
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      pushToast({ message: "Link copied" });
+    } catch {
+      pushToast({ message: "Could not copy link" });
+    }
+  };
+
+  const moveTo = (kind: string) => {
+    const fd = new FormData();
+    fd.set("cardId", card.id);
+    fd.set("boardKind", kind);
+    startTransition(async () => {
+      const res = await moveCardToBoard(fd);
+      if (!res.ok) {
+        pushToast({ message: res.error });
+        return;
+      }
+      router.push(`/p/${projectId}/b/${kind}?card=${card.id}`, {
+        scroll: false,
+      });
+    });
+  };
+
+  const setCover = (color: string) => {
+    const fd = new FormData();
+    fd.set("cardId", card.id);
+    fd.set("coverColor", color);
+    startTransition(async () => {
+      await setCardCover(fd);
+    });
+  };
+
   return (
     <Sheet open variant="side" onClose={close} label="Card details">
       <div className="space-y-5">
@@ -272,6 +332,64 @@ export function CardDetail({
             </label>
           </div>
         </div>
+
+        <div className="flex items-center justify-between text-[11px] text-muted">
+          <span>
+            Created {new Date(card.createdAt).toLocaleDateString()}
+          </span>
+          <span>Updated {new Date(card.updatedAt).toLocaleDateString()}</span>
+        </div>
+
+        <section className="space-y-2">
+          <p className="text-sm font-medium">Cover</p>
+          <div className="flex gap-1.5">
+            {["", "#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899"].map(
+              (c) => (
+                <button
+                  key={c || "none"}
+                  onClick={() => setCover(c)}
+                  aria-label={c ? `Cover ${c}` : "No cover"}
+                  className={
+                    "h-6 w-6 rounded-md border " +
+                    (c ? "border-transparent" : "border-dashed border-muted") +
+                    ((card.coverColor ?? "") === c ? " ring-2 ring-text ring-offset-2 ring-offset-surface" : "")
+                  }
+                  style={c ? { backgroundColor: c } : undefined}
+                />
+              ),
+            )}
+          </div>
+        </section>
+
+        <section className="space-y-2">
+          <p className="text-sm font-medium">Actions</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={duplicate}
+              className="rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:text-text"
+            >
+              ⧉ Duplicate
+            </button>
+            <button
+              onClick={() => void copyLink()}
+              className="rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:text-text"
+            >
+              🔗 Copy link
+            </button>
+            {!isIdeasBoard &&
+              ["todo", "ideas", "work"]
+                .filter((k) => k !== boardKind)
+                .map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => moveTo(k)}
+                    className="rounded-md border border-border px-3 py-1.5 text-xs capitalize text-muted hover:text-text"
+                  >
+                    → {k}
+                  </button>
+                ))}
+          </div>
+        </section>
 
         <ChecklistSection cardId={card.id} items={checklist} />
         <LabelsSection
@@ -355,6 +473,22 @@ export function CardDetail({
           cloudinaryReady={cloudinaryReady}
         />
         <CommentsSection cardId={card.id} comments={comments} />
+
+        {history.length > 0 && (
+          <section className="space-y-1.5">
+            <p className="text-sm font-medium">History</p>
+            <ul className="space-y-1">
+              {history.map((h, i) => (
+                <li key={i} className="flex items-baseline justify-between gap-3 text-xs">
+                  <span className="text-muted">{h.text}</span>
+                  <span className="shrink-0 text-[10px] text-muted">
+                    {new Date(h.when).toLocaleDateString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <div className="flex items-center justify-between border-t border-border pt-4">
           <Button variant="danger" size="sm" onClick={remove}>

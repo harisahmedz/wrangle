@@ -83,7 +83,20 @@ export function ExpenseList({
                         </span>
                         <span className="block text-xs text-muted">
                           {r.categoryName}
-                          {r.receiptUrl && " · 📎"}
+                          {r.receiptUrl && (
+                            <>
+                              {" · "}
+                              <a
+                                href={r.receiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="underline underline-offset-2 hover:text-text"
+                              >
+                                📎 receipt
+                              </a>
+                            </>
+                          )}
                         </span>
                       </span>
                       <span className="shrink-0 tabular-nums text-sm font-medium">
