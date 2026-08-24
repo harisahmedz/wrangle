@@ -46,7 +46,11 @@ export function CardChip({
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        borderTop: card.coverColor ? `3px solid ${card.coverColor}` : undefined,
+      }}
       {...attributes}
       {...listeners}
       onClick={() => onOpen(card.id)}

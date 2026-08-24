@@ -41,6 +41,7 @@ export function ExpenseSheet({
   );
   const [spentOn, setSpentOn] = useState(editing?.spentOn ?? "");
   const [note, setNote] = useState(editing?.note ?? "");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [receipt, setReceipt] = useState<{ publicId: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [, startTransition] = useTransition();
@@ -128,6 +129,7 @@ export function ExpenseSheet({
     fd.set("categoryId", categoryId);
     fd.set("spentOn", spentOn);
     fd.set("note", note);
+    fd.set("paymentMethod", paymentMethod);
     if (editing) {
       fd.set("expenseId", editing.id);
       startTransition(async () => {
@@ -229,6 +231,14 @@ export function ExpenseSheet({
             className="h-10 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-3 text-sm"
           />
         </div>
+        <input
+          value={paymentMethod}
+          onChange={(e) => setPaymentMethod(e.target.value)}
+          placeholder="Paid with… (cash, card, wallet — optional)"
+          maxLength={40}
+          aria-label="Payment method"
+          className="h-9 w-full rounded-md border border-border bg-surface-2 px-3 text-xs"
+        />
 
         {!editing && (
           <>

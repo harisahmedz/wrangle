@@ -20,6 +20,9 @@ import {
   AddExpenseButton,
 } from "@/components/expenses/add-button";
 import {
+  CategoryManagerButton,
+} from "@/components/expenses/category-manager";
+import {
   ExpenseAddTrigger,
 } from "@/components/pwa/triggers";
 import type {
@@ -168,6 +171,7 @@ export default async function MoneyPage({ searchParams }: Props) {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Money</h1>
         <div className="flex items-center gap-2">
+          <CategoryManagerButton categories={categoryChips} />
           <AddExpenseButton
             categories={categoryChips}
             cloudinaryReady={isCloudinaryConfigured()}

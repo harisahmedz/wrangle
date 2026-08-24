@@ -7,6 +7,7 @@ import {
 } from "@/components/app/side-projects";
 import { MobileProjectsDrawer } from "@/components/app/mobile-drawer";
 import { BottomTabs } from "@/components/app/bottom-tabs";
+import { Hotkeys } from "@/components/app/hotkeys";
 import { ToastProvider } from "@/components/ui/toast";
 import { db } from "@/db";
 import { memberships, projects } from "@/db/schema";
@@ -54,6 +55,7 @@ export default async function AppLayout({
         <SideProjects projects={myProjects} />
       </div>
       <BottomTabs />
+      <Hotkeys />
     </ToastProvider>
   );
 }

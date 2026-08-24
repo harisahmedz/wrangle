@@ -20,6 +20,7 @@ import type { BoardKind } from "@/db/schema";
 import { hasMinRole, requireMembership } from "@/lib/authz";
 import { renderMarkdown } from "@/lib/markdown";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
+import { cardHistory, describeEntry } from "@/lib/kanban/activity";
 import { BoardTabs } from "@/components/kanban/board-tabs";
 import { BoardView } from "@/components/kanban/board-view";
 import { CardDetail } from "@/components/kanban/card-detail";
@@ -52,6 +53,10 @@ export default async function BoardPage({ params, searchParams }: Props) {
       id: columns.id,
       name: columns.name,
       position: columns.position,
+      color: columns.color,
+      wipLimit: columns.wipLimit,
+      isDone: columns.isDone,
+      isCollapsed: columns.isCollapsed,
     })
     .from(columns)
     .where(eq(columns.boardId, board.id))
@@ -66,6 +71,7 @@ export default async function BoardPage({ params, searchParams }: Props) {
       dueAt: cardsTable.dueAt,
       completedAt: cardsTable.completedAt,
       position: cardsTable.position,
+      coverColor: cardsTable.coverColor,
       impact: cardsTable.impact,
       effort: cardsTable.effort,
     })
@@ -142,6 +148,12 @@ export default async function BoardPage({ params, searchParams }: Props) {
           >
             Members
           </Link>
+          <Link
+            href={`/p/${projectId}/activity`}
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-muted transition-colors hover:text-text"
+          >
+            Activity
+          </Link>
           <form action={`/p/${projectId}/search`} className="contents">
             <input
               type="search"
@@ -172,6 +184,7 @@ export default async function BoardPage({ params, searchParams }: Props) {
           dueAt: c.dueAt ? c.dueAt.toISOString() : null,
           completedAt: c.completedAt ? c.completedAt.toISOString() : null,
           position: c.position,
+          coverColor: c.coverColor,
           labelColors: labelDots.get(c.id) ?? [],
           labelIds: labelIdsByCard.get(c.id) ?? [],
           assigneeIds: assigneeIdsByCard.get(c.id) ?? [],
@@ -218,6 +231,8 @@ async function CardDetailView({
     )
     .limit(1);
   if (!row) notFound();
+
+  const history = await cardHistory(projectId, row.id, 10);
 
   const [checklist, projectLabels, activeLabelRows, members, activeAssigneeRows, commentRows, attachmentRows] =
     await Promise.all([
@@ -294,7 +309,14 @@ async function CardDetailView({
         completedAt: row.completedAt,
         impact: row.impact,
         effort: row.effort,
+        coverColor: row.coverColor,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
       }}
+      history={history.map((h) => ({
+        text: describeEntry(h),
+        when: h.createdAt.toISOString(),
+      }))}
       checklist={checklist}
       labels={projectLabels}
       activeLabelIds={activeLabelRows.map((l) => l.labelId)}
