@@ -5,6 +5,26 @@ import Link from "next/link";
 import { SignOutIcon } from "@/components/icons";
 import { signOutAction } from "@/lib/actions/auth";
 
+function GearIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className ?? "h-5 w-5"}
+    >
+      <path d="M4 6h9m4 0h3M4 12h2m4 0h10M4 18h7m4 0h5" />
+      <circle cx="15" cy="6" r="2" />
+      <circle cx="8" cy="12" r="2" />
+      <circle cx="13" cy="18" r="2" />
+    </svg>
+  );
+}
+
 function WrappedIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -60,6 +80,15 @@ export function UserMenu({
             className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg"
           >
             <div className="truncate px-4 py-2 text-xs text-muted">{name}</div>
+            <Link
+              href="/settings"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-surface-2 hover:text-text"
+            >
+              <GearIcon className="h-4 w-4" />
+              Settings
+            </Link>
             <Link
               href="/wrapped"
               role="menuitem"
