@@ -111,6 +111,7 @@ export function ExpenseList({
       </div>
 
       <ExpenseSheet
+        key={editing?.id ?? "add"}
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         categories={categories}
@@ -123,6 +124,7 @@ export function ExpenseList({
                 categoryId: editing.categoryId,
                 spentOn: editing.spentOn,
                 note: editing.note,
+                receiptUrl: editing.receiptUrl,
               }
             : null
         }

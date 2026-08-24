@@ -44,7 +44,8 @@ export function createUploadSignature(
   const folder = subfolder
     ? `wrangle/${userId}/${subfolder}`
     : `wrangle/${userId}`;
-  const publicId = `${folder}/${crypto.randomUUID()}`;
+  const ext = mime === "application/pdf" ? ".pdf" : "";
+  const publicId = `${folder}/${crypto.randomUUID()}${ext}`;
 
   return {
     ok: true,
@@ -59,6 +60,14 @@ export function createUploadSignature(
     }),
     folder,
   };
+}
+
+export function receiptDeliveryUrl(publicId: string): string {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  if (/\.pdf$/i.test(publicId)) {
+    return `https://res.cloudinary.com/${cloudName}/raw/upload/${publicId}`;
+  }
+  return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${publicId}`;
 }
 
 export async function destroyAsset(publicId: string): Promise<boolean> {

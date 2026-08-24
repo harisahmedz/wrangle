@@ -9,6 +9,7 @@ import type { ExpenseCategory } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import {
   createUploadSignature,
+  receiptDeliveryUrl,
 } from "@/lib/cloudinary";
 import { failure, type ActionResult } from "@/lib/actions/types";
 
@@ -75,8 +76,8 @@ export async function addExpense(
   const paymentMethod =
     String(formData.get("paymentMethod") ?? "").slice(0, 40) || null;
   const receiptPublicId =
-    String(formData.get("receiptPublicId") ?? "") || null;
-  const receiptUrl = String(formData.get("receiptUrl") ?? "") || null;
+    String(formData.get("receiptPublicId") ?? "").trim().slice(0, 300) || null;
+  const receiptUrl = String(formData.get("receiptUrl") ?? "").trim().slice(0, 500) || null;
 
   if (!amountMinor || !Number.isInteger(amountMinor) || amountMinor <= 0 || amountMinor > 100_000_000) {
     return failure("Enter an amount above zero");
@@ -96,7 +97,7 @@ export async function addExpense(
       note: note || null,
       paymentMethod,
       receiptPublicId,
-      receiptUrl,
+      receiptUrl: receiptUrl ?? (receiptPublicId ? receiptDeliveryUrl(receiptPublicId) : null),
     })
     .returning({ id: expenses.id });
 
@@ -127,6 +128,20 @@ export async function updateExpense(
   if (!spentOn) return failure("Invalid date");
   if (!(await ownCategory(userId, categoryId))) return failure("Pick a category");
 
+  const receiptPatch: Partial<{
+    receiptPublicId: string | null;
+    receiptUrl: string | null;
+  }> = {};
+  if (formData.has("receiptPublicId")) {
+    const publicId =
+      String(formData.get("receiptPublicId") ?? "").trim().slice(0, 300) || null;
+    const url =
+      String(formData.get("receiptUrl") ?? "").trim().slice(0, 500) || null;
+    receiptPatch.receiptPublicId = publicId;
+    receiptPatch.receiptUrl =
+      publicId ? (url ?? receiptDeliveryUrl(publicId)) : null;
+  }
+
   await db
     .update(expenses)
     .set({
@@ -136,6 +151,7 @@ export async function updateExpense(
       note: String(formData.get("note") ?? "").slice(0, MAX_NOTE) || null,
       paymentMethod:
         String(formData.get("paymentMethod") ?? "").slice(0, 40) || null,
+      ...receiptPatch,
     })
     .where(eq(expenses.id, id));
 

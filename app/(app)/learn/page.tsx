@@ -9,6 +9,7 @@ import {
   learningSessions,
   memberships,
   projects,
+  users,
 } from "@/db/schema";
 import type { learningStatus } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
@@ -35,6 +36,13 @@ const COLUMNS: Array<{
 
 export default async function LearnPage({ searchParams }: Props) {
   const userId = await requireUser();
+
+  const [user] = await db
+    .select({ timezone: users.timezone })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const timeZone = user?.timezone || "UTC";
 
   const items = await db
     .select()
@@ -148,7 +156,7 @@ export default async function LearnPage({ searchParams }: Props) {
           createdAt: n.createdAt.toISOString(),
         })),
         projects: memberProjects,
-        todayKey: todayKey("UTC"),
+        todayKey: todayKey(timeZone),
       };
     }
   }
