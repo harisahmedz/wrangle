@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef } from "react";
 import {
   BoardsIcon,
   LearnIcon,
@@ -9,6 +10,7 @@ import {
   PlusIcon,
   TodayIcon,
 } from "@/components/icons";
+import { DumpSheet } from "@/components/dump/dump-sheet";
 import { QuickAddSheet } from "@/components/kanban/quick-add";
 import { cn } from "@/lib/utils";
 
@@ -27,14 +29,49 @@ export function BottomTabs({
   quickAutoOpen?: boolean;
 }) {
   const pathname = usePathname();
+  const holdRef = useRef({ timer: null as number | null, fired: false, x: 0, y: 0 });
+
+  const cancelHold = () => {
+    const hold = holdRef.current;
+    if (hold.timer !== null) {
+      window.clearTimeout(hold.timer);
+      hold.timer = null;
+    }
+  };
 
   return (
     <>
       <button
-        onClick={() =>
-          window.dispatchEvent(new CustomEvent("wrangle-quickadd"))
-        }
-        aria-label="Quick add task"
+        onPointerDown={(e) => {
+          const hold = holdRef.current;
+          cancelHold();
+          hold.fired = false;
+          hold.x = e.clientX;
+          hold.y = e.clientY;
+          hold.timer = window.setTimeout(() => {
+            hold.timer = null;
+            hold.fired = true;
+            window.dispatchEvent(new CustomEvent("wrangle-dump"));
+          }, 450);
+        }}
+        onPointerMove={(e) => {
+          const hold = holdRef.current;
+          if (hold.timer === null) return;
+          if (Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 10) cancelHold();
+        }}
+        onPointerUp={cancelHold}
+        onPointerLeave={cancelHold}
+        onPointerCancel={cancelHold}
+        onClick={() => {
+          const hold = holdRef.current;
+          if (hold.fired) {
+            hold.fired = false;
+            return;
+          }
+          window.dispatchEvent(new CustomEvent("wrangle-quickadd"));
+        }}
+        aria-label="Quick add task — hold for the Dump"
+        title="Tap to quick-add · hold to open the Dump"
         className="fixed bottom-[calc(env(safe-area-inset-bottom)+64px)] left-1/2 z-30 flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-accent text-accent-fg shadow-lg transition-transform active:scale-95 md:hidden"
       >
         <PlusIcon className="h-6 w-6" />
@@ -45,6 +82,8 @@ export function BottomTabs({
         defaultOpen={quickAutoOpen}
         initialTitle={quickPrefill}
       />
+
+      <DumpSheet />
 
       <nav
         aria-label="Primary"

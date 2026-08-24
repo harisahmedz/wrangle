@@ -5,6 +5,24 @@ import { quickAddCard } from "@/lib/kanban/phase3-actions";
 import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 
+function MicIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+    </svg>
+  );
+}
+
 export function QuickAddSheet({
   defaultOpen = false,
   initialTitle = "",
@@ -37,6 +55,13 @@ export function QuickAddSheet({
     onClose?.();
   };
 
+  const handOffToDump = () => {
+    window.dispatchEvent(
+      new CustomEvent("wrangle-dump", { detail: title.trim() }),
+    );
+    close();
+  };
+
   const submit = () => {
     if (!title.trim()) return;
     const fd = new FormData();
@@ -67,7 +92,24 @@ export function QuickAddSheet({
         maxLength={300}
       />
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
-      <div className="mt-4 flex justify-end gap-2">
+      <div className="mt-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={handOffToDump}
+          className="min-h-[44px] px-1 text-sm font-medium text-accent-strong hover:underline"
+        >
+          Sort this…
+        </button>
+        <button
+          type="button"
+          onClick={handOffToDump}
+          aria-label="Sort with voice in the Dump"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-muted transition-colors hover:text-text"
+        >
+          <MicIcon className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="mt-2 flex justify-end gap-2">
         <button onClick={close} className="px-3 py-2 text-sm text-muted hover:text-text">
           Cancel
         </button>
