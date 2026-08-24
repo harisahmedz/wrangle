@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   archiveCard,
@@ -61,6 +61,7 @@ type Props = {
   canManageLabels: boolean;
   isIdeasBoard?: boolean;
   history?: Array<{ text: string; when: string }>;
+  viewerName?: string;
 };
 
 function toLocalInput(dueAt: Date | null, allDay: boolean): string {
@@ -88,11 +89,19 @@ export function CardDetail({
   canManageLabels,
   isIdeasBoard = false,
   history = [],
+  viewerName,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const pushToast = useToast();
-  const close = () =>
-    router.push(`/p/${projectId}/b/${boardKind}`, { scroll: false });
+  const close = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("card");
+    const qs = params.toString();
+    router.push(`/p/${projectId}/b/${boardKind}${qs ? `?${qs}` : ""}`, {
+      scroll: false,
+    });
+  };
 
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description ?? "");
@@ -472,7 +481,11 @@ export function CardDetail({
           attachments={attachments}
           cloudinaryReady={cloudinaryReady}
         />
-        <CommentsSection cardId={card.id} comments={comments} />
+        <CommentsSection
+          cardId={card.id}
+          comments={comments}
+          viewerName={viewerName}
+        />
 
         {history.length > 0 && (
           <section className="space-y-1.5">
