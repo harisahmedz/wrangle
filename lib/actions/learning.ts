@@ -14,6 +14,7 @@ import {
   learningNotes,
   learningResources,
   learningSessions,
+  users,
 } from "@/db/schema";
 import { requireMembership, requireUser } from "@/lib/authz";
 import { computeProgress } from "@/lib/learning/logic";
@@ -34,6 +35,7 @@ import {
   updateItemSchema,
 } from "@/lib/validation/learning";
 import { failure, type ActionResult } from "@/lib/actions/types";
+import { todayKey } from "@/lib/money";
 
 async function ownItem(itemId: string) {
   const userId = await requireUser();
@@ -224,9 +226,21 @@ export async function restoreLearningItem(
 }
 
 export async function addSession(formData: FormData): Promise<ActionResult> {
+  const userId = await requireUser();
+
+  let happenedOn = String(formData.get("happenedOn") ?? "");
+  if (!happenedOn) {
+    const [user] = await db
+      .select({ timezone: users.timezone })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    happenedOn = todayKey(user?.timezone || "UTC");
+  }
+
   const parsed = addSessionSchema.safeParse({
     itemId: formData.get("itemId"),
-    happenedOn: formData.get("happenedOn"),
+    happenedOn,
     minutes: Number(formData.get("minutes")),
     note: formData.get("note") || undefined,
   });
