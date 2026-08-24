@@ -168,6 +168,8 @@ Sentence case. Plain verbs. No exclamation marks outside the 🎉 Learned moment
 
 ## 9. UX audit — prioritized (cycle 5, 2026-08-24)
 
+> **Status 2026-08-25 (Phase 3.5 shipped):** P0 fully resolved — B45 receipts, B46 boundaries (incl. `global-error.tsx`), B47 board loading, B48 boards hub, B53 learn tz, B64 journal reconciled (`0xxx` generated / `1xxx` supplement namespaces). P1 resolved — B42 optimistic tier-1 (useOptimistic), B49 `/settings` (theme incl. **system**, timezone), B50 focus trap + scroll lock + inert in `ui/dialog.tsx`, B51 last native `confirm()` gone, B54 filters live in the URL, B63 README rewritten. P2 partial — `--success`/`--warning` tokens landed (B66a); still open: palette merge into `lib/palette.ts` (B66b), lucide icon pass (B65), column drag-reorder (B55).
+
 Found by full code sweep. Every row has a backlog ID; P0s are scheduled as **Phase 3.5** in `PLAN.md`.
 
 ### P0 — bugs & broken promises

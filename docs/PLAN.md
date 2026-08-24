@@ -74,17 +74,17 @@ Stop and *use it for a week* at the end of Phase 3 and again at Phase 7. Cycle t
 
 > 🛑 **Discovery loop cycle here.** Use it for 5+ days. Capture friction. Re-triage before Phase 4.
 
-## Phase 3.5 — UX hardening (cycle-5 audit P0s, detail in `UI-UX.md` §9)
-- [ ] 🐛 Receipts viewable: write `receipt_url` on confirm; edit preserves/replaces the receipt (B45)
-- [ ] 🐛 Learn uses `users.timezone`, not UTC (B53)
-- [ ] `error.tsx` + `not-found.tsx` + `global-error.tsx` in house style; `loading.tsx` for board + trash routes (B46/B47)
-- [ ] Dialog focus trap + scroll lock + `inert` in `ui/dialog.tsx`; kill the last native `confirm()` (B50/B51)
-- [ ] `/boards` becomes a real hub — no placeholder copy in primary nav (B48)
-- [ ] Settings page: persist theme to `users.theme` (+ system option), timezone, currency (B49)
-- [ ] Migration journal reconciled — one source of truth for applied SQL (B64)
-- [ ] README rewritten: setup, env, migrate, seed, deploy (B63)
+## Phase 3.5 — UX hardening (cycle-5 audit P0s, detail in `UI-UX.md` §9) — ✅ shipped 2026-08-25
+- [x] 🐛 Receipts viewable: write `receipt_url` on confirm; edit preserves/replaces the receipt (B45)
+- [x] 🐛 Learn uses `users.timezone`, not UTC (B53)
+- [x] `error.tsx` + `not-found.tsx` + `global-error.tsx` in house style; `loading.tsx` for board + trash routes (B46/B47)
+- [x] Dialog focus trap + scroll lock + `inert` in `ui/dialog.tsx`; kill the last native `confirm()` (B50/B51)
+- [x] `/boards` becomes a real hub — no placeholder copy in primary nav (B48)
+- [x] Settings page: persist theme to `users.theme` (+ system option), timezone, currency (B49)
+- [x] Migration journal reconciled — one source of truth for applied SQL (B64)
+- [x] README rewritten: setup, env, migrate, seed, deploy (B63)
 
-**Done when:** working rule 2 holds on every shipped route, and nothing in the app says "lands in Phase 2".
+**Done when:** working rule 2 holds on every shipped route, and nothing in the app says "lands in Phase 2". → **Met.**
 
 ## Phase 4 — Sharing
 - [ ] Invite create UI: role, expiry, max uses; token shown once; active-invite list + revoke
