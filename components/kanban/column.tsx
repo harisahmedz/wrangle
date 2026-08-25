@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { CSS } from "@dnd-kit/utilities";
 import {
   SortableContext,
   useSortable,
@@ -22,16 +23,7 @@ import type {
   BoardColumnData,
 } from "@/lib/kanban/types";
 import { cn } from "@/lib/utils";
-
-const COLUMN_COLORS = [
-  null,
-  "#ef4444",
-  "#f59e0b",
-  "#10b981",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899",
-];
+import { COLUMN_COLORS } from "@/lib/palette";
 
 export function Column({
   column,
@@ -56,7 +48,20 @@ export function Column({
   const [, startTransition] = useTransition();
   const pushToast = useToast();
 
-  const { setNodeRef } = useSortable({ id: column.id });
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: column.id });
+
+  const dragStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   const others = siblings.filter((c) => c.id !== column.id);
   const overWip =
@@ -129,15 +134,32 @@ export function Column({
     });
   };
 
+  const grip = (
+    <button
+      ref={setActivatorNodeRef}
+      {...attributes}
+      {...listeners}
+      aria-label={`Reorder ${column.name}`}
+      title="Drag to reorder"
+      className="shrink-0 cursor-grab touch-none select-none rounded px-1 text-xs leading-none text-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+    >
+      ⋮⋮
+    </button>
+  );
+
   if (column.isCollapsed) {
     return (
       <div
         ref={setNodeRef}
+        style={{
+          ...dragStyle,
+          ...(column.color ? { borderLeftColor: column.color } : undefined),
+        }}
         className={cn(
-          "flex w-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-2 rounded-xl border-l-4 bg-surface-2/60 py-3",
+          "group flex w-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-2 rounded-xl border-l-4 bg-surface-2/60 py-3",
           column.isDone && "border-emerald-500",
+          isDragging && "opacity-40",
         )}
-        style={column.color ? { borderLeftColor: column.color } : undefined}
         onClick={() => style({ isCollapsed: "false" })}
         role="button"
         tabIndex={0}
@@ -145,6 +167,7 @@ export function Column({
         aria-label={`Expand ${column.name}`}
         title={column.name}
       >
+        {grip}
         <span
           className="text-sm font-semibold"
           style={{ writingMode: "vertical-rl" }}
@@ -159,13 +182,17 @@ export function Column({
   return (
     <div
       ref={setNodeRef}
+      style={{
+        ...dragStyle,
+        ...(column.color ? { borderLeftColor: column.color } : undefined),
+      }}
       className={cn(
-        "flex w-[272px] shrink-0 snap-start flex-col rounded-xl border-l-4 bg-surface-2/60 p-2",
+        "group flex w-[272px] shrink-0 snap-start flex-col rounded-xl border-l-4 bg-surface-2/60 p-2",
         column.isDone && "border-emerald-500",
+        isDragging && "opacity-40",
       )}
-      style={column.color ? { borderLeftColor: column.color } : undefined}
     >
-      <div className="group relative mb-2 flex items-center justify-between px-1">
+      <div className="relative mb-2 flex items-center justify-between gap-1 px-1">
         {renaming ? (
           <input
             autoFocus
@@ -180,25 +207,28 @@ export function Column({
             aria-label="Rename column"
           />
         ) : (
-          <h2
-            onDoubleClick={() => setRenaming(true)}
-            title="Double-click to rename"
-            className="cursor-text truncate text-sm font-semibold"
-          >
-            {column.name}
-            <span
-              className={cn(
-                "ml-2 text-xs font-normal tabular-nums",
-                overWip ? "text-danger" : "text-muted",
-              )}
+          <div className="flex min-w-0 items-center gap-1">
+            {grip}
+            <h2
+              onDoubleClick={() => setRenaming(true)}
+              title="Double-click to rename"
+              className="min-w-0 cursor-text truncate text-sm font-semibold"
             >
-              {cards.length}
-              {column.wipLimit !== null && `/${column.wipLimit}`}
-            </span>
-            {column.isDone && (
-              <span className="ml-1.5 text-xs text-emerald-500">✓</span>
-            )}
-          </h2>
+              {column.name}
+              <span
+                className={cn(
+                  "ml-2 text-xs font-normal tabular-nums",
+                  overWip ? "text-danger" : "text-muted",
+                )}
+              >
+                {cards.length}
+                {column.wipLimit !== null && `/${column.wipLimit}`}
+              </span>
+              {column.isDone && (
+                <span className="ml-1.5 text-xs text-emerald-500">✓</span>
+              )}
+            </h2>
+          </div>
         )}
         <button
           onClick={() => setMenuOpen((o) => !o)}

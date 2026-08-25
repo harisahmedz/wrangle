@@ -168,7 +168,7 @@ Sentence case. Plain verbs. No exclamation marks outside the 🎉 Learned moment
 
 ## 9. UX audit — prioritized (cycle 5, 2026-08-24)
 
-> **Status 2026-08-25 (Phase 3.5 shipped):** P0 fully resolved — B45 receipts, B46 boundaries (incl. `global-error.tsx`), B47 board loading, B48 boards hub, B53 learn tz, B64 journal reconciled (`0xxx` generated / `1xxx` supplement namespaces). P1 resolved — B42 optimistic tier-1 (useOptimistic), B49 `/settings` (theme incl. **system**, timezone), B50 focus trap + scroll lock + inert in `ui/dialog.tsx`, B51 last native `confirm()` gone, B54 filters live in the URL, B63 README rewritten. P2 partial — `--success`/`--warning` tokens landed (B66a); still open: palette merge into `lib/palette.ts` (B66b), lucide icon pass (B65), column drag-reorder (B55).
+> **Status 2026-08-25 (cycle 8):** P0 fully resolved — B45 receipts, B46 boundaries (incl. `global-error.tsx`), B47 board loading, B48 boards hub, B53 learn tz, B64 journal reconciled (`0xxx` generated / `1xxx` supplement namespaces). P1 resolved — B42 optimistic tier-1 (useOptimistic), B49 `/settings`, B50 focus trap + scroll lock + inert in `ui/dialog.tsx`, B51 last native `confirm()` gone, B54 filters live in the URL, B63 README rewritten. P2 resolved — `--success`/`--warning` tokens (B66a), palette merged into `lib/palette.ts` (B66b), column + project drag-reorder via shared `reorderById` helper (B55), dead `cards.cover_image_public_id` column dropped (`1005_supplement_drop_cover_image.sql`) — the other "schema with no UI" items gained UI since the cycle-5 audit and stay. Lucide icon pass (B65) intentionally deferred.
 
 Found by full code sweep. Every row has a backlog ID; P0s are scheduled as **Phase 3.5** in `PLAN.md`.
 
@@ -197,10 +197,10 @@ Found by full code sweep. Every row has a backlog ID; P0s are scheduled as **Pha
 ### P2 — polish
 | What | ID |
 |---|---|
-| Column drag-reorder (drop-target only today); project reorder is hover ▲▼ buttons | B55 |
-| Icons: lucide, kill glyph-buttons, label everything | B65 |
-| `--success`/`--warning` tokens; retire ad-hoc emerald; wire motion tokens | B66 |
-| Schema features with no UI: `wip_limit`, `is_collapsed`, `columns.color`, card covers — ship or remove from schema | (G3-13 / B38) |
+| Column drag-reorder (drop-target only today); project reorder is hover ▲▼ buttons | B55 | ✅ shipped — columns drag by grip handle, sidebar projects too; ▲▼ kept |
+| Icons: lucide, kill glyph-buttons, label everything | B65 | deferred (deliberate) |
+| `--success`/`--warning` tokens; retire ad-hoc emerald; wire motion tokens | B66 | ✅ tokens shipped; motion-token wiring still open |
+| Schema features with no UI: `wip_limit`, `is_collapsed`, `columns.color`, card covers — ship or remove from schema | (G3-13 / B38) | ✅ all have UI now except `cover_image_public_id`, which was dropped |
 | Avatars via raw `<img>` — move to `next/image` during icon pass | B65 |
 | Trash counts down to 0 but no purge cron exists — copy says less than the truth until Phase 9 ships it | G5-08 |
 

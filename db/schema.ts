@@ -247,7 +247,6 @@ export const cards = pgTable(
     impact: smallint("impact"),
     effort: smallint("effort"),
     coverColor: text("cover_color"),
-    coverImagePublicId: text("cover_image_public_id"),
     focusedOn: date("focused_on"),
     createdBy: uuid("created_by").references(() => users.id, {
       onDelete: "set null",

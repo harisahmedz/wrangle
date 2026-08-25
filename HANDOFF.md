@@ -30,6 +30,7 @@ Full product thinking lives in `docs/` — read in this order:
 | 8+ | Notifications, realtime, budgets/recurring/CSV, global search, command palette | ⬜ backlog |
 | F1–F3 | Flagship "The Loop": Dump v1, Shutdown, Life Wrapped (see `docs/FLAGSHIP-2026.md`) | ✅ |
 | F4 | Dump v2 + Wrapped narrative (on-device Gemini Nano) | ⛔ AI-gated (§1.3) |
+| F5 | Weekly Review rollup — the middle chapter of the Loop family (`/weekly`) | ✅ |
 
 ## Stack
 
@@ -143,20 +144,21 @@ scripts/                migrate, backfill-boards, selftest, gen-icons
 8. **Migrations have two namespaces** in `drizzle/`: `0xxx` = drizzle-kit generated (rename semantic before committing), `1xxx_supplement_*` = hand-written raw SQL (CHECK constraints, FTS/trgm indexes). Both applied by `scripts/migrate.mjs`, tracked by filename in `drizzle_migrations`. Renaming an already-applied file requires updating its hash row too.
 9. **The migrate script doesn't load `.env.local` by itself** — run `node --env-file=.env.local scripts/migrate.mjs`.
 10. Theme persistence: one mechanism — `localStorage['wrangle-theme']` (`dark|light|system`, missing ≡ system) + `html.light`; the init script in `app/layout.tsx` live-follows OS changes while in system mode. Settings and top-bar toggle both write this pair; keep it that way.
+11. **Streamed routes return soft-404s**: any route with a `loading.tsx` (board, today, learn, money, trash, wrapped, weekly…) flushes its shell with HTTP 200 before the server component runs — so `requireMembership`'s `notFound()` renders in-stream with status 200. Authz still holds (strangers see the not-found UI, never project data); the selftest IDOR checks assert "denied & no leak" rather than strict 404 status for exactly this reason.
 
 ## Testing
 
-- `npm test` — 84 unit tests (authz matrix, permissions, dates/timezones, money, markdown sanitizer, learning logic, board seeding integration vs real Neon; Loop: shutdown consistency stats ×11, dump parser ×19, wrapped stats/archetype ×29).
+- `npm test` — 104 unit tests (authz matrix, permissions, dates/timezones, money, markdown sanitizer, learning logic, board seeding integration vs real Neon; Loop: shutdown consistency stats ×11, dump parser ×19, wrapped stats/archetype ×29; weekly review windows/stats ×15, reorderById ×5).
 - `npm run test:e2e` — anonymous smoke + authz redirects (full two-user OAuth e2e is still open — needs test credentials or a test-auth strategy).
 - `node scripts/selftest.mjs` — injects two temp users + sessions into Neon, hits every protected route over HTTP (including the stranger→404 IDOR checks), cleans up after. Run against any live server with `SERVER_URL`.
 
 ## Known gaps / next steps
 
-- **Flagship next**: weekly rollup chapter of the Shutdown family (B56/B40) — Sunday week review between day closes and month wraps.
+- **Flagship next**: nothing in the ⚡ family remains — day closes (`/shutdown`), week reviews (`/weekly`), month wraps (`/wrapped`) all ship. Next is the AI gate decision: Dump v2 (B68) after 2 real weeks of MVP use.
 - **AI gate** (REQUIREMENTS §1.3): Dump v2 (Prompt API classify) + Wrapped narrative line stay blocked until 2 real weeks of MVP use.
 - **CI**: first run may need Playwright browser install tuning (`npx playwright install --with-deps chromium` is in the workflow).
 - **Lighthouse pass** (§3.11 budgets) not yet run on real hardware.
-- Backlog: column soft-delete purge cron, global search, command palette (⌘K), optimistic comments/checklists, budgets/recurring/CSV export, notifications (Phase 8), realtime (Phase 8).
+- Backlog: column soft-delete purge cron, global search, command palette (⌘K), optimistic comments/checklists, budgets/recurring/CSV export, notifications (Phase 8), realtime (Phase 8), lucide icon pass (B65, deferred).
 - `docs/FEATURES.md`, `docs/FLAGSHIP-2026.md`, `docs/UI-UX.md` — newer product docs; reconcile with `REQUIREMENTS.md` before building more.
 - Sentry is wired but dormant — set the DSNs when you want eyes on production errors; source-map upload stays disabled until `SENTRY_AUTH_TOKEN` exists.
 

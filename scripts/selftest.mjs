@@ -137,20 +137,41 @@ const cookieOf = (t) => `authjs.session-token=${t}`;
 
   const search = await get(`/p/${projectId}/search?q=zzz`, c);
   check("A project search 200 no matches", search.status === 200 && search.body.includes("No matches"), `${search.status}`);
+
+  const weekly = await get("/weekly", c);
+  check("A /weekly renders review", weekly.status === 200 && weekly.body.includes("Weekly review"), `${weekly.status}`);
+
+  const shutdown = await get("/shutdown", c);
+  check("A /shutdown renders ritual", shutdown.status === 200 && shutdown.body.includes("Shutdown"), `${shutdown.status}`);
+
+  const wrapped = await get("/wrapped", c);
+  check("A /wrapped renders", wrapped.status === 200 && wrapped.body.includes("Life Wrapped"), `${wrapped.status}`);
 }
 
-// 3. IDOR: user B must get 404 everywhere in A's project
+// 3. IDOR: user B must get no project data anywhere in A's project.
+//    NOTE: routes with a loading.tsx stream their shell first, so Next
+//    flushes HTTP 200 and renders the not-found UI in-stream. What must
+//    hold for authz is: the stranger sees the not-found boundary and
+//    never the project's content.
 {
   const c = cookieOf(tokenB);
-  for (const path of [
-    `/p/${projectId}/b/todo`,
-    `/p/${projectId}`,
-    `/p/${projectId}/settings`,
-    `/p/${projectId}/members`,
-    `/p/${projectId}/search?q=x`,
-  ]) {
+  const idorTargets = [
+    [`/p/${projectId}/b/todo`, "Backlog"],
+    [`/p/${projectId}`, "/b/todo"],
+    [`/p/${projectId}/settings`, "Danger zone"],
+    [`/p/${projectId}/members`, "SelfTest A"],
+    [`/p/${projectId}/search?q=x`, null],
+  ];
+  for (const [path, leaked] of idorTargets) {
     const r = await get(path, c);
-    check(`B ${path} -> 404`, r.status === 404, `${r.status}`);
+    const denied =
+      r.status === 404 || /404|not found|not-found/i.test(r.body);
+    const clean = !leaked || !r.body.includes(leaked);
+    check(
+      `B ${path} -> denied & no leak`,
+      denied && clean,
+      `${r.status} denied=${denied} clean=${clean}`,
+    );
   }
 }
 

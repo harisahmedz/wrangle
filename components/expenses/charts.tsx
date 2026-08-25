@@ -1,4 +1,5 @@
 import { formatMinor } from "@/lib/money";
+import { ACCENT_HEX } from "@/lib/palette";
 
 export function Donut({
   slices,
@@ -31,7 +32,7 @@ export function Donut({
             cy="70"
             r={R}
             fill="none"
-            stroke={a.color ?? "#8b5cf6"}
+            stroke={a.color ?? ACCENT_HEX}
             strokeWidth="18"
             strokeDasharray={`${a.dash} ${C - a.dash}`}
             strokeDashoffset={-offsets[i]}
@@ -52,7 +53,7 @@ export function Donut({
             <span
               aria-hidden
               className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: s.color ?? "#8b5cf6" }}
+              style={{ backgroundColor: s.color ?? ACCENT_HEX }}
             />
             <span className="truncate">{s.label}</span>
             <span className="ml-auto shrink-0 tabular-nums text-muted">

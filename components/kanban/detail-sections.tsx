@@ -22,6 +22,7 @@ import {
 } from "@/lib/kanban/detail-actions";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { LABEL_COLORS } from "@/lib/palette";
 
 export type ChecklistRow = { id: string; text: string; isDone: boolean };
 export type LabelRow = { id: string; name: string; color: string };
@@ -41,11 +42,6 @@ export type AttachmentRow = {
   bytes: number;
   canDelete: boolean;
 };
-
-const LABEL_COLORS = [
-  "#ef4444", "#f59e0b", "#10b981", "#3b82f6",
-  "#8b5cf6", "#ec4899", "#14b8a6", "#64748b",
-];
 
 const TOAST_TICK_FAILED = "Couldn't tick that — retry?";
 const TOAST_LABELS_FAILED = "Couldn't save labels — retry?";

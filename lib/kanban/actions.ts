@@ -587,6 +587,20 @@ export async function moveColumn(formData: FormData): Promise<ActionResult> {
   return { ok: true };
 }
 
+export async function reorderColumn(formData: FormData): Promise<ActionResult> {
+  const columnId = String(formData.get("columnId") ?? "");
+  const position = String(formData.get("position") ?? "");
+  if (!/^[A-Za-z0-9]+$/.test(position)) return failure("Invalid position");
+
+  const ctxRow = await columnContext(columnId);
+  if (!ctxRow) return failure("Column not found");
+  await requireMembership(ctxRow.projectId, "admin");
+
+  await db.update(columns).set({ position }).where(eq(columns.id, columnId));
+  refresh();
+  return { ok: true };
+}
+
 export async function restoreColumn(formData: FormData): Promise<ActionResult> {
   const columnId = String(formData.get("columnId") ?? "");
   const ctxRow = await columnContext(columnId);

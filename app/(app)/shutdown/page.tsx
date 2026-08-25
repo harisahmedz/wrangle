@@ -215,6 +215,13 @@ export default async function ShutdownPage() {
         Shutdown · {headerLabel}
       </h1>
 
+      <Link
+        href="/weekly"
+        className="text-sm text-muted transition-colors hover:text-text"
+      >
+        This week in review →
+      </Link>
+
       {todayReview?.closed ? (
         <section className="space-y-4 rounded-xl border border-border bg-surface p-6 text-center">
           <p className="text-lg font-semibold">Day closed.</p>
