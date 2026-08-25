@@ -3,8 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
-import { moveProject } from "@/lib/actions/projects";
+import { moveProject, reorderProject } from "@/lib/actions/projects";
+import { reorderById } from "@/lib/order";
 import { cn } from "@/lib/utils";
 
 export type SidebarProject = {
@@ -15,6 +31,7 @@ export type SidebarProject = {
   isPersonal: boolean;
   archivedAt: Date | null;
   role: "owner" | "admin" | "member" | "viewer";
+  position: string;
 };
 
 function canManage(role: SidebarProject["role"]) {
@@ -31,6 +48,15 @@ function ProjectRow({
   showControls: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: project.id });
 
   const move = (direction: "up" | "down") => {
     const fd = new FormData();
@@ -42,7 +68,14 @@ function ProjectRow({
   };
 
   return (
-    <div className="group relative">
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      className={cn("group relative", isDragging && "opacity-40")}
+    >
       <Link
         href={`/p/${project.id}`}
         aria-current={active ? "page" : undefined}
@@ -63,6 +96,18 @@ function ProjectRow({
         >
           {project.emoji ?? "📁"}
         </span>
+        {showControls && (
+          <button
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            aria-label={`Reorder ${project.name}`}
+            title="Drag to reorder"
+            className="shrink-0 cursor-grab touch-none select-none text-[10px] leading-none text-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+          >
+            ⋮⋮
+          </button>
+        )}
         <span className="truncate">{project.name}</span>
         {project.isPersonal && (
           <span className="ml-auto rounded-full border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
@@ -99,17 +144,46 @@ function ProjectList({
   projects: SidebarProject[];
   pathname: string;
 }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 8 },
+    }),
+  );
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const result = reorderById(projects, String(active.id), String(over.id));
+    if (!result) return;
+    const fd = new FormData();
+    fd.set("projectId", result.id);
+    fd.set("position", result.position);
+    void reorderProject(fd);
+  };
+
   return (
-    <>
-      {projects.map((p) => (
-        <ProjectRow
-          key={p.id}
-          project={p}
-          active={pathname === `/p/${p.id}` || pathname.startsWith(`/p/${p.id}/`)}
-          showControls={canManage(p.role)}
-        />
-      ))}
-    </>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={onDragEnd}
+    >
+      <SortableContext
+        items={projects.map((p) => p.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {projects.map((p) => (
+          <ProjectRow
+            key={p.id}
+            project={p}
+            active={
+              pathname === `/p/${p.id}` || pathname.startsWith(`/p/${p.id}/`)
+            }
+            showControls={canManage(p.role)}
+          />
+        ))}
+      </SortableContext>
+    </DndContext>
   );
 }
 

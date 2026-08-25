@@ -14,6 +14,7 @@ import {
 } from "@/lib/kanban/actions";
 import { promoteIdea, updateCardScore } from "@/lib/kanban/phase3-actions";
 import { scoreOf, formatScore } from "@/lib/kanban/score";
+import { COVER_SWATCHES } from "@/lib/palette";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/dialog";
@@ -352,8 +353,7 @@ export function CardDetail({
         <section className="space-y-2">
           <p className="text-sm font-medium">Cover</p>
           <div className="flex gap-1.5">
-            {["", "#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899"].map(
-              (c) => (
+            {COVER_SWATCHES.map((c) => (
                 <button
                   key={c || "none"}
                   onClick={() => setCover(c)}

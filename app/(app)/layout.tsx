@@ -30,6 +30,7 @@ export default async function AppLayout({
       isPersonal: projects.isPersonal,
       archivedAt: projects.archivedAt,
       role: memberships.role,
+      position: projects.position,
     })
     .from(memberships)
     .innerJoin(projects, eq(memberships.projectId, projects.id))

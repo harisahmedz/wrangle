@@ -11,6 +11,7 @@ import {
   createProjectSchema,
   moveProjectSchema,
   projectIdSchema,
+  reorderProjectSchema,
   updateProjectSchema,
 } from "@/lib/validation/projects";
 import { failure, type ActionResult } from "@/lib/actions/types";
@@ -234,6 +235,24 @@ export async function moveProject(formData: FormData): Promise<ActionResult> {
   await db
     .update(projects)
     .set({ position: newPosition })
+    .where(eq(projects.id, parsed.data.projectId));
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function reorderProject(formData: FormData): Promise<ActionResult> {
+  const parsed = reorderProjectSchema.safeParse({
+    projectId: formData.get("projectId"),
+    position: formData.get("position"),
+  });
+  if (!parsed.success) return failure("Invalid move");
+
+  await requireMembership(parsed.data.projectId, "admin");
+
+  await db
+    .update(projects)
+    .set({ position: parsed.data.position })
     .where(eq(projects.id, parsed.data.projectId));
 
   revalidatePath("/", "layout");

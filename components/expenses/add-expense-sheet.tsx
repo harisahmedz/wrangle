@@ -10,6 +10,7 @@ import {
   updateExpense,
 } from "@/lib/actions/expenses";
 import type { CategoryChip } from "@/components/expenses/types";
+import { ACCENT_HEX } from "@/lib/palette";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
 
@@ -239,7 +240,7 @@ export function ExpenseSheet({
               aria-pressed={categoryId === c.id}
               style={
                 categoryId === c.id
-                  ? { backgroundColor: `${c.color ?? "#8b5cf6"}22`, borderColor: c.color ?? "#8b5cf6" }
+                  ? { backgroundColor: `${c.color ?? ACCENT_HEX}22`, borderColor: c.color ?? ACCENT_HEX }
                   : undefined
               }
               className={

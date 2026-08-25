@@ -10,7 +10,11 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { generateKeyBetween } from "fractional-indexing";
@@ -18,7 +22,9 @@ import { AddColumn, Column } from "@/components/kanban/column";
 import {
   createColumn,
   moveCard,
+  reorderColumn,
 } from "@/lib/kanban/actions";
+import { reorderById } from "@/lib/order";
 import { useToast } from "@/components/ui/toast";
 import type { BoardKind } from "@/db/schema";
 import { cn } from "@/lib/utils";
@@ -351,6 +357,24 @@ export function BoardView({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
+    // Column reorder path
+    if (columns.some((c) => c.id === String(active.id))) {
+      const result = reorderById(columns, String(active.id), String(over.id));
+      if (!result || !columns.some((c) => c.id === String(over.id))) return;
+      setColumns(result.items);
+      const fd = new FormData();
+      fd.set("columnId", result.id);
+      fd.set("position", result.position);
+      startTransition(async () => {
+        const res = await reorderColumn(fd);
+        if (!res.ok) {
+          pushToast({ message: res.error });
+          router.refresh();
+        }
+      });
+      return;
+    }
+
     const activeCard = cards.find((c) => c.id === String(active.id));
     if (!activeCard) return;
 
@@ -442,16 +466,21 @@ export function BoardView({
           </div>
         )}
         <div className="-mx-4 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto px-4 pb-4 md:-mx-8 md:px-8">
-          {columns.map((col) => (
-            <Column
-              key={col.id}
-              column={col}
-              siblings={columns}
-              cards={byColumn.get(col.id) ?? []}
-              onOpenCard={openCard}
-              showScore={boardKind === "ideas"}
-            />
-          ))}
+          <SortableContext
+            items={columns.map((col) => col.id)}
+            strategy={horizontalListSortingStrategy}
+          >
+            {columns.map((col) => (
+              <Column
+                key={col.id}
+                column={col}
+                siblings={columns}
+                cards={byColumn.get(col.id) ?? []}
+                onOpenCard={openCard}
+                showScore={boardKind === "ideas"}
+              />
+            ))}
+          </SortableContext>
           <AddColumn onAdd={addColumn} />
         </div>
       </DndContext>

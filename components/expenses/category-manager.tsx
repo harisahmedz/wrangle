@@ -8,9 +8,9 @@ import {
 } from "@/lib/actions/expenses";import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { CATEGORY_COLORS } from "@/lib/palette";
 import type { CategoryChip } from "@/components/expenses/types";
 
-const COLORS = ["#f59e0b", "#3b82f6", "#64748b", "#ec4899", "#10b981", "#8b5cf6", "#14b8a6", "#ef4444"];
 const EMOJIS = ["🍔", "🚌", "🧾", "🛍️", "💊", "🎉", "📦", "🏠", "✈️", "🎬", "☕", "🎁"];
 
 export function CategoryManagerButton({
@@ -21,7 +21,7 @@ export function CategoryManagerButton({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState(EMOJIS[0]);
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState(CATEGORY_COLORS[0]);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -88,7 +88,7 @@ export function CategoryManagerButton({
               ))}
             </div>
             <div className="flex gap-1.5">
-              {COLORS.map((c) => (
+              {CATEGORY_COLORS.map((c) => (
                 <button
                   key={c}
                   onClick={() => setColor(c)}
@@ -121,7 +121,7 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(c.name);
   const [emoji, setEmoji] = useState(c.emoji ?? EMOJIS[0]);
-  const [color, setColor] = useState(c.color ?? COLORS[0]);
+  const [color, setColor] = useState(c.color ?? CATEGORY_COLORS[0]);
   const [, startTransition] = useTransition();
   const pushToast = useToast();
 
@@ -164,7 +164,7 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
           ))}
         </div>
         <div className="flex gap-1.5">
-          {COLORS.map((col) => (
+          {CATEGORY_COLORS.map((col) => (
             <button
               key={col}
               onClick={() => setColor(col)}

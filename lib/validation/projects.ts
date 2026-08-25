@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PROJECT_COLORS } from "@/lib/palette";
 
 export const PROJECT_EMOJIS = [
   "🏠", "💼", "🎯", "📚", "🛠️", "🌱", "🔥", "⚡",
@@ -6,10 +7,7 @@ export const PROJECT_EMOJIS = [
   "📈", "🧹", "❤️", "🐾", "🏡", "📝", "🔬", "🎬",
 ] as const;
 
-export const PROJECT_COLORS = [
-  "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b",
-  "#ef4444", "#ec4899", "#14b8a6", "#64748b",
-] as const;
+export { PROJECT_COLORS };
 
 const emojiSchema = z.enum(PROJECT_EMOJIS);
 const colorSchema = z.enum(PROJECT_COLORS);
@@ -34,6 +32,11 @@ export const projectIdSchema = z.object({
 export const moveProjectSchema = z.object({
   projectId: z.string().uuid(),
   direction: z.enum(["up", "down"]),
+});
+
+export const reorderProjectSchema = z.object({
+  projectId: z.string().uuid(),
+  position: z.string().regex(/^[A-Za-z0-9]+$/),
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;

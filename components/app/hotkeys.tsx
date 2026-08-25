@@ -9,6 +9,7 @@ const ROUTES: Record<string, string> = {
   m: "/money",
   l: "/learn",
   s: "/shutdown",
+  w: "/weekly",
 };
 
 export function Hotkeys() {
@@ -56,8 +57,8 @@ export function Hotkeys() {
   return (
     <div className="pointer-events-none fixed bottom-2 right-3 z-[10] hidden text-[10px] text-muted lg:block">
       <kbd>T</kbd> today · <kbd>B</kbd> boards · <kbd>M</kbd> money ·{" "}
-      <kbd>L</kbd> learn · <kbd>S</kbd> shutdown · <kbd>N</kbd> new ·{" "}
-      <kbd>/</kbd> search
+      <kbd>L</kbd> learn · <kbd>S</kbd> shutdown · <kbd>W</kbd> week ·{" "}
+      <kbd>N</kbd> new · <kbd>/</kbd> search
     </div>
   );
 }
