@@ -1,12 +1,13 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
 import {
   activities,
   boards,
+  cardFocuses,
   cardLabels,
   cards,
   columns,
@@ -38,6 +39,7 @@ async function columnContext(columnId: string) {
       projectId: boards.projectId,
       boardId: columns.boardId,
       name: columns.name,
+      position: columns.position,
       isDone: columns.isDone,
     })
     .from(columns)
@@ -51,9 +53,11 @@ async function cardContext(cardId: string) {
   const [row] = await db
     .select({
       projectId: cards.projectId,
+      boardId: cards.boardId,
       columnId: cards.columnId,
       position: cards.position,
       completedAt: cards.completedAt,
+      completedBy: cards.completedBy,
     })
     .from(cards)
     .where(eq(cards.id, cardId))
@@ -81,7 +85,7 @@ async function logActivity(
 
 export async function createColumn(
   formData: FormData,
-): Promise<ActionResult<{ columnId: string }>> {
+): Promise<ActionResult<{ columnId: string; position: string }>> {
   const parsed = createColumnSchema.safeParse({
     boardId: formData.get("boardId"),
     name: formData.get("name"),
@@ -92,27 +96,38 @@ export async function createColumn(
   if (!projectId) return failure("Board not found");
   const { userId } = await requireMembership(projectId, "admin");
 
-  const [last] = await db
-    .select({ position: columns.position })
-    .from(columns)
-    .where(and(eq(columns.boardId, parsed.data.boardId), isNull(columns.deletedAt)))
-    .orderBy(desc(columns.position))
-    .limit(1);
-
-  const [column] = await db
-    .insert(columns)
-    .values({
-      boardId: parsed.data.boardId,
-      name: parsed.data.name,
-      position: generateKeyBetween(last?.position ?? null, null),
-    })
-    .returning({ id: columns.id });
+  const column = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`columns:${parsed.data.boardId}`}::text))`,
+    );
+    const [last] = await tx
+      .select({ position: columns.position })
+      .from(columns)
+      .where(
+        and(eq(columns.boardId, parsed.data.boardId), isNull(columns.deletedAt)),
+      )
+      .orderBy(desc(columns.position))
+      .limit(1);
+    const position = generateKeyBetween(last?.position ?? null, null);
+    const [created] = await tx
+      .insert(columns)
+      .values({
+        boardId: parsed.data.boardId,
+        name: parsed.data.name,
+        position,
+      })
+      .returning({ id: columns.id });
+    return { ...created, position };
+  });
 
   await logActivity(projectId, userId, "column", column.id, "created", {
     name: parsed.data.name,
   });
   refresh();
-  return { ok: true, data: { columnId: column.id } };
+  return {
+    ok: true,
+    data: { columnId: column.id, position: column.position },
+  };
 }
 
 export async function renameColumn(formData: FormData): Promise<ActionResult> {
@@ -128,7 +143,9 @@ export async function renameColumn(formData: FormData): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function deleteColumn(formData: FormData): Promise<ActionResult> {
+export async function deleteColumn(
+  formData: FormData,
+): Promise<ActionResult<{ movedCards: Array<{ id: string; position: string }> }>> {
   const parsed = deleteColumnSchema.safeParse({
     columnId: formData.get("columnId"),
     targetColumnId: formData.get("targetColumnId") || undefined,
@@ -179,7 +196,7 @@ export async function deleteColumn(formData: FormData): Promise<ActionResult> {
     name: ctxRow.name,
   });
   refresh();
-  return { ok: true };
+  return { ok: true, data: { movedCards: columnCards } };
 }
 
 export async function createCard(
@@ -196,45 +213,40 @@ export async function createCard(
   if (!col) return failure("Column not found");
   const { userId } = await requireMembership(col.projectId, "member");
 
-  const [first] = parsed.data.atTop
-    ? await db
-        .select({ position: cards.position })
-        .from(cards)
-        .where(and(eq(cards.columnId, parsed.data.columnId), isNull(cards.deletedAt)))
-        .orderBy(asc(cards.position))
-        .limit(1)
-    : [];
-
-  const [last] = !parsed.data.atTop
-    ? await db
-        .select({ position: cards.position })
-        .from(cards)
-        .where(and(eq(cards.columnId, parsed.data.columnId), isNull(cards.deletedAt)))
-        .orderBy(desc(cards.position))
-        .limit(1)
-    : [];
-
-  const position = parsed.data.atTop
-    ? generateKeyBetween(null, first?.position ?? null)
-    : generateKeyBetween(last?.position ?? null, null);
-
-  const [card] = await db
-    .insert(cards)
-    .values({
-      columnId: parsed.data.columnId,
-      boardId: col.boardId,
-      projectId: col.projectId,
-      title: parsed.data.title,
-      position,
-      createdBy: userId,
-    })
-    .returning({ id: cards.id });
+  const card = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`cards:${parsed.data.columnId}`}::text))`,
+    );
+    const [edge] = await tx
+      .select({ position: cards.position })
+      .from(cards)
+      .where(
+        and(eq(cards.columnId, parsed.data.columnId), isNull(cards.deletedAt)),
+      )
+      .orderBy(parsed.data.atTop ? asc(cards.position) : desc(cards.position))
+      .limit(1);
+    const position = parsed.data.atTop
+      ? generateKeyBetween(null, edge?.position ?? null)
+      : generateKeyBetween(edge?.position ?? null, null);
+    const [created] = await tx
+      .insert(cards)
+      .values({
+        columnId: parsed.data.columnId,
+        boardId: col.boardId,
+        projectId: col.projectId,
+        title: parsed.data.title,
+        position,
+        createdBy: userId,
+      })
+      .returning({ id: cards.id });
+    return { ...created, position };
+  });
 
   await logActivity(col.projectId, userId, "card", card.id, "created", {
     title: parsed.data.title,
   });
   refresh();
-  return { ok: true, data: { cardId: card.id, position } };
+  return { ok: true, data: { cardId: card.id, position: card.position } };
 }
 
 export async function updateCard(formData: FormData): Promise<ActionResult> {
@@ -276,10 +288,20 @@ export async function toggleCardComplete(
   const { userId } = await requireMembership(ctx.projectId, "member");
 
   const nowCompleted = ctx.completedAt === null;
-  await db
-    .update(cards)
-    .set({ completedAt: nowCompleted ? new Date() : null })
-    .where(eq(cards.id, parsed.data.cardId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(cards)
+      .set({
+        completedAt: nowCompleted ? new Date() : null,
+        completedBy: nowCompleted ? userId : null,
+      })
+      .where(eq(cards.id, parsed.data.cardId));
+    if (nowCompleted) {
+      await tx
+        .delete(cardFocuses)
+        .where(eq(cardFocuses.cardId, parsed.data.cardId));
+    }
+  });
 
   await logActivity(
     ctx.projectId,
@@ -305,7 +327,13 @@ export async function moveCard(formData: FormData): Promise<ActionResult> {
   const { userId } = await requireMembership(ctx.projectId, "member");
 
   const target = await columnContext(parsed.data.toColumnId);
-  if (!target || target.projectId !== ctx.projectId) return failure("Invalid target column");
+  if (
+    !target ||
+    target.projectId !== ctx.projectId ||
+    target.boardId !== ctx.boardId
+  ) {
+    return failure("Target must be on the same board");
+  }
 
   if (ctx.columnId === parsed.data.toColumnId && ctx.position === parsed.data.position) {
     return { ok: true };
@@ -320,6 +348,7 @@ export async function moveCard(formData: FormData): Promise<ActionResult> {
       columnId: parsed.data.toColumnId,
       position: parsed.data.position,
       completedAt: nowCompleted ? (ctx.completedAt ?? new Date()) : null,
+      completedBy: nowCompleted ? (ctx.completedBy ?? userId) : null,
     })
     .where(eq(cards.id, parsed.data.cardId));
 
@@ -329,6 +358,9 @@ export async function moveCard(formData: FormData): Promise<ActionResult> {
   });
 
   if (!wasCompleted && nowCompleted) {
+    await db
+      .delete(cardFocuses)
+      .where(eq(cardFocuses.cardId, parsed.data.cardId));
     await logActivity(
       ctx.projectId,
       userId,
@@ -375,10 +407,39 @@ export async function restoreCard(formData: FormData): Promise<ActionResult> {
   if (!ctx) return failure("Card not found");
   await requireMembership(ctx.projectId, "member");
 
-  await db
-    .update(cards)
-    .set({ deletedAt: null })
-    .where(eq(cards.id, parsed.data.cardId));
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`cards:${ctx.columnId}`}::text))`,
+    );
+    const [collision] = await tx
+      .select({ id: cards.id })
+      .from(cards)
+      .where(
+        and(
+          eq(cards.columnId, ctx.columnId),
+          eq(cards.position, ctx.position),
+          isNull(cards.deletedAt),
+          ne(cards.id, parsed.data.cardId),
+        ),
+      )
+      .limit(1);
+    if (collision) {
+      const [last] = await tx
+        .select({ position: cards.position })
+        .from(cards)
+        .where(and(eq(cards.columnId, ctx.columnId), isNull(cards.deletedAt)))
+        .orderBy(desc(cards.position))
+        .limit(1);
+      await tx
+        .update(cards)
+        .set({ position: generateKeyBetween(last?.position ?? null, null) })
+        .where(eq(cards.id, collision.id));
+    }
+    await tx
+      .update(cards)
+      .set({ deletedAt: null })
+      .where(eq(cards.id, parsed.data.cardId));
+  });
 
   refresh();
   return { ok: true };
@@ -448,7 +509,11 @@ export async function moveCardToBoard(
   if (!/^(todo|ideas|work)$/.test(boardKind)) return failure("Invalid board");
 
   const [source] = await db
-    .select({ projectId: cards.projectId })
+    .select({
+      projectId: cards.projectId,
+      completedAt: cards.completedAt,
+      completedBy: cards.completedBy,
+    })
     .from(cards)
     .where(and(eq(cards.id, cardId), isNull(cards.deletedAt)))
     .limit(1);
@@ -479,7 +544,7 @@ export async function moveCardToBoard(
     .select({ position: cards.position })
     .from(cards)
     .where(and(eq(cards.columnId, firstColumn.id), isNull(cards.deletedAt)))
-    .orderBy(asc(cards.position))
+    .orderBy(desc(cards.position))
     .limit(1);
 
   await db
@@ -488,9 +553,14 @@ export async function moveCardToBoard(
       boardId: targetBoard.id,
       columnId: firstColumn.id,
       position: generateKeyBetween(last?.position ?? null, null),
-      completedAt: firstColumn.isDone ? new Date() : null,
+      completedAt: firstColumn.isDone ? (source.completedAt ?? new Date()) : null,
+      completedBy: firstColumn.isDone ? (source.completedBy ?? userId) : null,
     })
     .where(eq(cards.id, cardId));
+
+  if (firstColumn.isDone) {
+    await db.delete(cardFocuses).where(eq(cardFocuses.cardId, cardId));
+  }
 
   await logActivity(source.projectId, userId, "card", cardId, "moved", {
     to_board: boardKind,
@@ -607,10 +677,68 @@ export async function restoreColumn(formData: FormData): Promise<ActionResult> {
   if (!ctxRow) return failure("Column not found");
   await requireMembership(ctxRow.projectId, "admin");
 
-  await db
-    .update(columns)
-    .set({ deletedAt: null })
-    .where(eq(columns.id, columnId));
+  let movedCards: Array<{ id: string; position: string }> = [];
+  try {
+    const raw = formData.get("movedCards");
+    const parsed = raw ? JSON.parse(String(raw)) : [];
+    if (!Array.isArray(parsed)) return failure("Invalid restore data");
+    movedCards = parsed.filter(
+      (item): item is { id: string; position: string } =>
+        typeof item?.id === "string" &&
+        /^[0-9a-f-]{36}$/.test(item.id) &&
+        typeof item?.position === "string" &&
+        /^[A-Za-z0-9]+$/.test(item.position),
+    );
+    if (movedCards.length !== parsed.length) return failure("Invalid restore data");
+  } catch {
+    return failure("Invalid restore data");
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`columns:${ctxRow.boardId}`}::text))`,
+    );
+    const [collision] = await tx
+      .select({ id: columns.id })
+      .from(columns)
+      .where(
+        and(
+          eq(columns.boardId, ctxRow.boardId),
+          eq(columns.position, ctxRow.position),
+          isNull(columns.deletedAt),
+          ne(columns.id, columnId),
+        ),
+      )
+      .limit(1);
+    if (collision) {
+      const [last] = await tx
+        .select({ position: columns.position })
+        .from(columns)
+        .where(and(eq(columns.boardId, ctxRow.boardId), isNull(columns.deletedAt)))
+        .orderBy(desc(columns.position))
+        .limit(1);
+      await tx
+        .update(columns)
+        .set({ position: generateKeyBetween(last?.position ?? null, null) })
+        .where(eq(columns.id, collision.id));
+    }
+    await tx
+      .update(columns)
+      .set({ deletedAt: null })
+      .where(eq(columns.id, columnId));
+    for (const card of movedCards) {
+      await tx
+        .update(cards)
+        .set({ columnId, position: card.position })
+        .where(
+          and(
+            eq(cards.id, card.id),
+            eq(cards.boardId, ctxRow.boardId),
+            isNull(cards.deletedAt),
+          ),
+        );
+    }
+  });
   refresh();
   return { ok: true };
 }

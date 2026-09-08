@@ -45,7 +45,7 @@ export function createUploadSignature(
     ? `wrangle/${userId}/${subfolder}`
     : `wrangle/${userId}`;
   const ext = mime === "application/pdf" ? ".pdf" : "";
-  const publicId = `${folder}/${crypto.randomUUID()}${ext}`;
+  const publicId = `${crypto.randomUUID()}${ext}`;
 
   return {
     ok: true,
@@ -72,6 +72,7 @@ export function receiptDeliveryUrl(publicId: string): string {
 
 export async function destroyAsset(publicId: string): Promise<boolean> {
   if (!isCloudinaryConfigured()) return false;
+  const resourceType = /\.pdf$/i.test(publicId) ? "raw" : "image";
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = signParams({
     public_id: publicId,
@@ -85,13 +86,12 @@ export async function destroyAsset(publicId: string): Promise<boolean> {
 
   try {
     const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/destroy`,
+      `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/${resourceType}/destroy`,
       { method: "POST", body: form },
     );
     const json = (await res.json()) as { result?: string };
-    return json.result === "ok";
+    return json.result === "ok" || json.result === "not found";
   } catch {
     return false;
   }
 }
-

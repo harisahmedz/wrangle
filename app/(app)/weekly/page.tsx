@@ -49,10 +49,11 @@ export default async function WeeklyPage({ searchParams }: Props) {
   const timeZone = user?.timezone || "UTC";
 
   const sp = await searchParams;
-  const offsetWeeks = parseOffset(sp.w);
+  const weeksAgo = parseOffset(sp.w);
+  const offsetWeeks = -weeksAgo;
   const now = new Date();
   const win = weekWindow(now, timeZone, offsetWeeks);
-  const lastWeekWin = weekWindow(now, timeZone, offsetWeeks + 1);
+  const lastWeekWin = weekWindow(now, timeZone, offsetWeeks - 1);
 
   const memberJoin = and(
     eq(memberships.projectId, projects.id),
@@ -75,6 +76,7 @@ export default async function WeeklyPage({ searchParams }: Props) {
           and(
             isNull(cards.deletedAt),
             isNotNull(cards.completedAt),
+            eq(cards.completedBy, userId),
             gte(cards.completedAt, win.start),
             lt(cards.completedAt, win.end),
           ),
@@ -111,6 +113,7 @@ export default async function WeeklyPage({ searchParams }: Props) {
           and(
             eq(learningItems.userId, userId),
             isNull(learningItems.deletedAt),
+            isNull(learningSessions.deletedAt),
             gte(learningSessions.happenedOn, localDateString(win.start, timeZone)),
             lt(learningSessions.happenedOn, localDateString(win.end, timeZone)),
           ),
@@ -162,6 +165,7 @@ export default async function WeeklyPage({ searchParams }: Props) {
         .where(
           and(
             isNull(cards.deletedAt),
+            eq(cards.createdBy, userId),
             gte(cards.createdAt, win.start),
             lt(cards.createdAt, win.end),
           ),
@@ -199,10 +203,10 @@ export default async function WeeklyPage({ searchParams }: Props) {
           <p className="text-xs text-muted">{review.weekLabel}</p>
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1 text-sm">
-          {offsetWeeks > 0 ? (
+          {weeksAgo > 0 ? (
             <>
               <Link
-                href={offsetWeeks === 1 ? "/weekly" : `/weekly?w=${offsetWeeks - 1}`}
+                href={weeksAgo === 1 ? "/weekly" : `/weekly?w=${weeksAgo - 1}`}
                 aria-label="Later week"
                 className="rounded px-2 py-1 text-muted hover:text-text"
               >
@@ -216,7 +220,7 @@ export default async function WeeklyPage({ searchParams }: Props) {
             <span className="px-2 py-1 text-xs text-muted">This week</span>
           )}
           <Link
-            href={`/weekly?w=${offsetWeeks + 1}`}
+            href={`/weekly?w=${weeksAgo + 1}`}
             aria-label="Earlier week"
             className="rounded px-2 py-1 text-muted hover:text-text"
           >
@@ -234,7 +238,7 @@ export default async function WeeklyPage({ searchParams }: Props) {
               went overdue this week
             </span>
           </h2>
-          {review.slipped.length > 0 && (
+          {weeksAgo === 0 && review.slipped.length > 0 && (
             <RescheduleAllButton slippedCount={review.slipped.length} />
           )}
         </div>
@@ -358,7 +362,9 @@ export default async function WeeklyPage({ searchParams }: Props) {
                 {review.topIdea.score > 0 ? `+${review.topIdea.score}` : review.topIdea.score}
               </span>
             </div>
-            <PromoteTopIdeaButton cardId={review.topIdea.id} />
+            {weeksAgo === 0 && (
+              <PromoteTopIdeaButton cardId={review.topIdea.id} />
+            )}
           </div>
         ) : (
           <p className="text-xs text-muted">

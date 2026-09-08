@@ -60,6 +60,7 @@ type Props = {
   attachments: AttachmentRow[];
   cloudinaryReady: boolean;
   canManageLabels: boolean;
+  canEdit: boolean;
   isIdeasBoard?: boolean;
   history?: Array<{ text: string; when: string }>;
   viewerName?: string;
@@ -88,6 +89,7 @@ export function CardDetail({
   attachments,
   cloudinaryReady,
   canManageLabels,
+  canEdit,
   isIdeasBoard = false,
   history = [],
   viewerName,
@@ -269,7 +271,7 @@ export function CardDetail({
     <Sheet open variant="side" onClose={close} label="Card details">
       <div className="space-y-5">
         <div className="flex items-start justify-between gap-3">
-          <button
+          {canEdit ? <button
             onClick={toggleComplete}
             disabled={pendingToggle}
             aria-pressed={done}
@@ -282,12 +284,12 @@ export function CardDetail({
             }
           >
             {done && <span className="text-xs">✓</span>}
-          </button>
+          </button> : <span className="h-6 w-6" />}
           <h2 className="sr-only">Card details</h2>
           <button
             onClick={close}
             aria-label="Close"
-            className="rounded-md px-2 py-1 text-muted hover:bg-surface-2 hover:text-text"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
           >
             ✕
           </button>
@@ -297,6 +299,7 @@ export function CardDetail({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           aria-label="Card title"
+          disabled={!canEdit}
           className="h-auto border-transparent bg-transparent px-0 text-lg font-semibold focus:border-transparent"
         />
 
@@ -307,6 +310,7 @@ export function CardDetail({
             placeholder="Add a description… (markdown)"
             rows={4}
             aria-label="Description"
+            disabled={!canEdit}
             className="w-full resize-y rounded-md border border-border bg-surface-2 p-3 text-sm"
           />
           {card.descriptionHtml && (
@@ -330,13 +334,15 @@ export function CardDetail({
               value={dueInput}
               onChange={(e) => setDueInput(e.target.value)}
               aria-label="Due date"
-              className="h-10 flex-1 rounded-md border border-border bg-surface-2 px-3 text-sm"
+              disabled={!canEdit}
+              className="h-11 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-3 text-sm"
             />
             <label className="flex items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
                 checked={allDay}
                 onChange={(e) => changeAllDay(e.target.checked)}
+                disabled={!canEdit}
               />
               All-day
             </label>
@@ -350,7 +356,7 @@ export function CardDetail({
           <span>Updated {new Date(card.updatedAt).toLocaleDateString()}</span>
         </div>
 
-        <section className="space-y-2">
+        {canEdit && <section className="space-y-2">
           <p className="text-sm font-medium">Cover</p>
           <div className="flex gap-1.5">
             {COVER_SWATCHES.map((c) => (
@@ -368,24 +374,24 @@ export function CardDetail({
               ),
             )}
           </div>
-        </section>
+        </section>}
 
         <section className="space-y-2">
           <p className="text-sm font-medium">Actions</p>
           <div className="flex flex-wrap gap-2">
-            <button
+            {canEdit && <button
               onClick={duplicate}
               className="rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:text-text"
             >
               ⧉ Duplicate
-            </button>
+            </button>}
             <button
               onClick={() => void copyLink()}
               className="rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:text-text"
             >
               🔗 Copy link
             </button>
-            {!isIdeasBoard &&
+            {canEdit && !isIdeasBoard &&
               ["todo", "ideas", "work"]
                 .filter((k) => k !== boardKind)
                 .map((k) => (
@@ -400,16 +406,17 @@ export function CardDetail({
           </div>
         </section>
 
-        <ChecklistSection cardId={card.id} items={checklist} />
+        <ChecklistSection cardId={card.id} items={checklist} readOnly={!canEdit} />
         <LabelsSection
           projectId={projectId}
           cardId={card.id}
           labels={labels}
           activeIds={activeLabelIds}
           canManage={canManageLabels}
+          canEdit={canEdit}
         />
 
-        {isIdeasBoard && (
+        {isIdeasBoard && canEdit && (
           <section className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Idea score</p>
@@ -462,7 +469,7 @@ export function CardDetail({
           </section>
         )}
 
-        {isIdeasBoard && (
+        {isIdeasBoard && canEdit && (
           <button
             onClick={promote}
             className="w-full rounded-md border border-accent/40 bg-accent/10 py-2.5 text-sm font-medium text-accent-strong transition-colors hover:bg-accent hover:text-white"
@@ -475,16 +482,19 @@ export function CardDetail({
           cardId={card.id}
           members={members}
           activeIds={activeAssigneeIds}
+          readOnly={!canEdit}
         />
         <AttachmentsSection
           cardId={card.id}
           attachments={attachments}
           cloudinaryReady={cloudinaryReady}
+          readOnly={!canEdit}
         />
         <CommentsSection
           cardId={card.id}
           comments={comments}
           viewerName={viewerName}
+          readOnly={!canEdit}
         />
 
         {history.length > 0 && (
@@ -503,13 +513,15 @@ export function CardDetail({
           </section>
         )}
 
-        <div className="flex items-center justify-between border-t border-border pt-4">
+        <div className="sticky bottom-0 -mx-5 flex items-center justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4">
+          {canEdit ? <>
           <Button variant="danger" size="sm" onClick={remove}>
             Delete
           </Button>
           <Button onClick={save} disabled={!title.trim() || pendingSave}>
             {pendingSave ? "Saving…" : "Save"}
           </Button>
+          </> : <Button className="ml-auto" variant="secondary" onClick={close}>Close</Button>}
         </div>
       </div>
     </Sheet>

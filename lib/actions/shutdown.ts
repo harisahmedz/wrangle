@@ -3,7 +3,13 @@
 import { refresh } from "next/cache";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { activities, cards, dayReviews, memberships, users } from "@/db/schema";
+import {
+  activities,
+  cardFocuses,
+  cards,
+  dayReviews,
+  users,
+} from "@/db/schema";
 import { requireMembership, requireUser } from "@/lib/authz";
 import { localDayWindow } from "@/lib/dates";
 import { localDateKey } from "@/lib/shutdown/stats";
@@ -32,7 +38,6 @@ async function cardContext(cardId: string) {
       dueAt: cards.dueAt,
       isAllDay: cards.isAllDay,
       completedAt: cards.completedAt,
-      focusedOn: cards.focusedOn,
     })
     .from(cards)
     .where(and(eq(cards.id, cardId), isNull(cards.deletedAt)))
@@ -71,25 +76,51 @@ export async function setCardFocus(formData: FormData): Promise<ActionResult> {
   const timeZone = await userTimeZone(userId);
   const todayLocal = localDateKey(new Date(), timeZone);
 
-  if (card.focusedOn !== todayLocal) {
-    const [{ focusedCount }] = await db
-      .select({ focusedCount: sql<number>`count(*)::int` })
-      .from(cards)
-      .innerJoin(
-        memberships,
+  const focused = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`focus:${userId}:${todayLocal}`}))`,
+    );
+
+    const [existing] = await tx
+      .select({ focusDate: cardFocuses.focusDate })
+      .from(cardFocuses)
+      .where(
         and(
-          eq(memberships.projectId, cards.projectId),
-          eq(memberships.userId, userId),
+          eq(cardFocuses.userId, userId),
+          eq(cardFocuses.cardId, parsed.data.cardId),
         ),
       )
-      .where(and(eq(cards.focusedOn, todayLocal), isNull(cards.deletedAt)));
-    if (focusedCount >= 3) return failure("You can focus up to 3 cards");
-  }
+      .limit(1);
+    if (existing?.focusDate === todayLocal) return true;
 
-  await db
-    .update(cards)
-    .set({ focusedOn: todayLocal })
-    .where(eq(cards.id, parsed.data.cardId));
+    const [{ focusedCount }] = await tx
+      .select({ focusedCount: sql<number>`count(*)::int` })
+      .from(cardFocuses)
+      .innerJoin(cards, eq(cardFocuses.cardId, cards.id))
+      .where(
+        and(
+          eq(cardFocuses.userId, userId),
+          eq(cardFocuses.focusDate, todayLocal),
+          isNull(cards.deletedAt),
+          isNull(cards.completedAt),
+        ),
+      );
+    if (focusedCount >= 3) return false;
+
+    await tx
+      .insert(cardFocuses)
+      .values({
+        userId,
+        cardId: parsed.data.cardId,
+        focusDate: todayLocal,
+      })
+      .onConflictDoUpdate({
+        target: [cardFocuses.userId, cardFocuses.cardId],
+        set: { focusDate: todayLocal },
+      });
+    return true;
+  });
+  if (!focused) return failure("You can focus up to 3 cards");
 
   refresh();
   return { ok: true };
@@ -101,12 +132,16 @@ export async function clearCardFocus(formData: FormData): Promise<ActionResult> 
 
   const card = await cardContext(parsed.data.cardId);
   if (!card) return failure("Card not found");
-  await requireMembership(card.projectId, "member");
+  const { userId } = await requireMembership(card.projectId, "member");
 
   await db
-    .update(cards)
-    .set({ focusedOn: null })
-    .where(eq(cards.id, parsed.data.cardId));
+    .delete(cardFocuses)
+    .where(
+      and(
+        eq(cardFocuses.userId, userId),
+        eq(cardFocuses.cardId, parsed.data.cardId),
+      ),
+    );
 
   refresh();
   return { ok: true };
@@ -136,10 +171,20 @@ export async function postponeCardToTomorrow(
     nextDue = new Date(tomorrow.start.getTime() + (card.dueAt.getTime() - dayStart));
   }
 
-  await db
-    .update(cards)
-    .set({ dueAt: nextDue, focusedOn: null })
-    .where(eq(cards.id, parsed.data.cardId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(cards)
+      .set({ dueAt: nextDue })
+      .where(eq(cards.id, parsed.data.cardId));
+    await tx
+      .delete(cardFocuses)
+      .where(
+        and(
+          eq(cardFocuses.userId, userId),
+          eq(cardFocuses.cardId, parsed.data.cardId),
+        ),
+      );
+  });
 
   await logCardActivity(
     card.projectId,
@@ -163,10 +208,15 @@ export async function completeCardNow(
   const { userId } = await requireMembership(card.projectId, "member");
 
   if (card.completedAt === null) {
-    await db
-      .update(cards)
-      .set({ completedAt: new Date(), focusedOn: null })
-      .where(eq(cards.id, parsed.data.cardId));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(cards)
+        .set({ completedAt: new Date(), completedBy: userId })
+        .where(eq(cards.id, parsed.data.cardId));
+      await tx
+        .delete(cardFocuses)
+        .where(eq(cardFocuses.cardId, parsed.data.cardId));
+    });
 
     await logCardActivity(
       card.projectId,
@@ -188,10 +238,20 @@ export async function letGoOfCard(formData: FormData): Promise<ActionResult> {
   if (!card) return failure("Card not found");
   const { userId } = await requireMembership(card.projectId, "member");
 
-  await db
-    .update(cards)
-    .set({ dueAt: null, focusedOn: null })
-    .where(eq(cards.id, parsed.data.cardId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(cards)
+      .set({ dueAt: null })
+      .where(eq(cards.id, parsed.data.cardId));
+    await tx
+      .delete(cardFocuses)
+      .where(
+        and(
+          eq(cardFocuses.userId, userId),
+          eq(cardFocuses.cardId, parsed.data.cardId),
+        ),
+      );
+  });
 
   await logCardActivity(
     card.projectId,

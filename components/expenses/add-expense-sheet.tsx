@@ -27,11 +27,15 @@ export function ExpenseSheet({
   categories,
   cloudinaryReady,
   editing,
+  defaultSpentOn,
+  currency,
 }: {
   open: boolean;
   onClose: () => void;
   categories: CategoryChip[];
   cloudinaryReady: boolean;
+  defaultSpentOn: string;
+  currency: string;
   editing?: {
     id: string;
     amountMinor: number;
@@ -39,6 +43,7 @@ export function ExpenseSheet({
     spentOn: string;
     note: string | null;
     receiptUrl: string | null;
+    paymentMethod: string | null;
   } | null;
 }) {
   const pushToast = useToast();
@@ -48,14 +53,14 @@ export function ExpenseSheet({
   const [categoryId, setCategoryId] = useState(
     editing?.categoryId ?? categories[0]?.id ?? "",
   );
-  const [spentOn, setSpentOn] = useState(editing?.spentOn ?? "");
+  const [spentOn, setSpentOn] = useState(editing?.spentOn ?? defaultSpentOn);
   const [note, setNote] = useState(editing?.note ?? "");
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState(editing?.paymentMethod ?? "");
   const [receipt, setReceipt] = useState<ReceiptUpload | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [receiptRemoved, setReceiptRemoved] = useState(false);
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const storedReceipt =
@@ -136,12 +141,14 @@ export function ExpenseSheet({
         setUploadError("Upload failed — check your connection and try again.");
         return;
       }
+      const uploaded = (await res.json()) as {
+        public_id: string;
+        secure_url: string;
+      };
       const isPdf = prepared.mime === "application/pdf";
       setReceipt({
-        publicId: sig.data.publicId,
-        url: isPdf
-          ? `https://res.cloudinary.com/${sig.data.cloudName}/raw/upload/${sig.data.publicId}`
-          : `https://res.cloudinary.com/${sig.data.cloudName}/image/upload/f_auto,q_auto/${sig.data.publicId}`,
+        publicId: uploaded.public_id,
+        url: uploaded.secure_url,
         name: file.name,
         isPdf,
       });
@@ -161,27 +168,29 @@ export function ExpenseSheet({
     fd.set("spentOn", spentOn);
     fd.set("note", note);
     fd.set("paymentMethod", paymentMethod);
-    if (editing) {
-      fd.set("expenseId", editing.id);
-      if (receiptRemoved) {
-        fd.set("receiptPublicId", "");
-        fd.set("receiptUrl", "");
-      } else if (receipt) {
-        fd.set("receiptPublicId", receipt.publicId);
-        fd.set("receiptUrl", receipt.url);
+    startTransition(async () => {
+      let res;
+      if (editing) {
+        fd.set("expenseId", editing.id);
+        if (receiptRemoved) {
+          fd.set("receiptPublicId", "");
+          fd.set("receiptUrl", "");
+        } else if (receipt) {
+          fd.set("receiptPublicId", receipt.publicId);
+          fd.set("receiptUrl", receipt.url);
+        }
+        res = await updateExpense(fd);
+      } else {
+        fd.set("receiptPublicId", receipt?.publicId ?? "");
+        fd.set("receiptUrl", receipt?.url ?? "");
+        res = await addExpense(fd);
       }
-      startTransition(async () => {
-        const res = await updateExpense(fd);
-        if (!res.ok) pushToast({ message: res.error });
-      });
-    } else {
-      fd.set("receiptPublicId", receipt?.publicId ?? "");
-      fd.set("receiptUrl", receipt?.url ?? "");
-      startTransition(async () => {
-        await addExpense(fd);
-      });
-    }
-    close();
+      if (!res.ok) {
+        pushToast({ message: res.error });
+        return;
+      }
+      close();
+    });
   };
 
   const remove = () => {
@@ -203,8 +212,8 @@ export function ExpenseSheet({
           void restoreExpense(undoFd);
         },
       });
+      close();
     });
-    close();
   };
 
   return (
@@ -216,7 +225,16 @@ export function ExpenseSheet({
       <div className="space-y-4">
         <div className="text-center">
           <p className="text-4xl font-bold tabular-nums" aria-live="polite">
-            {raw === "" ? "$0.00" : `$${raw}`}
+            {new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency,
+              currencyDisplay: "narrowSymbol",
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })
+              .formatToParts(0)
+              .find((part) => part.type === "currency")?.value ?? currency}
+            {raw || "0.00"}
           </p>
         </div>
 
@@ -244,7 +262,7 @@ export function ExpenseSheet({
                   : undefined
               }
               className={
-                "rounded-full border px-3 py-1.5 text-xs transition-colors " +
+                "min-h-11 rounded-full border px-3 py-1.5 text-xs transition-colors " +
                 (categoryId === c.id ? "text-text" : "border-border text-muted")
               }
             >
@@ -259,7 +277,7 @@ export function ExpenseSheet({
             value={spentOn}
             onChange={(e) => setSpentOn(e.target.value)}
             aria-label="Date"
-            className="h-10 flex-1 rounded-md border border-border bg-surface-2 px-2 text-sm"
+            className="h-11 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-2 text-sm"
           />
           <input
             value={note}
@@ -267,7 +285,7 @@ export function ExpenseSheet({
             placeholder="Note…"
             maxLength={500}
             aria-label="Note"
-            className="h-10 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-3 text-sm"
+            className="h-11 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-3 text-sm"
           />
         </div>
         <input
@@ -276,7 +294,7 @@ export function ExpenseSheet({
           placeholder="Paid with… (cash, card, wallet — optional)"
           maxLength={40}
           aria-label="Payment method"
-          className="h-9 w-full rounded-md border border-border bg-surface-2 px-3 text-xs"
+          className="h-11 w-full rounded-md border border-border bg-surface-2 px-3 text-xs"
         />
 
         <input
@@ -359,7 +377,7 @@ export function ExpenseSheet({
           </button>
         )}
 
-        <div className="flex items-center justify-between pt-1">
+        <div className="sticky bottom-0 -mx-5 flex items-center justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-3">
           {editing ? (
             <button
               onClick={remove}
@@ -376,10 +394,10 @@ export function ExpenseSheet({
             </button>
             <button
               onClick={save}
-              disabled={!minorValue || !categoryId || !spentOn}
+              disabled={!minorValue || !categoryId || !spentOn || pending}
               className="rounded-md bg-accent px-5 py-2 text-sm font-medium text-accent-fg disabled:opacity-50"
             >
-              {editing ? "Save" : "Add"}
+              {pending ? "Saving…" : editing ? "Save" : "Add"}
             </button>
           </div>
         </div>

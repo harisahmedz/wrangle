@@ -58,17 +58,24 @@ async function allTimeTotals(userId: string): Promise<AllTimeTotals> {
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(cards)
-      .innerJoin(projects, eq(cards.projectId, projects.id))
-      .innerJoin(
-        memberships,
-        and(eq(memberships.projectId, projects.id), eq(memberships.userId, userId)),
-      )
-      .where(and(isNull(cards.deletedAt), isNotNull(cards.completedAt))),
+      .where(
+        and(
+          isNull(cards.deletedAt),
+          isNotNull(cards.completedAt),
+          eq(cards.completedBy, userId),
+        ),
+      ),
     db
       .select({ m: sql<number>`coalesce(sum(${learningSessions.minutes}), 0)::int` })
       .from(learningSessions)
       .innerJoin(learningItems, eq(learningSessions.itemId, learningItems.id))
-      .where(and(eq(learningItems.userId, userId), isNull(learningItems.deletedAt))),
+      .where(
+        and(
+          eq(learningItems.userId, userId),
+          isNull(learningItems.deletedAt),
+          isNull(learningSessions.deletedAt),
+        ),
+      ),
     db
       .select({ at: activities.createdAt })
       .from(activities)
@@ -126,6 +133,7 @@ export async function loadWrappedMonth(
           and(
             isNull(cards.deletedAt),
             isNotNull(cards.completedAt),
+            eq(cards.completedBy, userId),
             gte(cards.completedAt, win.start),
             lt(cards.completedAt, win.end),
           ),
@@ -141,6 +149,7 @@ export async function loadWrappedMonth(
         .where(
           and(
             isNull(cards.deletedAt),
+            eq(cards.createdBy, userId),
             gte(cards.createdAt, win.start),
             lt(cards.createdAt, win.end),
           ),
@@ -157,6 +166,7 @@ export async function loadWrappedMonth(
           and(
             eq(learningItems.userId, userId),
             isNull(learningItems.deletedAt),
+            isNull(learningSessions.deletedAt),
             gte(learningSessions.happenedOn, startDay),
             lt(learningSessions.happenedOn, endDayExclusive),
           ),

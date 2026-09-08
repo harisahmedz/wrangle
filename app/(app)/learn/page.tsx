@@ -87,7 +87,12 @@ export default async function LearnPage({ searchParams }: Props) {
               isDone: learningMilestones.isDone,
             })
             .from(learningMilestones)
-            .where(eq(learningMilestones.itemId, row.id))
+            .where(
+              and(
+                eq(learningMilestones.itemId, row.id),
+                isNull(learningMilestones.deletedAt),
+              ),
+            )
             .orderBy(asc(learningMilestones.position)),
           db
             .select({
@@ -97,7 +102,12 @@ export default async function LearnPage({ searchParams }: Props) {
               note: learningSessions.note,
             })
             .from(learningSessions)
-            .where(eq(learningSessions.itemId, row.id))
+            .where(
+              and(
+                eq(learningSessions.itemId, row.id),
+                isNull(learningSessions.deletedAt),
+              ),
+            )
             .orderBy(desc(learningSessions.happenedOn))
             .limit(30),
           db
@@ -107,7 +117,12 @@ export default async function LearnPage({ searchParams }: Props) {
               title: learningResources.title,
             })
             .from(learningResources)
-            .where(eq(learningResources.itemId, row.id))
+            .where(
+              and(
+                eq(learningResources.itemId, row.id),
+                isNull(learningResources.deletedAt),
+              ),
+            )
             .orderBy(desc(learningResources.createdAt)),
           db
             .select({
@@ -116,7 +131,12 @@ export default async function LearnPage({ searchParams }: Props) {
               createdAt: learningNotes.createdAt,
             })
             .from(learningNotes)
-            .where(eq(learningNotes.itemId, row.id))
+            .where(
+              and(
+                eq(learningNotes.itemId, row.id),
+                isNull(learningNotes.deletedAt),
+              ),
+            )
             .orderBy(desc(learningNotes.createdAt))
             .limit(50),
           db
@@ -168,9 +188,9 @@ export default async function LearnPage({ searchParams }: Props) {
         <AddLearningButton />
       </div>
 
-      <div className="-mx-4 grid gap-4 overflow-x-auto px-4 sm:grid-cols-3 md:-mx-8 md:px-8">
+      <div className="-mx-4 grid snap-x snap-mandatory grid-flow-col auto-cols-[88%] gap-4 overflow-x-auto px-4 pb-2 sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-3 sm:snap-none md:-mx-8 md:px-8">
         {COLUMNS.map((col) => (
-          <section key={col.status} className="min-w-0 space-y-2.5 rounded-xl bg-surface-2/60 p-2.5">
+          <section key={col.status} className="min-w-0 snap-start space-y-2.5 rounded-xl bg-surface-2/60 p-2.5">
             <div className="flex items-baseline justify-between px-1">
               <h2 className="text-sm font-semibold">{col.label}</h2>
               <span className="text-xs text-muted">

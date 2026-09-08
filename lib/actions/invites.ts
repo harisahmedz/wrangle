@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
 import {
   activities,
@@ -188,11 +189,20 @@ export async function redeemInviteForUser(
         .values({ inviteId: invite.id, userId });
     }
 
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`projects:${userId}`}))`);
+    const [lastMembership] = await tx
+      .select({ position: memberships.position })
+      .from(memberships)
+      .where(eq(memberships.userId, userId))
+      .orderBy(desc(memberships.position))
+      .limit(1);
+
     await tx.insert(memberships).values({
       projectId: invite.projectId,
       userId,
       role: invite.role,
       invitedBy: invite.createdBy,
+      position: generateKeyBetween(lastMembership?.position ?? null, null),
     });
 
     await tx

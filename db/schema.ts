@@ -1,9 +1,10 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
   char,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -146,6 +147,7 @@ export const memberships = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: projectRole("role").notNull(),
+    position: text("position").notNull().default("a0"),
     joinedAt: timestamp("joined_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -155,6 +157,7 @@ export const memberships = pgTable(
   },
   (m) => [
     uniqueIndex("memberships_project_user_uq").on(m.projectId, m.userId),
+    uniqueIndex("memberships_user_position_uq").on(m.userId, m.position),
     index("memberships_user_id_idx").on(m.userId),
   ],
 );
@@ -201,7 +204,10 @@ export const boards = pgTable(
     name: text("name").notNull(),
     position: text("position").notNull().default("a0"),
   },
-  (b) => [uniqueIndex("boards_project_kind_uq").on(b.projectId, b.kind)],
+  (b) => [
+    uniqueIndex("boards_project_kind_uq").on(b.projectId, b.kind),
+    uniqueIndex("boards_id_project_uq").on(b.id, b.projectId),
+  ],
 );
 
 export const columns = pgTable(
@@ -224,7 +230,12 @@ export const columns = pgTable(
       .defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (c) => [index("columns_board_position_idx").on(c.boardId, c.position)],
+  (c) => [
+    uniqueIndex("columns_id_board_uq").on(c.id, c.boardId),
+    uniqueIndex("columns_board_position_uq")
+      .on(c.boardId, c.position)
+      .where(sql`${c.deletedAt} is null`),
+  ],
 );
 
 export const cards = pgTable(
@@ -244,6 +255,9 @@ export const cards = pgTable(
     dueAt: timestamp("due_at", { withTimezone: true }),
     isAllDay: boolean("is_all_day").notNull().default(false),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedBy: uuid("completed_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     impact: smallint("impact"),
     effort: smallint("effort"),
     coverColor: text("cover_color"),
@@ -261,10 +275,42 @@ export const cards = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (c) => [
+    foreignKey({
+      columns: [c.columnId, c.boardId],
+      foreignColumns: [columns.id, columns.boardId],
+      name: "cards_column_board_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [c.boardId, c.projectId],
+      foreignColumns: [boards.id, boards.projectId],
+      name: "cards_board_project_fk",
+    }).onDelete("cascade"),
     index("cards_board_position_idx").on(c.boardId, c.position),
-    index("cards_column_position_idx").on(c.columnId, c.position),
+    uniqueIndex("cards_column_position_uq")
+      .on(c.columnId, c.position)
+      .where(sql`${c.deletedAt} is null`),
     index("cards_project_due_idx").on(c.projectId, c.dueAt),
     index("cards_focused_idx").on(c.focusedOn),
+  ],
+);
+
+export const cardFocuses = pgTable(
+  "card_focuses",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    cardId: uuid("card_id")
+      .notNull()
+      .references(() => cards.id, { onDelete: "cascade" }),
+    focusDate: date("focus_date").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (f) => [
+    primaryKey({ columns: [f.userId, f.cardId] }),
+    index("card_focuses_user_date_idx").on(f.userId, f.focusDate),
   ],
 );
 
@@ -303,6 +349,7 @@ export const labels = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     color: text("color").notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (l) => [index("labels_project_idx").on(l.projectId)],
 );
@@ -345,8 +392,13 @@ export const checklistItems = pgTable(
     text: text("text").notNull(),
     isDone: boolean("is_done").notNull().default(false),
     position: text("position").notNull().default("a0"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (ci) => [index("checklist_card_position_idx").on(ci.cardId, ci.position)],
+  (ci) => [
+    uniqueIndex("checklist_card_position_uq")
+      .on(ci.cardId, ci.position)
+      .where(sql`${ci.deletedAt} is null`),
+  ],
 );
 
 export const comments = pgTable(
@@ -395,6 +447,7 @@ export const attachments = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (a) => [index("attachments_uploaded_by_idx").on(a.uploadedBy)],
 );
@@ -491,7 +544,12 @@ export const expenseCategories = pgTable(
     isArchived: boolean("is_archived").notNull().default(false),
     position: text("position").notNull().default("a0"),
   },
-  (ec) => [index("expense_categories_user_idx").on(ec.userId, ec.position)],
+  (ec) => [
+    uniqueIndex("expense_categories_user_position_uq").on(
+      ec.userId,
+      ec.position,
+    ),
+  ],
 );
 
 export const expenses = pgTable(
@@ -581,7 +639,9 @@ export const learningItems = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (li) => [
-    index("learning_items_user_status_idx").on(li.userId, li.status, li.position),
+    uniqueIndex("learning_items_user_status_position_uq")
+      .on(li.userId, li.status, li.position)
+      .where(sql`${li.deletedAt} is null`),
   ],
 );
 
@@ -597,8 +657,13 @@ export const learningMilestones = pgTable(
     text: text("text").notNull(),
     isDone: boolean("is_done").notNull().default(false),
     position: text("position").notNull().default("a0"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (lm) => [index("learning_milestones_item_idx").on(lm.itemId, lm.position)],
+  (lm) => [
+    uniqueIndex("learning_milestones_item_position_uq")
+      .on(lm.itemId, lm.position)
+      .where(sql`${lm.deletedAt} is null`),
+  ],
 );
 
 export const learningSessions = pgTable(
@@ -616,6 +681,7 @@ export const learningSessions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (ls) => [index("learning_sessions_item_idx").on(ls.itemId, ls.happenedOn)],
 );
@@ -635,6 +701,7 @@ export const learningResources = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (lr) => [index("learning_resources_item_idx").on(lr.itemId)],
 );
@@ -652,6 +719,7 @@ export const learningNotes = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (ln) => [index("learning_notes_item_idx").on(ln.itemId, ln.createdAt)],
 );

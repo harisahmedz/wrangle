@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { expenseCategories, expenses } from "@/db/schema";
+import { expenseCategories, expenses, users } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import { ensureCategories } from "@/lib/actions/expenses";
 import {
@@ -10,6 +10,7 @@ import {
   monthBounds,
   monthLabel,
   shiftMonth,
+  todayKey,
 } from "@/lib/money";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { Donut, TrendBars } from "@/components/expenses/charts";
@@ -40,8 +41,17 @@ export default async function MoneyPage({ searchParams }: Props) {
   const userId = await requireUser();
   await ensureCategories(userId);
 
+  const [user] = await db
+    .select({ timezone: users.timezone, currency: users.currency })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const timeZone = user?.timezone ?? "UTC";
+  const currency = user?.currency ?? "USD";
+  const localToday = todayKey(timeZone);
+
   const sp = await searchParams;
-  const nowKey = new Date().toISOString().slice(0, 7);
+  const nowKey = localToday.slice(0, 7);
   const rawMonth = sp.m ?? nowKey;
   const month = MONTH_RE.test(rawMonth) ? rawMonth : nowKey;
   const prevMonth = shiftMonth(month, -1);
@@ -70,6 +80,8 @@ export default async function MoneyPage({ searchParams }: Props) {
         note: expenses.note,
         categoryId: expenses.categoryId,
         receiptUrl: expenses.receiptUrl,
+        paymentMethod: expenses.paymentMethod,
+        currency: expenses.currency,
         categoryName: expenseCategories.name,
         categoryEmoji: expenseCategories.emoji,
         categoryColor: expenseCategories.color,
@@ -122,6 +134,8 @@ export default async function MoneyPage({ searchParams }: Props) {
     categoryEmoji: r.categoryEmoji,
     categoryColor: r.categoryColor,
     receiptUrl: r.receiptUrl,
+    paymentMethod: r.paymentMethod,
+    currency: r.currency,
   }));
 
   const byCategory = new Map<string, number>();
@@ -168,14 +182,19 @@ export default async function MoneyPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Money</h1>
-        <div className="flex items-center gap-2">
+      <div className="space-y-3 sm:flex sm:items-center sm:justify-between sm:space-y-0">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-2xl font-bold tracking-tight">Money</h1>
+          <div className="flex items-center gap-2">
           <CategoryManagerButton categories={categoryChips} />
           <AddExpenseButton
             categories={categoryChips}
             cloudinaryReady={isCloudinaryConfigured()}
+            defaultSpentOn={localToday}
+            currency={currency}
           />
+          </div>
+        </div>
           <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
           <Link
             href={`/money?m=${prevMonth}`}
@@ -198,15 +217,14 @@ export default async function MoneyPage({ searchParams }: Props) {
           ) : (
             <span aria-hidden className="px-2 py-1 opacity-30">→</span>
           )}
-        </div>
-        </div>
+          </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <section className="rounded-xl border border-border bg-surface p-4">
           <p className="text-xs uppercase tracking-wider text-muted">Spent this month</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">
-            {formatMinor(totalThis)}
+            {formatMinor(totalThis, currency)}
           </p>
           <p className="mt-1 text-sm text-muted">
             {delta === null
@@ -238,6 +256,8 @@ export default async function MoneyPage({ searchParams }: Props) {
         rows={rows}
         categories={categoryChips}
         cloudinaryReady={isCloudinaryConfigured()}
+        defaultSpentOn={localToday}
+        currency={currency}
       />
 
       {biggest.length >= 2 && (
@@ -250,7 +270,7 @@ export default async function MoneyPage({ searchParams }: Props) {
               <li key={r.id} className="flex items-center justify-between">
                 <span className="truncate">{r.note || r.categoryName}</span>
                 <span className="tabular-nums text-muted">
-                  {formatMinor(r.amountMinor)}
+                  {formatMinor(r.amountMinor, r.currency)}
                 </span>
               </li>
             ))}
@@ -260,11 +280,6 @@ export default async function MoneyPage({ searchParams }: Props) {
 
       {sp.add === "1" && <ExpenseAddTrigger />}
 
-      <AddExpenseButton
-        categories={categoryChips}
-        cloudinaryReady={isCloudinaryConfigured()}
-        variant="fab"
-      />
     </div>
   );
 }

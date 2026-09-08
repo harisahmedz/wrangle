@@ -1,10 +1,13 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Pool } from "@neondatabase/serverless";
+import nextEnv from "@next/env";
+
+nextEnv.loadEnvConfig(process.cwd());
 
 const url =
-  process.env.DIRECT_DATABASE_URL ??
   process.env.DATABASE_URL_UNPOOLED ??
+  process.env.DIRECT_DATABASE_URL ??
   process.env.DATABASE_URL;
 if (!url) throw new Error("No database URL in env");
 

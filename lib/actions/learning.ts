@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
 import {
@@ -53,6 +53,27 @@ async function ownItem(itemId: string) {
   return item ?? null;
 }
 
+async function positionForStatus(
+  item: typeof learningItems.$inferSelect,
+  status: (typeof learningItems.$inferSelect)["status"],
+): Promise<string> {
+  if (item.status === status) return item.position;
+
+  const [last] = await db
+    .select({ position: learningItems.position })
+    .from(learningItems)
+    .where(
+      and(
+        eq(learningItems.userId, item.userId),
+        eq(learningItems.status, status),
+        isNull(learningItems.deletedAt),
+      ),
+    )
+    .orderBy(desc(learningItems.position))
+    .limit(1);
+  return generateKeyBetween(last?.position ?? null, null);
+}
+
 async function recomputeDerived(itemId: string) {
   const [agg] = await db
     .select({
@@ -60,7 +81,12 @@ async function recomputeDerived(itemId: string) {
       done: sql<number>`sum(case when ${learningMilestones.isDone} then 1 else 0 end)::int`,
     })
     .from(learningMilestones)
-    .where(eq(learningMilestones.itemId, itemId));
+    .where(
+      and(
+        eq(learningMilestones.itemId, itemId),
+        isNull(learningMilestones.deletedAt),
+      ),
+    );
 
   if (!agg || agg.total === 0) return;
 
@@ -76,7 +102,12 @@ async function recalcHours(itemId: string) {
       minutes: sql<number>`coalesce(sum(${learningSessions.minutes}), 0)::int`,
     })
     .from(learningSessions)
-    .where(eq(learningSessions.itemId, itemId));
+    .where(
+      and(
+        eq(learningSessions.itemId, itemId),
+        isNull(learningSessions.deletedAt),
+      ),
+    );
 
   await db
     .update(learningItems)
@@ -98,25 +129,36 @@ export async function createLearningItem(
   });
   if (!parsed.success) return failure("Check the fields (title required)");
 
-  const [last] = await db
-    .select({ position: learningItems.position })
-    .from(learningItems)
-    .where(and(eq(learningItems.userId, userId), eq(learningItems.status, "want")))
-    .orderBy(asc(learningItems.position))
-    .limit(1);
-
-  const [row] = await db
-    .insert(learningItems)
-    .values({
-      userId,
-      title: parsed.data.title,
-      type: parsed.data.type,
-      sourceUrl: parsed.data.sourceUrl || null,
-      whyNote: parsed.data.whyNote || null,
-      targetDate: parsed.data.targetDate ?? null,
-      position: generateKeyBetween(last?.position ?? null, null),
-    })
-    .returning({ id: learningItems.id });
+  const row = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`learning:${userId}:want`}::text))`,
+    );
+    const [last] = await tx
+      .select({ position: learningItems.position })
+      .from(learningItems)
+      .where(
+        and(
+          eq(learningItems.userId, userId),
+          eq(learningItems.status, "want"),
+          isNull(learningItems.deletedAt),
+        ),
+      )
+      .orderBy(desc(learningItems.position))
+      .limit(1);
+    const [created] = await tx
+      .insert(learningItems)
+      .values({
+        userId,
+        title: parsed.data.title,
+        type: parsed.data.type,
+        sourceUrl: parsed.data.sourceUrl || null,
+        whyNote: parsed.data.whyNote || null,
+        targetDate: parsed.data.targetDate ?? null,
+        position: generateKeyBetween(last?.position ?? null, null),
+      })
+      .returning({ id: learningItems.id });
+    return created;
+  });
 
   refresh();
   return { ok: true, data: { id: row.id } };
@@ -138,6 +180,7 @@ export async function updateLearningItem(
 
   const item = await ownItem(parsed.data.itemId);
   if (!item) return failure("Not found");
+  const position = await positionForStatus(item, parsed.data.status);
 
   await db
     .update(learningItems)
@@ -152,6 +195,7 @@ export async function updateLearningItem(
         parsed.data.status === "learned"
           ? (item.completedAt ?? new Date())
           : null,
+      position,
     })
     .where(eq(learningItems.id, item.id));
 
@@ -170,6 +214,7 @@ export async function setLearningStatus(
 
   const item = await ownItem(parsed.data.itemId);
   if (!item) return failure("Not found");
+  const position = await positionForStatus(item, parsed.data.status);
 
   await db
     .update(learningItems)
@@ -179,6 +224,7 @@ export async function setLearningStatus(
         parsed.data.status === "learned"
           ? (item.completedAt ?? new Date())
           : null,
+      position,
     })
     .where(eq(learningItems.id, item.id));
 
@@ -211,15 +257,64 @@ export async function restoreLearningItem(
   const parsed = itemIdSchema.safeParse({ itemId: formData.get("itemId") });
   if (!parsed.success) return failure("Invalid");
 
-  await db
-    .update(learningItems)
-    .set({ deletedAt: null })
+  const [item] = await db
+    .select({
+      id: learningItems.id,
+      status: learningItems.status,
+      position: learningItems.position,
+      deletedAt: learningItems.deletedAt,
+    })
+    .from(learningItems)
     .where(
       and(
         eq(learningItems.id, parsed.data.itemId),
         eq(learningItems.userId, userId),
       ),
+    )
+    .limit(1);
+  if (!item) return failure("Not found");
+  if (!item.deletedAt) return { ok: true };
+
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`learning:${userId}:${item.status}`}::text))`,
     );
+    const [collision] = await tx
+      .select({ id: learningItems.id })
+      .from(learningItems)
+      .where(
+        and(
+          eq(learningItems.userId, userId),
+          eq(learningItems.status, item.status),
+          eq(learningItems.position, item.position),
+          isNull(learningItems.deletedAt),
+          ne(learningItems.id, item.id),
+        ),
+      )
+      .limit(1);
+    if (collision) {
+      const [last] = await tx
+        .select({ position: learningItems.position })
+        .from(learningItems)
+        .where(
+          and(
+            eq(learningItems.userId, userId),
+            eq(learningItems.status, item.status),
+            isNull(learningItems.deletedAt),
+          ),
+        )
+        .orderBy(desc(learningItems.position))
+        .limit(1);
+      await tx
+        .update(learningItems)
+        .set({ position: generateKeyBetween(last?.position ?? null, null) })
+        .where(eq(learningItems.id, collision.id));
+    }
+    await tx
+      .update(learningItems)
+      .set({ deletedAt: null })
+      .where(eq(learningItems.id, item.id));
+  });
 
   refresh();
   return { ok: true };
@@ -265,14 +360,44 @@ export async function deleteSession(formData: FormData): Promise<ActionResult> {
     .select({ itemId: learningSessions.itemId })
     .from(learningSessions)
     .innerJoin(learningItems, eq(learningSessions.itemId, learningItems.id))
-    .where(eq(learningSessions.id, parsed.data.sessionId))
+    .where(
+      and(
+        eq(learningSessions.id, parsed.data.sessionId),
+        isNull(learningSessions.deletedAt),
+      ),
+    )
     .limit(1);
 
   const item = session ? await ownItem(session.itemId) : null;
   if (!item) return failure("Not found");
 
-  await db.delete(learningSessions).where(eq(learningSessions.id, parsed.data.sessionId));
+  await db
+    .update(learningSessions)
+    .set({ deletedAt: new Date() })
+    .where(eq(learningSessions.id, parsed.data.sessionId));
   await recalcHours(item.id);
+  refresh();
+  return { ok: true };
+}
+
+export async function restoreSession(formData: FormData): Promise<ActionResult> {
+  const parsed = sessionIdSchema.safeParse({
+    sessionId: formData.get("sessionId"),
+  });
+  if (!parsed.success) return failure("Invalid");
+
+  const [session] = await db
+    .select({ itemId: learningSessions.itemId })
+    .from(learningSessions)
+    .where(eq(learningSessions.id, parsed.data.sessionId))
+    .limit(1);
+  if (!session || !(await ownItem(session.itemId))) return failure("Not found");
+
+  await db
+    .update(learningSessions)
+    .set({ deletedAt: null })
+    .where(eq(learningSessions.id, parsed.data.sessionId));
+  await recalcHours(session.itemId);
   refresh();
   return { ok: true };
 }
@@ -287,17 +412,26 @@ export async function addMilestone(formData: FormData): Promise<ActionResult> {
   const item = await ownItem(parsed.data.itemId);
   if (!item) return failure("Not found");
 
-  const [last] = await db
-    .select({ position: learningMilestones.position })
-    .from(learningMilestones)
-    .where(eq(learningMilestones.itemId, item.id))
-    .orderBy(asc(learningMilestones.position))
-    .limit(1);
-
-  await db.insert(learningMilestones).values({
-    itemId: item.id,
-    text: parsed.data.text,
-    position: generateKeyBetween(last?.position ?? null, null),
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`milestones:${item.id}`}::text))`,
+    );
+    const [last] = await tx
+      .select({ position: learningMilestones.position })
+      .from(learningMilestones)
+      .where(
+        and(
+          eq(learningMilestones.itemId, item.id),
+          isNull(learningMilestones.deletedAt),
+        ),
+      )
+      .orderBy(desc(learningMilestones.position))
+      .limit(1);
+    await tx.insert(learningMilestones).values({
+      itemId: item.id,
+      text: parsed.data.text,
+      position: generateKeyBetween(last?.position ?? null, null),
+    });
   });
   await recomputeDerived(item.id);
   refresh();
@@ -315,10 +449,16 @@ export async function toggleMilestone(
   const [ms] = await db
     .select()
     .from(learningMilestones)
-    .where(eq(learningMilestones.id, parsed.data.milestoneId))
+    .where(
+      and(
+        eq(learningMilestones.id, parsed.data.milestoneId),
+        isNull(learningMilestones.deletedAt),
+      ),
+    )
     .limit(1);
   if (!ms) return failure("Not found");
-  if (!(await ownItem(ms.itemId))) return failure("Not found");
+  const item = await ownItem(ms.itemId);
+  if (!item) return failure("Not found");
 
   await db
     .update(learningMilestones)
@@ -328,9 +468,10 @@ export async function toggleMilestone(
   await recomputeDerived(ms.itemId);
 
   if (!ms.isDone) {
+    const position = await positionForStatus(item, "learning");
     await db
       .update(learningItems)
-      .set({ status: "learning" })
+      .set({ status: "learning", position })
       .where(and(eq(learningItems.id, ms.itemId), eq(learningItems.status, "want")));
   }
 
@@ -349,13 +490,83 @@ export async function deleteMilestone(
   const [ms] = await db
     .select({ itemId: learningMilestones.itemId })
     .from(learningMilestones)
-    .where(eq(learningMilestones.id, parsed.data.milestoneId))
+    .where(
+      and(
+        eq(learningMilestones.id, parsed.data.milestoneId),
+        isNull(learningMilestones.deletedAt),
+      ),
+    )
     .limit(1);
   const item = ms ? await ownItem(ms.itemId) : null;
   if (!item) return failure("Not found");
 
-  await db.delete(learningMilestones).where(eq(learningMilestones.id, parsed.data.milestoneId));
+  await db
+    .update(learningMilestones)
+    .set({ deletedAt: new Date() })
+    .where(eq(learningMilestones.id, parsed.data.milestoneId));
   await recomputeDerived(item.id);
+  refresh();
+  return { ok: true };
+}
+
+export async function restoreMilestone(formData: FormData): Promise<ActionResult> {
+  const parsed = milestoneIdSchema.safeParse({
+    milestoneId: formData.get("milestoneId"),
+  });
+  if (!parsed.success) return failure("Invalid");
+
+  const [milestone] = await db
+    .select({
+      itemId: learningMilestones.itemId,
+      position: learningMilestones.position,
+      deletedAt: learningMilestones.deletedAt,
+    })
+    .from(learningMilestones)
+    .where(eq(learningMilestones.id, parsed.data.milestoneId))
+    .limit(1);
+  if (!milestone || !(await ownItem(milestone.itemId))) return failure("Not found");
+
+  if (!milestone.deletedAt) return { ok: true };
+
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`milestones:${milestone.itemId}`}::text))`,
+    );
+    const [collision] = await tx
+      .select({ id: learningMilestones.id })
+      .from(learningMilestones)
+      .where(
+        and(
+          eq(learningMilestones.itemId, milestone.itemId),
+          eq(learningMilestones.position, milestone.position),
+          isNull(learningMilestones.deletedAt),
+          ne(learningMilestones.id, parsed.data.milestoneId),
+        ),
+      )
+      .limit(1);
+    if (collision) {
+      const [last] = await tx
+        .select({ position: learningMilestones.position })
+        .from(learningMilestones)
+        .where(
+          and(
+            eq(learningMilestones.itemId, milestone.itemId),
+            isNull(learningMilestones.deletedAt),
+          ),
+        )
+        .orderBy(desc(learningMilestones.position))
+        .limit(1);
+      await tx
+        .update(learningMilestones)
+        .set({ position: generateKeyBetween(last?.position ?? null, null) })
+        .where(eq(learningMilestones.id, collision.id));
+    }
+    await tx
+      .update(learningMilestones)
+      .set({ deletedAt: null })
+      .where(eq(learningMilestones.id, parsed.data.milestoneId));
+  });
+  await recomputeDerived(milestone.itemId);
   refresh();
   return { ok: true };
 }
@@ -375,7 +586,12 @@ export async function setManualProgress(
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(learningMilestones)
-    .where(eq(learningMilestones.itemId, item.id));
+    .where(
+      and(
+        eq(learningMilestones.itemId, item.id),
+        isNull(learningMilestones.deletedAt),
+      ),
+    );
 
   if (count > 0) {
     return failure("Milestones drive progress — delete them to go manual");
@@ -418,12 +634,41 @@ export async function deleteResource(formData: FormData): Promise<ActionResult> 
   const [res] = await db
     .select({ itemId: learningResources.itemId })
     .from(learningResources)
-    .where(eq(learningResources.id, parsed.data.resourceId))
+    .where(
+      and(
+        eq(learningResources.id, parsed.data.resourceId),
+        isNull(learningResources.deletedAt),
+      ),
+    )
     .limit(1);
   const item = res ? await ownItem(res.itemId) : null;
   if (!item) return failure("Not found");
 
-  await db.delete(learningResources).where(eq(learningResources.id, parsed.data.resourceId));
+  await db
+    .update(learningResources)
+    .set({ deletedAt: new Date() })
+    .where(eq(learningResources.id, parsed.data.resourceId));
+  refresh();
+  return { ok: true };
+}
+
+export async function restoreResource(formData: FormData): Promise<ActionResult> {
+  const parsed = resourceIdSchema.safeParse({
+    resourceId: formData.get("resourceId"),
+  });
+  if (!parsed.success) return failure("Invalid");
+
+  const [resource] = await db
+    .select({ itemId: learningResources.itemId })
+    .from(learningResources)
+    .where(eq(learningResources.id, parsed.data.resourceId))
+    .limit(1);
+  if (!resource || !(await ownItem(resource.itemId))) return failure("Not found");
+
+  await db
+    .update(learningResources)
+    .set({ deletedAt: null })
+    .where(eq(learningResources.id, parsed.data.resourceId));
   refresh();
   return { ok: true };
 }
@@ -455,12 +700,41 @@ export async function deleteLearningNote(
   const [note] = await db
     .select({ itemId: learningNotes.itemId })
     .from(learningNotes)
-    .where(eq(learningNotes.id, parsed.data.noteId))
+    .where(
+      and(
+        eq(learningNotes.id, parsed.data.noteId),
+        isNull(learningNotes.deletedAt),
+      ),
+    )
     .limit(1);
   const item = note ? await ownItem(note.itemId) : null;
   if (!item) return failure("Not found");
 
-  await db.delete(learningNotes).where(eq(learningNotes.id, parsed.data.noteId));
+  await db
+    .update(learningNotes)
+    .set({ deletedAt: new Date() })
+    .where(eq(learningNotes.id, parsed.data.noteId));
+  refresh();
+  return { ok: true };
+}
+
+export async function restoreLearningNote(
+  formData: FormData,
+): Promise<ActionResult> {
+  const parsed = noteIdSchema.safeParse({ noteId: formData.get("noteId") });
+  if (!parsed.success) return failure("Invalid");
+
+  const [note] = await db
+    .select({ itemId: learningNotes.itemId })
+    .from(learningNotes)
+    .where(eq(learningNotes.id, parsed.data.noteId))
+    .limit(1);
+  if (!note || !(await ownItem(note.itemId))) return failure("Not found");
+
+  await db
+    .update(learningNotes)
+    .set({ deletedAt: null })
+    .where(eq(learningNotes.id, parsed.data.noteId));
   refresh();
   return { ok: true };
 }
@@ -512,7 +786,7 @@ export async function linkItemToBoard(
     .select({ position: cards.position })
     .from(cards)
     .where(and(eq(cards.columnId, firstColumn.id), isNull(cards.deletedAt)))
-    .orderBy(asc(cards.position))
+    .orderBy(desc(cards.position))
     .limit(1);
 
   const [card] = await db

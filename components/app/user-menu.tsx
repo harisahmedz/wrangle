@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SignOutIcon } from "@/components/icons";
 import { signOutAction } from "@/lib/actions/auth";
@@ -53,13 +53,28 @@ export function UserMenu({
   const [open, setOpen] = useState(false);
   const initial = name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
 
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+
+  const clearOfflinePages = () => {
+    navigator.serviceWorker?.controller?.postMessage({
+      type: "CLEAR_PRIVATE_CACHES",
+    });
+  };
+
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-2 text-sm font-semibold"
+        className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-2 text-sm font-semibold"
       >
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -98,7 +113,7 @@ export function UserMenu({
               <WrappedIcon className="h-4 w-4" />
               Life Wrapped
             </Link>
-            <form action={signOutAction}>
+            <form action={signOutAction} onSubmit={clearOfflinePages}>
               <button
                 type="submit"
                 role="menuitem"

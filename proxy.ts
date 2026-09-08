@@ -3,6 +3,9 @@ import type { NextRequest } from "next/server";
 
 const PROTECTED_PREFIXES = [
   "/today",
+  "/shutdown",
+  "/weekly",
+  "/wrapped",
   "/boards",
   "/money",
   "/learn",
@@ -44,10 +47,6 @@ export function proxy(request: NextRequest) {
       path: "/",
     });
     return response;
-  }
-
-  if (pathname === "/signin" && hasSessionCookie) {
-    return NextResponse.redirect(new URL("/today", request.url));
   }
 
   return NextResponse.next();

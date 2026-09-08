@@ -13,6 +13,7 @@ import {
   verificationTokens,
 } from "@/db/schema";
 import { seedProjectBoards } from "@/lib/kanban/seed";
+import { hasVerifiedOAuthEmail } from "@/lib/auth-email";
 
 const DEFAULT_CATEGORIES: Array<{ name: string; emoji: string; color: string }> = [
   { name: "Food", emoji: "🍔", color: "#f59e0b" },
@@ -52,9 +53,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret:
         process.env.AUTH_GITHUB_SECRET ?? process.env.GITHUB_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
+      userinfo: {
+        url: "https://api.github.com/user",
+        async request({ tokens }: { tokens: { access_token?: string } }) {
+          const headers = {
+            Authorization: `Bearer ${tokens.access_token}`,
+            "User-Agent": "wrangle",
+          };
+          const profile = (await fetch("https://api.github.com/user", {
+            headers,
+          }).then((response) => response.json())) as Record<string, unknown>;
+          const emailsResponse = await fetch("https://api.github.com/user/emails", {
+            headers,
+          });
+          if (!emailsResponse.ok) {
+            profile.email = null;
+            profile.email_verified = false;
+            return profile;
+          }
+
+          const emails = (await emailsResponse.json()) as Array<{
+            email: string;
+            primary: boolean;
+            verified: boolean;
+          }>;
+          const verified =
+            emails.find((email) => email.primary && email.verified) ??
+            emails.find((email) => email.verified);
+          profile.email = verified?.email ?? null;
+          profile.email_verified = Boolean(verified);
+          return profile;
+        },
+      },
     }),
   ],
   callbacks: {
+    signIn({ account, profile }) {
+      return hasVerifiedOAuthEmail(account?.provider, profile);
+    },
     session({ session, user }) {
       session.user = {
         id: user.id,

@@ -14,6 +14,10 @@ import {
   deleteSession,
   linkItemToBoard,
   restoreLearningItem,
+  restoreLearningNote,
+  restoreMilestone,
+  restoreResource,
+  restoreSession,
   toggleMilestone,
   updateLearningItem,
 } from "@/lib/actions/learning";
@@ -65,6 +69,33 @@ export function LearnDetailSheet({
       const res = await fn(fd);
       if (!res.ok) pushToast({ message: res.error ?? "Something went wrong" });
       else after?.();
+    });
+  };
+
+  const removeChild = (
+    removeAction: (fd: FormData) => Promise<{ ok: boolean; error?: string }>,
+    restoreAction: (fd: FormData) => Promise<{ ok: boolean; error?: string }>,
+    field: string,
+    id: string,
+    message: string,
+  ) => {
+    const fd = new FormData();
+    fd.set(field, id);
+    startTransition(async () => {
+      const res = await removeAction(fd);
+      if (!res.ok) {
+        pushToast({ message: res.error ?? "Something went wrong" });
+        return;
+      }
+      pushToast({
+        message,
+        actionLabel: "Undo",
+        onAction: () => {
+          const undo = new FormData();
+          undo.set(field, id);
+          void restoreAction(undo);
+        },
+      });
     });
   };
 
@@ -125,7 +156,7 @@ export function LearnDetailSheet({
       <div className="space-y-5">
         <div className="flex items-start justify-between">
           <h2 className="text-lg font-semibold leading-tight break-words">{item.title}</h2>
-          <button onClick={close} aria-label="Close" className="rounded-md px-2 py-1 text-muted hover:bg-surface-2 hover:text-text">
+          <button onClick={close} aria-label="Close" className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text">
             ✕
           </button>
         </div>
@@ -138,24 +169,24 @@ export function LearnDetailSheet({
 
         <section className="space-y-2">
           <p className="text-sm font-medium">Details</p>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Title" maxLength={200} className="h-9 w-full rounded-md border border-border bg-surface-2 px-2 text-sm" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Title" maxLength={200} className="h-11 w-full rounded-md border border-border bg-surface-2 px-2 text-sm" />
           <div className="flex gap-2">
-            <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type" className="h-9 flex-1 rounded-md border border-border bg-surface-2 px-1.5 text-sm capitalize">
+            <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type" className="h-11 flex-1 rounded-md border border-border bg-surface-2 px-1.5 text-sm capitalize">
               {["course", "book", "video", "article", "skill", "other"].map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
-            <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Status" className="h-9 flex-1 rounded-md border border-border bg-surface-2 px-1.5 text-sm capitalize">
+            <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Status" className="h-11 flex-1 rounded-md border border-border bg-surface-2 px-1.5 text-sm capitalize">
               {["want", "learning", "learned"].map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </div>
-          <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://source…" inputMode="url" aria-label="Source URL" className="h-9 w-full rounded-md border border-border bg-surface-2 px-2 text-sm" />
+          <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://source…" inputMode="url" aria-label="Source URL" className="h-11 w-full rounded-md border border-border bg-surface-2 px-2 text-sm" />
           <textarea value={whyNote} onChange={(e) => setWhyNote(e.target.value)} placeholder="Why this matters…" rows={2} aria-label="Why note" className="w-full resize-none rounded-md border border-border bg-surface-2 p-2 text-sm" />
           <div className="flex items-center gap-2 text-sm text-muted">
             Target
-            <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} aria-label="Target date" className="h-9 flex-1 rounded-md border border-border bg-surface-2 px-2" />
+            <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} aria-label="Target date" className="h-11 flex-1 rounded-md border border-border bg-surface-2 px-2" />
           </div>
           <button onClick={saveMeta} className="w-full rounded-md border border-border py-2 text-sm font-medium hover:bg-surface-2">
             Save details
@@ -165,8 +196,8 @@ export function LearnDetailSheet({
         <section className="space-y-2">
           <p className="text-sm font-medium">Log a session</p>
           <div className="flex gap-2">
-            <input type="number" min={1} max={1440} value={sessionMinutes} onChange={(e) => setSessionMinutes(e.target.value)} placeholder="min" aria-label="Minutes" className="h-9 w-20 rounded-md border border-border bg-surface-2 px-2 text-sm tabular-nums" />
-            <input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} aria-label="Session date" className="h-9 flex-1 rounded-md border border-border bg-surface-2 px-2 text-sm" />
+            <input type="number" min={1} max={1440} value={sessionMinutes} onChange={(e) => setSessionMinutes(e.target.value)} placeholder="min" aria-label="Minutes" className="h-11 w-20 rounded-md border border-border bg-surface-2 px-2 text-sm tabular-nums" />
+            <input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} aria-label="Session date" className="h-11 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-2 text-sm" />
             <button
               onClick={() => {
                 if (!Number(sessionMinutes)) return;
@@ -192,12 +223,10 @@ export function LearnDetailSheet({
                 {s.note && <span className="truncate text-muted">{s.note}</span>}
                 <button
                   onClick={() => {
-                    const fd = new FormData();
-                    fd.set("sessionId", s.id);
-                    run(deleteSession, fd);
+                    removeChild(deleteSession, restoreSession, "sessionId", s.id, "Session deleted");
                   }}
                   aria-label="Delete session"
-                  className="ml-auto text-muted opacity-0 group-hover:opacity-100 hover:text-danger"
+                  className="ml-auto flex h-11 w-11 items-center justify-center text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
                 >
                   ✕
                 </button>
@@ -235,12 +264,10 @@ export function LearnDetailSheet({
                 <span className={"flex-1 text-sm " + (m.isDone ? "text-muted line-through" : "")}>{m.text}</span>
                 <button
                   onClick={() => {
-                    const fd = new FormData();
-                    fd.set("milestoneId", m.id);
-                    run(deleteMilestone, fd);
+                    removeChild(deleteMilestone, restoreMilestone, "milestoneId", m.id, "Milestone deleted");
                   }}
                   aria-label={`Delete ${m.text}`}
-                  className="text-xs text-muted opacity-0 group-hover:opacity-100 hover:text-danger"
+                  className="flex h-11 w-11 items-center justify-center text-xs text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
                 >
                   ✕
                 </button>
@@ -263,12 +290,10 @@ export function LearnDetailSheet({
                 </a>
                 <button
                   onClick={() => {
-                    const fd = new FormData();
-                    fd.set("resourceId", r.id);
-                    run(deleteResource, fd);
+                    removeChild(deleteResource, restoreResource, "resourceId", r.id, "Resource deleted");
                   }}
                   aria-label="Delete resource"
-                  className="text-muted opacity-0 group-hover:opacity-100 hover:text-danger"
+                  className="flex h-11 w-11 items-center justify-center text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
                 >
                   ✕
                 </button>
@@ -285,11 +310,10 @@ export function LearnDetailSheet({
                   <span>{new Date(n.createdAt).toLocaleDateString()}</span>
                   <button
                     onClick={() => {
-                      const fd = new FormData();
-                      fd.set("noteId", n.id);
-                      run(deleteLearningNote, fd);
+                      removeChild(deleteLearningNote, restoreLearningNote, "noteId", n.id, "Note deleted");
                     }}
-                    className="opacity-0 group-hover:opacity-100 hover:text-danger"
+                    aria-label="Delete note"
+                    className="flex h-11 w-11 items-center justify-center sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
                   >
                     ✕
                   </button>
@@ -314,7 +338,7 @@ export function LearnDetailSheet({
           </div>
         </section>
 
-        <div className="flex justify-between border-t border-border pt-4">
+        <div className="sticky bottom-0 -mx-5 flex justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4">
           <button onClick={remove} className="text-sm text-danger hover:underline">
             Delete
           </button>
@@ -351,7 +375,7 @@ function MilestoneInput({
         }}
         placeholder="+ Add milestone…"
         aria-label="New milestone"
-        className="h-8 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
+        className="h-11 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
       />
     </div>
   );
@@ -384,7 +408,7 @@ function ResourceInput({
       placeholder="+ Paste resource URL, press Enter…"
       inputMode="url"
       aria-label="New resource URL"
-      className="h-8 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
+      className="h-11 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
     />
   );
 }

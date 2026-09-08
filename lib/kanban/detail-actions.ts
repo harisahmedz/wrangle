@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
 import {
@@ -16,7 +16,7 @@ import {
   memberships,
 } from "@/db/schema";
 import { requireMembership } from "@/lib/authz";
-import { createUploadSignature, destroyAsset } from "@/lib/cloudinary";
+import { createUploadSignature, receiptDeliveryUrl } from "@/lib/cloudinary";
 import {
   addChecklistItemSchema,
   addCommentSchema,
@@ -62,17 +62,26 @@ export async function addChecklistItem(formData: FormData): Promise<ActionResult
   const ctx = await requireCard(parsed.data.cardId);
   if (!ctx) return failure("Card not found");
 
-  const [last] = await db
-    .select({ position: checklistItems.position })
-    .from(checklistItems)
-    .where(eq(checklistItems.cardId, parsed.data.cardId))
-    .orderBy(asc(checklistItems.position))
-    .limit(1);
-
-  await db.insert(checklistItems).values({
-    cardId: parsed.data.cardId,
-    text: parsed.data.text,
-    position: generateKeyBetween(last?.position ?? null, null),
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`checklist:${parsed.data.cardId}`}::text))`,
+    );
+    const [last] = await tx
+      .select({ position: checklistItems.position })
+      .from(checklistItems)
+      .where(
+        and(
+          eq(checklistItems.cardId, parsed.data.cardId),
+          isNull(checklistItems.deletedAt),
+        ),
+      )
+      .orderBy(desc(checklistItems.position))
+      .limit(1);
+    await tx.insert(checklistItems).values({
+      cardId: parsed.data.cardId,
+      text: parsed.data.text,
+      position: generateKeyBetween(last?.position ?? null, null),
+    });
   });
   touch();
   return { ok: true };
@@ -87,7 +96,12 @@ export async function toggleChecklistItem(formData: FormData): Promise<ActionRes
   const [item] = await db
     .select()
     .from(checklistItems)
-    .where(eq(checklistItems.id, parsed.data.itemId))
+    .where(
+      and(
+        eq(checklistItems.id, parsed.data.itemId),
+        isNull(checklistItems.deletedAt),
+      ),
+    )
     .limit(1);
   if (!item) return failure("Item not found");
   if (!(await requireCard(item.cardId))) return failure("Card not found");
@@ -114,7 +128,65 @@ export async function deleteChecklistItem(formData: FormData): Promise<ActionRes
   if (!item) return failure("Item not found");
   if (!(await requireCard(item.cardId))) return failure("Card not found");
 
-  await db.delete(checklistItems).where(eq(checklistItems.id, parsed.data.itemId));
+  await db
+    .update(checklistItems)
+    .set({ deletedAt: new Date() })
+    .where(eq(checklistItems.id, parsed.data.itemId));
+  touch();
+  return { ok: true };
+}
+
+export async function restoreChecklistItem(formData: FormData): Promise<ActionResult> {
+  const parsed = checklistItemSchema.safeParse({
+    itemId: formData.get("itemId"),
+  });
+  if (!parsed.success) return failure("Invalid item");
+
+  const [item] = await db
+    .select({ cardId: checklistItems.cardId, position: checklistItems.position })
+    .from(checklistItems)
+    .where(eq(checklistItems.id, parsed.data.itemId))
+    .limit(1);
+  if (!item || !(await requireCard(item.cardId))) return failure("Item not found");
+
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`checklist:${item.cardId}`}::text))`,
+    );
+    const [collision] = await tx
+      .select({ id: checklistItems.id })
+      .from(checklistItems)
+      .where(
+        and(
+          eq(checklistItems.cardId, item.cardId),
+          eq(checklistItems.position, item.position),
+          isNull(checklistItems.deletedAt),
+          ne(checklistItems.id, parsed.data.itemId),
+        ),
+      )
+      .limit(1);
+    if (collision) {
+      const [last] = await tx
+        .select({ position: checklistItems.position })
+        .from(checklistItems)
+        .where(
+          and(
+            eq(checklistItems.cardId, item.cardId),
+            isNull(checklistItems.deletedAt),
+          ),
+        )
+        .orderBy(desc(checklistItems.position))
+        .limit(1);
+      await tx
+        .update(checklistItems)
+        .set({ position: generateKeyBetween(last?.position ?? null, null) })
+        .where(eq(checklistItems.id, collision.id));
+    }
+    await tx
+      .update(checklistItems)
+      .set({ deletedAt: null })
+      .where(eq(checklistItems.id, parsed.data.itemId));
+  });
   touch();
   return { ok: true };
 }
@@ -151,7 +223,30 @@ export async function deleteLabel(formData: FormData): Promise<ActionResult> {
   if (!label) return failure("Label not found");
 
   await requireMembership(label.projectId, "admin");
-  await db.delete(labels).where(eq(labels.id, parsed.data.labelId));
+  await db
+    .update(labels)
+    .set({ deletedAt: new Date() })
+    .where(eq(labels.id, parsed.data.labelId));
+  touch();
+  return { ok: true };
+}
+
+export async function restoreLabel(formData: FormData): Promise<ActionResult> {
+  const parsed = labelIdSchema.safeParse({ labelId: formData.get("labelId") });
+  if (!parsed.success) return failure("Invalid label");
+
+  const [label] = await db
+    .select({ projectId: labels.projectId })
+    .from(labels)
+    .where(eq(labels.id, parsed.data.labelId))
+    .limit(1);
+  if (!label) return failure("Label not found");
+  await requireMembership(label.projectId, "admin");
+
+  await db
+    .update(labels)
+    .set({ deletedAt: null })
+    .where(eq(labels.id, parsed.data.labelId));
   touch();
   return { ok: true };
 }
@@ -176,7 +271,9 @@ export async function setCardLabels(formData: FormData): Promise<ActionResult> {
     .select({ id: labels.id })
     .from(labels)
     .innerJoin(cards, eq(labels.projectId, cards.projectId))
-    .where(eq(cards.id, parsed.data.cardId));
+    .where(
+      and(eq(cards.id, parsed.data.cardId), isNull(labels.deletedAt)),
+    );
   const allowed = new Set(projectLabels.map((l) => l.id));
 
   await db.transaction(async (tx) => {
@@ -282,6 +379,38 @@ export async function deleteComment(formData: FormData): Promise<ActionResult> {
   return { ok: true };
 }
 
+export async function restoreComment(formData: FormData): Promise<ActionResult> {
+  const parsed = commentIdSchema.safeParse({
+    commentId: formData.get("commentId"),
+  });
+  if (!parsed.success) return failure("Invalid comment");
+
+  const [comment] = await db
+    .select({ cardId: comments.cardId, authorId: comments.authorId })
+    .from(comments)
+    .where(eq(comments.id, parsed.data.commentId))
+    .limit(1);
+  if (!comment) return failure("Comment not found");
+
+  const projectId = await cardProjectId(comment.cardId);
+  if (!projectId) return failure("Card not found");
+  const ctx = await requireMembership(projectId, "viewer");
+  if (
+    comment.authorId !== ctx.userId &&
+    ctx.role !== "admin" &&
+    ctx.role !== "owner"
+  ) {
+    return failure("Not allowed");
+  }
+
+  await db
+    .update(comments)
+    .set({ deletedAt: null })
+    .where(eq(comments.id, parsed.data.commentId));
+  touch();
+  return { ok: true };
+}
+
 export async function signUpload(
   formData: FormData,
 ): Promise<ActionResult<{ cloudName: string; apiKey: string; publicId: string; timestamp: number; signature: string; folder: string }>> {
@@ -298,7 +427,12 @@ export async function signUpload(
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(attachments)
-    .where(eq(attachments.cardId, parsed.data.cardId));
+    .where(
+      and(
+        eq(attachments.cardId, parsed.data.cardId),
+        isNull(attachments.deletedAt),
+      ),
+    );
   if (count >= 10) return failure("Attachment limit reached (10)");
 
   const sig = createUploadSignature(ctx.userId, parsed.data.mime, parsed.data.bytes);
@@ -338,7 +472,7 @@ export async function confirmAttachment(formData: FormData): Promise<ActionResul
   await db.insert(attachments).values({
     cardId: parsed.data.cardId,
     cloudinaryPublicId: parsed.data.publicId,
-    url: parsed.data.url,
+    url: receiptDeliveryUrl(parsed.data.publicId),
     mime: parsed.data.mime,
     bytes: parsed.data.bytes,
     width: parsed.data.width ?? null,
@@ -359,7 +493,43 @@ export async function deleteAttachment(formData: FormData): Promise<ActionResult
     .select({
       id: attachments.id,
       cardId: attachments.cardId,
-      publicId: attachments.cloudinaryPublicId,
+      uploadedBy: attachments.uploadedBy,
+      projectId: cards.projectId,
+    })
+    .from(attachments)
+    .innerJoin(cards, eq(attachments.cardId, cards.id))
+    .where(
+      and(
+        eq(attachments.id, parsed.data.attachmentId),
+        isNull(attachments.deletedAt),
+      ),
+    )
+    .limit(1);
+  if (!row || !row.cardId) return failure("Attachment not found");
+
+  const ctx = await requireMembership(row.projectId, "viewer");
+  const canDelete =
+    row.uploadedBy === ctx.userId || ctx.role === "admin" || ctx.role === "owner";
+  if (!canDelete) return failure("Not allowed");
+
+  await db
+    .update(attachments)
+    .set({ deletedAt: new Date() })
+    .where(eq(attachments.id, row.id));
+  touch();
+  return { ok: true };
+}
+
+export async function restoreAttachment(formData: FormData): Promise<ActionResult> {
+  const parsed = attachmentIdSchema.safeParse({
+    attachmentId: formData.get("attachmentId"),
+  });
+  if (!parsed.success) return failure("Invalid attachment");
+
+  const [row] = await db
+    .select({
+      id: attachments.id,
+      cardId: attachments.cardId,
       uploadedBy: attachments.uploadedBy,
       projectId: cards.projectId,
     })
@@ -370,12 +540,14 @@ export async function deleteAttachment(formData: FormData): Promise<ActionResult
   if (!row || !row.cardId) return failure("Attachment not found");
 
   const ctx = await requireMembership(row.projectId, "viewer");
-  const canDelete =
+  const canRestore =
     row.uploadedBy === ctx.userId || ctx.role === "admin" || ctx.role === "owner";
-  if (!canDelete) return failure("Not allowed");
+  if (!canRestore) return failure("Not allowed");
 
-  await destroyAsset(row.publicId);
-  await db.delete(attachments).where(eq(attachments.id, row.id));
+  await db
+    .update(attachments)
+    .set({ deletedAt: null })
+    .where(eq(attachments.id, row.id));
   touch();
   return { ok: true };
 }

@@ -15,6 +15,9 @@ import {
   deleteAttachment,
   deleteChecklistItem,
   deleteComment,
+  restoreAttachment,
+  restoreChecklistItem,
+  restoreComment,
   setCardAssignees,
   setCardLabels,
   signUpload,
@@ -72,9 +75,11 @@ function escapeCommentHtml(text: string): string {
 export function ChecklistSection({
   cardId,
   items,
+  readOnly = false,
 }: {
   cardId: string;
   items: ChecklistRow[];
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const pushToast = useToast();
@@ -128,6 +133,7 @@ export function ChecklistSection({
           <li key={item.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-surface-2">
             <button
               onClick={() => {
+                if (readOnly) return;
                 if (!guard.begin(item.id)) return;
                 startTransition(async () => {
                   toggleOptimistic(item.id);
@@ -145,43 +151,61 @@ export function ChecklistSection({
                 });
               }}
               aria-pressed={item.isDone}
+              disabled={readOnly}
               aria-label={`Toggle ${item.text}`}
-              className={cn(
-                "flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px]",
-                item.isDone
-                  ? "border-emerald-500 bg-emerald-500 text-white"
-                  : "border-border hover:border-accent",
-              )}
+              className="flex h-11 w-11 shrink-0 items-center justify-center"
             >
-              {item.isDone && "✓"}
+              <span
+                className={cn(
+                  "flex h-4 w-4 items-center justify-center rounded border text-[10px]",
+                  item.isDone
+                    ? "border-emerald-500 bg-emerald-500 text-white"
+                    : "border-border hover:border-accent",
+                )}
+              >
+                {item.isDone && "✓"}
+              </span>
             </button>
             <span className={cn("flex-1 text-sm", item.isDone && "text-muted line-through")}>
               {item.text}
             </span>
-            <button
+            {!readOnly && <button
               onClick={() => {
                 const fd = new FormData();
                 fd.set("itemId", item.id);
                 startTransition(async () => {
-                  await deleteChecklistItem(fd);
+                  const res = await deleteChecklistItem(fd);
+                  if (!res.ok) {
+                    pushToast({ message: res.error });
+                    return;
+                  }
+                  pushToast({
+                    message: "Checklist item deleted",
+                    actionLabel: "Undo",
+                    onAction: () => {
+                      const undo = new FormData();
+                      undo.set("itemId", item.id);
+                      void restoreChecklistItem(undo);
+                    },
+                  });
                 });
               }}
               aria-label={`Delete ${item.text}`}
-              className="text-xs text-muted opacity-0 group-hover:opacity-100 hover:text-danger"
+              className="flex h-11 w-11 items-center justify-center text-xs text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
             >
               ✕
-            </button>
+            </button>}
           </li>
         ))}
       </ul>
-      <input
+      {!readOnly && <input
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && add()}
         placeholder="+ Add item"
         aria-label="New checklist item"
-        className="h-8 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
-      />
+        className="h-11 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
+      />}
     </section>
   );
 }
@@ -192,12 +216,14 @@ export function LabelsSection({
   labels,
   activeIds,
   canManage,
+  canEdit = true,
 }: {
   projectId: string;
   cardId: string;
   labels: LabelRow[];
   activeIds: string[];
   canManage: boolean;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const pushToast = useToast();
@@ -251,7 +277,7 @@ export function LabelsSection({
     <section className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Labels</p>
-        {canManage && (
+        {canManage && canEdit && (
           <button
             onClick={() => setCreating((c) => !c)}
             className="text-xs text-muted hover:text-text"
@@ -300,6 +326,7 @@ export function LabelsSection({
             <button
               key={label.id}
               onClick={() => toggle(label.id)}
+              disabled={!canEdit}
               aria-pressed={active}
               style={
                 active
@@ -307,7 +334,7 @@ export function LabelsSection({
                   : undefined
               }
               className={cn(
-                "flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs transition-colors",
+                "flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs transition-colors",
                 !active && "text-muted hover:text-text",
               )}
             >
@@ -333,10 +360,12 @@ export function AssigneesSection({
   cardId,
   members,
   activeIds,
+  readOnly = false,
 }: {
   cardId: string;
   members: MemberRow[];
   activeIds: string[];
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const pushToast = useToast();
@@ -380,10 +409,11 @@ export function AssigneesSection({
             <button
               key={m.userId}
               onClick={() => toggle(m.userId)}
+              disabled={readOnly}
               aria-pressed={active}
               title={m.name ?? undefined}
               className={cn(
-                "flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-xs transition-colors",
+                "flex min-h-11 items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-xs transition-colors",
                 active
                   ? "border-accent bg-accent/10 text-text"
                   : "border-border text-muted hover:text-text",
@@ -410,10 +440,12 @@ export function CommentsSection({
   cardId,
   comments,
   viewerName,
+  readOnly = false,
 }: {
   cardId: string;
   comments: CommentRow[];
   viewerName?: string;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const pushToast = useToast();
@@ -461,7 +493,7 @@ export function CommentsSection({
   return (
     <section className="space-y-3">
       <p className="text-sm font-medium">Comments</p>
-      <textarea
+      {!readOnly && <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onKeyDown={(e) => {
@@ -472,8 +504,8 @@ export function CommentsSection({
         maxLength={5000}
         aria-label="New comment"
         className="w-full resize-y rounded-md border border-border bg-surface-2 p-2 text-sm"
-      />
-      {body.trim() && (
+      />}
+      {!readOnly && body.trim() && (
         <button
           onClick={post}
           disabled={sending}
@@ -489,17 +521,30 @@ export function CommentsSection({
               <span className="font-medium text-text">{c.authorName}</span>
               <span className="flex items-center gap-2">
                 {new Date(c.createdAt).toLocaleString()}
-                {c.canDelete && (
+                {!readOnly && c.canDelete && (
                   <button
                     onClick={() => {
                       const fd = new FormData();
                       fd.set("commentId", c.id);
                       startTransition(async () => {
-                        await deleteComment(fd);
+                        const res = await deleteComment(fd);
+                        if (!res.ok) {
+                          pushToast({ message: res.error });
+                          return;
+                        }
+                        pushToast({
+                          message: "Comment deleted",
+                          actionLabel: "Undo",
+                          onAction: () => {
+                            const undo = new FormData();
+                            undo.set("commentId", c.id);
+                            void restoreComment(undo);
+                          },
+                        });
                       });
                     }}
                     aria-label="Delete comment"
-                    className="opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger"
+                    className="flex h-11 w-11 items-center justify-center transition-opacity sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
                   >
                     ✕
                   </button>
@@ -521,10 +566,12 @@ export function AttachmentsSection({
   cardId,
   attachments,
   cloudinaryReady,
+  readOnly = false,
 }: {
   cardId: string;
   attachments: AttachmentRow[];
   cloudinaryReady: boolean;
+  readOnly?: boolean;
 }) {
   const pushToast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -587,7 +634,7 @@ export function AttachmentsSection({
     <section className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Attachments</p>
-        {cloudinaryReady && (
+        {cloudinaryReady && !readOnly && (
           <>
             <input
               ref={fileRef}
@@ -610,7 +657,7 @@ export function AttachmentsSection({
           </>
         )}
       </div>
-      {!cloudinaryReady && (
+      {!cloudinaryReady && !readOnly && (
         <p className="rounded-md border border-dashed border-border p-2 text-xs text-muted">
           Set CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET in .env.local to enable
           signed uploads.
@@ -631,18 +678,30 @@ export function AttachmentsSection({
             <span className="text-xs text-muted">
               {(a.bytes / 1024 / 1024).toFixed(1)}MB
             </span>
-            {a.canDelete && (
+            {!readOnly && a.canDelete && (
               <button
                 onClick={() => {
                   const fd = new FormData();
                   fd.set("attachmentId", a.id);
                   startTransition(async () => {
                     const res = await deleteAttachment(fd);
-                    if (!res.ok) pushToast({ message: res.error });
+                    if (!res.ok) {
+                      pushToast({ message: res.error });
+                      return;
+                    }
+                    pushToast({
+                      message: "Attachment deleted",
+                      actionLabel: "Undo",
+                      onAction: () => {
+                        const undo = new FormData();
+                        undo.set("attachmentId", a.id);
+                        void restoreAttachment(undo);
+                      },
+                    });
                   });
                 }}
                 aria-label="Delete attachment"
-                className="text-xs text-muted opacity-0 group-hover:opacity-100 hover:text-danger"
+                className="flex h-11 w-11 items-center justify-center text-xs text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
               >
                 ✕
               </button>

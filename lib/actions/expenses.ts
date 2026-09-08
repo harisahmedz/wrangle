@@ -1,10 +1,10 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
-import { expenseCategories, expenses } from "@/db/schema";
+import { expenseCategories, expenses, users } from "@/db/schema";
 import type { ExpenseCategory } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import {
@@ -38,12 +38,6 @@ async function ownCategory(
 }
 
 export async function ensureCategories(userId: string): Promise<void> {
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(expenseCategories)
-    .where(eq(expenseCategories.userId, userId));
-  if (count > 0) return;
-
   const defaults = [
     { name: "Food", emoji: "🍔", color: "#f59e0b" },
     { name: "Transport", emoji: "🚌", color: "#3b82f6" },
@@ -53,15 +47,25 @@ export async function ensureCategories(userId: string): Promise<void> {
     { name: "Fun", emoji: "🎉", color: "#8b5cf6" },
     { name: "Other", emoji: "📦", color: "#14b8a6" },
   ];
-  await db.insert(expenseCategories).values(
-    defaults.map((c, i) => ({
-      userId,
-      name: c.name,
-      emoji: c.emoji,
-      color: c.color,
-      position: `a${i}`,
-    })),
-  );
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`categories:${userId}`}::text))`,
+    );
+    const [{ count }] = await tx
+      .select({ count: sql<number>`count(*)::int` })
+      .from(expenseCategories)
+      .where(eq(expenseCategories.userId, userId));
+    if (count > 0) return;
+    await tx.insert(expenseCategories).values(
+      defaults.map((c, i) => ({
+        userId,
+        name: c.name,
+        emoji: c.emoji,
+        color: c.color,
+        position: `a${i}`,
+      })),
+    );
+  });
 }
 
 export async function addExpense(
@@ -77,14 +81,24 @@ export async function addExpense(
     String(formData.get("paymentMethod") ?? "").slice(0, 40) || null;
   const receiptPublicId =
     String(formData.get("receiptPublicId") ?? "").trim().slice(0, 300) || null;
-  const receiptUrl = String(formData.get("receiptUrl") ?? "").trim().slice(0, 500) || null;
 
   if (!amountMinor || !Number.isInteger(amountMinor) || amountMinor <= 0 || amountMinor > 100_000_000) {
     return failure("Enter an amount above zero");
   }
   if (!spentOn) return failure("Invalid date");
+  if (
+    receiptPublicId &&
+    !receiptPublicId.startsWith(`wrangle/${userId}/receipts/`)
+  ) {
+    return failure("Invalid receipt upload");
+  }
   const category = await ownCategory(userId, categoryId);
   if (!category) return failure("Pick a category");
+  const [user] = await db
+    .select({ currency: users.currency })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
 
   const [row] = await db
     .insert(expenses)
@@ -92,12 +106,12 @@ export async function addExpense(
       userId,
       categoryId,
       amountMinor,
-      currency: "USD",
+      currency: user?.currency ?? "USD",
       spentOn,
       note: note || null,
       paymentMethod,
       receiptPublicId,
-      receiptUrl: receiptUrl ?? (receiptPublicId ? receiptDeliveryUrl(receiptPublicId) : null),
+      receiptUrl: receiptPublicId ? receiptDeliveryUrl(receiptPublicId) : null,
     })
     .returning({ id: expenses.id });
 
@@ -135,11 +149,11 @@ export async function updateExpense(
   if (formData.has("receiptPublicId")) {
     const publicId =
       String(formData.get("receiptPublicId") ?? "").trim().slice(0, 300) || null;
-    const url =
-      String(formData.get("receiptUrl") ?? "").trim().slice(0, 500) || null;
+    if (publicId && !publicId.startsWith(`wrangle/${userId}/receipts/`)) {
+      return failure("Invalid receipt upload");
+    }
     receiptPatch.receiptPublicId = publicId;
-    receiptPatch.receiptUrl =
-      publicId ? (url ?? receiptDeliveryUrl(publicId)) : null;
+    receiptPatch.receiptUrl = publicId ? receiptDeliveryUrl(publicId) : null;
   }
 
   await db
@@ -208,23 +222,28 @@ export async function createCategory(
   const color = String(formData.get("color") ?? "#8b5cf6");
   if (!name || name.length > 40) return failure("Name required (≤40)");
 
-  const [last] = await db
-    .select({ position: expenseCategories.position })
-    .from(expenseCategories)
-    .where(eq(expenseCategories.userId, userId))
-    .orderBy(asc(expenseCategories.position))
-    .limit(1);
-
-  const [row] = await db
-    .insert(expenseCategories)
-    .values({
-      userId,
-      name,
-      emoji,
-      color,
-      position: generateKeyBetween(last?.position ?? null, null),
-    })
-    .returning({ id: expenseCategories.id });
+  const row = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`categories:${userId}`}::text))`,
+    );
+    const [last] = await tx
+      .select({ position: expenseCategories.position })
+      .from(expenseCategories)
+      .where(eq(expenseCategories.userId, userId))
+      .orderBy(desc(expenseCategories.position))
+      .limit(1);
+    const [created] = await tx
+      .insert(expenseCategories)
+      .values({
+        userId,
+        name,
+        emoji,
+        color,
+        position: generateKeyBetween(last?.position ?? null, null),
+      })
+      .returning({ id: expenseCategories.id });
+    return created;
+  });
 
   refresh();
   return { ok: true, data: { id: row.id } };

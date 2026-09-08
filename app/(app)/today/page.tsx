@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, asc, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { boards, cards, memberships, projects, users } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
@@ -26,11 +26,12 @@ export default async function TodayPage({ searchParams }: Props) {
     [sp.text, sp.link].filter(Boolean).join(" ").slice(0, 280) || null;
 
   const [user] = await db
-    .select({ timezone: users.timezone })
+    .select({ timezone: users.timezone, now: sql<Date>`now()` })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   const timeZone = user?.timezone || "UTC";
+  const now = user?.now ?? new Date(0);
 
   const today = todayWindow(timeZone);
   const upcoming = upcomingWindow(timeZone);
@@ -45,7 +46,6 @@ export default async function TodayPage({ searchParams }: Props) {
       projectName: projects.name,
       boardKind: boards.kind,
       isAllDay: cards.isAllDay,
-      isPast: sql<boolean>`(${cards.dueAt} < now())`,
     })
     .from(cards)
     .innerJoin(projects, eq(cards.projectId, projects.id))
@@ -57,7 +57,9 @@ export default async function TodayPage({ searchParams }: Props) {
     .where(
       and(
         isNull(cards.deletedAt),
-        gte(cards.dueAt, today.start),
+        isNull(cards.completedAt),
+        isNull(projects.deletedAt),
+        isNull(projects.archivedAt),
         lt(cards.dueAt, weekEnd),
       ),
     )
@@ -75,7 +77,9 @@ export default async function TodayPage({ searchParams }: Props) {
       projectName: r.projectName,
       boardKind: r.boardKind,
       dueAt: due,
-      overdue: r.isPast,
+      overdue: r.isAllDay
+        ? due.getTime() < today.start.getTime()
+        : due.getTime() < now.getTime(),
     };
     if (r.dueAt!.getTime() < today.end.getTime()) {
       dueTodayOrOverdue.push(row);
@@ -94,11 +98,22 @@ export default async function TodayPage({ searchParams }: Props) {
     return [...map.entries()];
   };
 
-  const [{ projectCount }] = await db
-    .select({ projectCount: sql<number>`count(*)::int` })
-    .from(memberships)
-    .where(eq(memberships.userId, userId));
-  const onboarding = projectCount === 0;
+  const [{ cardCount }] = await db
+    .select({ cardCount: sql<number>`count(${cards.id})::int` })
+    .from(cards)
+    .innerJoin(projects, eq(cards.projectId, projects.id))
+    .innerJoin(
+      memberships,
+      and(eq(memberships.projectId, projects.id), eq(memberships.userId, userId)),
+    )
+    .where(
+      and(
+        isNull(cards.deletedAt),
+        isNull(projects.deletedAt),
+        isNull(projects.archivedAt),
+      ),
+    );
+  const onboarding = cardCount === 0;
 
   return (
     <div className="space-y-8">

@@ -4,6 +4,7 @@ import { and, asc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   cards,
+  cardFocuses,
   dayReviews,
   expenses,
   learningItems,
@@ -86,11 +87,20 @@ export default async function ShutdownPage() {
       .from(cards)
       .innerJoin(projects, eq(cards.projectId, projects.id))
       .innerJoin(memberships, memberJoin(userId))
+      .innerJoin(
+        cardFocuses,
+        and(
+          eq(cardFocuses.cardId, cards.id),
+          eq(cardFocuses.userId, userId),
+          eq(cardFocuses.focusDate, todayKey),
+        ),
+      )
       .where(
         and(
           isNull(cards.deletedAt),
           isNull(cards.completedAt),
-          eq(cards.focusedOn, todayKey),
+          isNull(projects.deletedAt),
+          isNull(projects.archivedAt),
         ),
       )
       .orderBy(asc(cards.dueAt)),
@@ -100,16 +110,26 @@ export default async function ShutdownPage() {
         title: cards.title,
         projectName: projects.name,
         dueAt: cards.dueAt,
-        focusedOn: cards.focusedOn,
-        isPast: sql<boolean>`(${cards.dueAt} < now())`,
+        isAllDay: cards.isAllDay,
+        focusedOn: cardFocuses.focusDate,
       })
       .from(cards)
       .innerJoin(projects, eq(cards.projectId, projects.id))
       .innerJoin(memberships, memberJoin(userId))
+      .leftJoin(
+        cardFocuses,
+        and(
+          eq(cardFocuses.cardId, cards.id),
+          eq(cardFocuses.userId, userId),
+          eq(cardFocuses.focusDate, todayKey),
+        ),
+      )
       .where(
         and(
           isNull(cards.deletedAt),
           isNull(cards.completedAt),
+          isNull(projects.deletedAt),
+          isNull(projects.archivedAt),
           lt(cards.dueAt, today.end),
         ),
       )
@@ -117,10 +137,10 @@ export default async function ShutdownPage() {
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(cards)
-      .innerJoin(memberships, memberJoin(userId))
       .where(
         and(
           isNull(cards.deletedAt),
+          eq(cards.completedBy, userId),
           gte(cards.completedAt, today.start),
           lt(cards.completedAt, today.end),
         ),
@@ -135,6 +155,7 @@ export default async function ShutdownPage() {
         and(
           eq(learningItems.userId, userId),
           isNull(learningItems.deletedAt),
+          isNull(learningSessions.deletedAt),
           eq(learningSessions.happenedOn, todayKey),
         ),
       ),
@@ -178,7 +199,9 @@ export default async function ShutdownPage() {
     title: r.title,
     projectName: r.projectName,
     dueAt: r.dueAt ? new Date(r.dueAt) : today.end,
-    overdue: r.isPast,
+    overdue: r.isAllDay
+      ? new Date(r.dueAt ?? today.end).getTime() < today.start.getTime()
+      : new Date(r.dueAt ?? today.end).getTime() < now.getTime(),
     focused: r.focusedOn === todayKey,
   });
 

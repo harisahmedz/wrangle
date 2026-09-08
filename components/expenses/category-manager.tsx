@@ -5,7 +5,8 @@ import {
   archiveCategory,
   createCategory,
   updateCategory,
-} from "@/lib/actions/expenses";import { Sheet } from "@/components/ui/dialog";
+} from "@/lib/actions/expenses";
+import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { CATEGORY_COLORS } from "@/lib/palette";
@@ -46,7 +47,7 @@ export function CategoryManagerButton({
       <button
         onClick={() => setOpen(true)}
         aria-label="Manage categories"
-        className="rounded-md border border-border px-3 py-2 text-sm text-muted transition-colors hover:text-text"
+        className="h-11 rounded-md border border-border px-3 text-sm text-muted transition-colors hover:text-text"
       >
         Categories
       </button>
@@ -69,7 +70,7 @@ export function CategoryManagerButton({
               placeholder="Name…"
               maxLength={40}
               aria-label="Category name"
-              className="h-9 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
+              className="h-11 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
             />
             <div className="flex flex-wrap gap-1">
               {EMOJIS.map((e) => (
@@ -79,7 +80,7 @@ export function CategoryManagerButton({
                   aria-label={`Emoji ${e}`}
                   aria-pressed={emoji === e}
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-md text-base",
+                    "flex h-11 w-11 items-center justify-center rounded-md text-base",
                     emoji === e ? "bg-accent/20 ring-1 ring-accent" : "hover:bg-surface-2",
                   )}
                 >
@@ -96,7 +97,7 @@ export function CategoryManagerButton({
                   aria-pressed={color === c}
                   style={{ backgroundColor: c }}
                   className={cn(
-                    "h-6 w-6 rounded-full",
+                    "h-11 w-11 rounded-full border-[10px] border-surface",
                     color === c && "ring-2 ring-text ring-offset-2 ring-offset-surface",
                   )}
                 />
@@ -144,7 +145,7 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="h-8 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
+          className="h-11 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
           aria-label="Category name"
         />
         <div className="flex flex-wrap gap-1">
@@ -155,7 +156,7 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
               aria-label={`Emoji ${e}`}
               aria-pressed={emoji === e}
               className={cn(
-                "flex h-7 w-7 items-center justify-center rounded text-sm",
+                "flex h-11 w-11 items-center justify-center rounded text-sm",
                 emoji === e ? "bg-accent/20 ring-1 ring-accent" : "",
               )}
             >
@@ -172,7 +173,7 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
               aria-pressed={color === col}
               style={{ backgroundColor: col }}
               className={cn(
-                "h-5 w-5 rounded-full",
+                "h-11 w-11 rounded-full border-[11px] border-surface",
                 color === col && "ring-2 ring-text ring-offset-1 ring-offset-surface",
               )}
             />
@@ -197,7 +198,7 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
       <button
         onClick={() => setEditing(true)}
         aria-label={`Edit ${c.name}`}
-        className="text-xs text-muted opacity-0 group-hover:opacity-100 hover:text-text"
+        className="flex h-11 items-center px-2 text-xs text-muted sm:h-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-text"
       >
         Edit
       </button>
@@ -207,11 +208,23 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
           fd.set("categoryId", c.id);
           startTransition(async () => {
             const res = await archiveCategory(fd);
-            if (!res.ok) pushToast({ message: res.error });
+            if (!res.ok) {
+              pushToast({ message: res.error });
+              return;
+            }
+            pushToast({
+              message: `${c.name} archived`,
+              actionLabel: "Undo",
+              onAction: () => {
+                const undo = new FormData();
+                undo.set("categoryId", c.id);
+                void archiveCategory(undo);
+              },
+            });
           });
         }}
         aria-label={`Archive ${c.name}`}
-        className="text-xs text-muted opacity-0 group-hover:opacity-100 hover:text-danger"
+        className="flex h-11 items-center px-2 text-xs text-muted sm:h-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
       >
         Archive
       </button>

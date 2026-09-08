@@ -9,10 +9,14 @@ export function ExpenseList({
   rows,
   categories,
   cloudinaryReady,
+  defaultSpentOn,
+  currency,
 }: {
   rows: ExpenseRow[];
   categories: CategoryChip[];
   cloudinaryReady: boolean;
+  defaultSpentOn: string;
+  currency: string;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<ExpenseRow | null>(null);
@@ -61,10 +65,10 @@ export function ExpenseList({
               </p>
               <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
                 {dayRows.map((r) => (
-                  <li key={r.id}>
+                  <li key={r.id} className="flex items-stretch">
                     <button
                       onClick={() => openEdit(r)}
-                      className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-surface-2"
+                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-surface-2"
                     >
                       <span
                         aria-hidden
@@ -83,26 +87,24 @@ export function ExpenseList({
                         </span>
                         <span className="block text-xs text-muted">
                           {r.categoryName}
-                          {r.receiptUrl && (
-                            <>
-                              {" · "}
-                              <a
-                                href={r.receiptUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="underline underline-offset-2 hover:text-text"
-                              >
-                                📎 receipt
-                              </a>
-                            </>
-                          )}
+                          {r.paymentMethod ? ` · ${r.paymentMethod}` : ""}
                         </span>
                       </span>
                       <span className="shrink-0 tabular-nums text-sm font-medium">
-                        {formatMinor(r.amountMinor)}
+                        {formatMinor(r.amountMinor, r.currency)}
                       </span>
                     </button>
+                    {r.receiptUrl && (
+                      <a
+                        href={r.receiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open receipt for ${r.note || r.categoryName}`}
+                        className="flex w-11 shrink-0 items-center justify-center text-muted hover:bg-surface-2 hover:text-text"
+                      >
+                        📎
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -116,6 +118,8 @@ export function ExpenseList({
         onClose={() => setSheetOpen(false)}
         categories={categories}
         cloudinaryReady={cloudinaryReady}
+        defaultSpentOn={defaultSpentOn}
+        currency={currency}
         editing={
           editing
             ? {
@@ -125,6 +129,7 @@ export function ExpenseList({
                 spentOn: editing.spentOn,
                 note: editing.note,
                 receiptUrl: editing.receiptUrl,
+                paymentMethod: editing.paymentMethod,
               }
             : null
         }
@@ -132,4 +137,3 @@ export function ExpenseList({
     </>
   );
 }
-

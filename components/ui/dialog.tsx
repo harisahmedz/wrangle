@@ -221,8 +221,8 @@ export function Sheet({
         className={cn(
           "w-full border-border bg-surface shadow-lg",
           variant === "side"
-            ? "h-full max-h-none overflow-y-auto sm:max-w-md rounded-l-xl p-5"
-            : "sm:max-w-md rounded-t-xl sm:rounded-xl p-5 max-h-[85dvh] overflow-y-auto",
+            ? "h-full max-h-none overflow-y-auto rounded-l-xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] sm:max-w-md sm:p-5"
+            : "max-h-[85dvh] overflow-y-auto rounded-t-xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-xl sm:pb-5",
           className,
         )}
       >
@@ -231,7 +231,8 @@ export function Sheet({
             onPointerDown={onHandleDown}
             onPointerMove={onHandleMove}
             onPointerUp={onHandleUp}
-            className="mx-auto mb-4 h-4 w-10 -touch-none rounded-full bg-border sm:hidden"
+            onPointerCancel={onHandleUp}
+            className="mx-auto mb-4 h-4 w-10 touch-none rounded-full bg-border sm:hidden"
             style={{ touchAction: "none" }}
             role="presentation"
           />

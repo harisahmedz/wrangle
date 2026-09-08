@@ -6,6 +6,7 @@ import { users } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import { AppearanceForm } from "@/components/settings/appearance-form";
 import { TimezoneForm } from "@/components/settings/timezone-form";
+import { DataAndAccount } from "@/components/settings/data-account";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -52,7 +53,7 @@ export default async function SettingsPage() {
         <div className="rounded-xl border border-border bg-surface p-4">
           <p className="text-sm font-medium">{user.currency}</p>
           <p className="mt-0.5 text-xs text-muted">
-            Single currency for now — everything is stored in USD.
+            Your single account currency is used throughout Money.
           </p>
         </div>
       </section>
@@ -81,6 +82,8 @@ export default async function SettingsPage() {
           </p>
         </div>
       </section>
+
+      <DataAndAccount />
     </div>
   );
 }

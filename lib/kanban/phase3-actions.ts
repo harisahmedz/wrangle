@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
 import {
@@ -90,7 +90,7 @@ export async function promoteIdea(
     .select({ position: cards.position })
     .from(cards)
     .where(and(eq(cards.columnId, firstColumn.id), isNull(cards.deletedAt)))
-    .orderBy(asc(cards.position))
+    .orderBy(desc(cards.position))
     .limit(1);
 
   await db
@@ -99,6 +99,8 @@ export async function promoteIdea(
       boardId: todoBoard.id,
       columnId: firstColumn.id,
       position: generateKeyBetween(last?.position ?? null, null),
+      completedAt: null,
+      completedBy: null,
     })
     .where(eq(cards.id, parsed.data.cardId));
 
@@ -162,7 +164,7 @@ export async function quickAddCard(
     .select({ position: cards.position })
     .from(cards)
     .where(and(eq(cards.columnId, firstColumn.id), isNull(cards.deletedAt)))
-    .orderBy(asc(cards.position))
+    .orderBy(desc(cards.position))
     .limit(1);
 
   await db.insert(cards).values({

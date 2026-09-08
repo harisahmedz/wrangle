@@ -50,7 +50,7 @@ export function SwRegister() {
       {offline && (
         <div
           role="status"
-          className="fixed inset-x-0 top-14 z-[90] flex justify-center px-4"
+          className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+3.5rem)] z-[90] flex justify-center px-4"
         >
           <p className="rounded-full border border-border bg-surface px-4 py-1.5 text-xs shadow-lg">
             ⚡ Offline — showing your saved pages

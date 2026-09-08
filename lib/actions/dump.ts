@@ -80,13 +80,14 @@ export async function saveDump(
   const userId = await requireUser();
 
   const [user] = await db
-    .select({ timezone: users.timezone })
+    .select({ timezone: users.timezone, currency: users.currency })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   const tz = user?.timezone || "UTC";
   const { y, m, d } = localDateParts(new Date(), tz);
   const todayKey = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const currency = user?.currency || "USD";
 
   const [personal] = await db
     .select({ projectId: projects.id })
@@ -168,6 +169,20 @@ export async function saveDump(
       and(eq(learningItems.userId, userId), isNull(learningItems.deletedAt)),
     );
 
+  const [lastLearningItem] = await db
+    .select({ position: learningItems.position })
+    .from(learningItems)
+    .where(
+      and(
+        eq(learningItems.userId, userId),
+        eq(learningItems.status, "learning"),
+        isNull(learningItems.deletedAt),
+      ),
+    )
+    .orderBy(desc(learningItems.position))
+    .limit(1);
+  let lastLearningPosition = lastLearningItem?.position ?? null;
+
   const counts = { task: 0, idea: 0, expense: 0, learning: 0 };
 
   try {
@@ -210,7 +225,7 @@ export async function saveDump(
             userId,
             categoryId: category.id,
             amountMinor: item.amountMinor,
-            currency: "USD",
+            currency,
             spentOn: item.spentOn,
             note: item.note || null,
           });
@@ -237,9 +252,15 @@ export async function saveDump(
             if (matched) itemId = matched.id;
           }
           if (!itemId) {
+            lastLearningPosition = generateKeyBetween(lastLearningPosition, null);
             const [created] = await tx
               .insert(learningItems)
-              .values({ userId, title: item.topic, status: "learning" })
+              .values({
+                userId,
+                title: item.topic,
+                status: "learning",
+                position: lastLearningPosition,
+              })
               .returning({ id: learningItems.id });
             itemId = created.id;
             learnCandidates.push({ id: created.id, title: item.topic });
@@ -255,7 +276,12 @@ export async function saveDump(
               minutes: sql<number>`coalesce(sum(${learningSessions.minutes}), 0)::int`,
             })
             .from(learningSessions)
-            .where(eq(learningSessions.itemId, itemId));
+            .where(
+              and(
+                eq(learningSessions.itemId, itemId),
+                isNull(learningSessions.deletedAt),
+              ),
+            );
           await tx
             .update(learningItems)
             .set({

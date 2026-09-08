@@ -50,7 +50,7 @@ export default async function BoardsPage() {
     .from(memberships)
     .innerJoin(projects, eq(memberships.projectId, projects.id))
     .where(and(eq(memberships.userId, userId), isNull(projects.deletedAt)))
-    .orderBy(asc(projects.position));
+    .orderBy(asc(memberships.position));
 
   const openCounts = await db
     .select({

@@ -34,10 +34,6 @@ export type SidebarProject = {
   position: string;
 };
 
-function canManage(role: SidebarProject["role"]) {
-  return role === "owner" || role === "admin";
-}
-
 function ProjectRow({
   project,
   active,
@@ -74,16 +70,20 @@ function ProjectRow({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={cn("group relative", isDragging && "opacity-40")}
+      className={cn(
+        "group relative flex items-center rounded-md",
+        active ? "bg-surface-2" : "hover:bg-surface-2",
+        isDragging && "opacity-40",
+      )}
     >
       <Link
         href={`/p/${project.id}`}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "flex items-center gap-2.5 rounded-md px-2 py-2 text-sm transition-colors",
+          "flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 py-2 text-sm transition-colors",
           active
-            ? "bg-surface-2 font-medium text-text"
-            : "text-muted hover:bg-surface-2 hover:text-text",
+            ? "font-medium text-text"
+            : "text-muted hover:text-text",
           pending && "opacity-60",
         )}
       >
@@ -96,18 +96,6 @@ function ProjectRow({
         >
           {project.emoji ?? "📁"}
         </span>
-        {showControls && (
-          <button
-            ref={setActivatorNodeRef}
-            {...attributes}
-            {...listeners}
-            aria-label={`Reorder ${project.name}`}
-            title="Drag to reorder"
-            className="shrink-0 cursor-grab touch-none select-none text-[10px] leading-none text-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
-          >
-            ⋮⋮
-          </button>
-        )}
         <span className="truncate">{project.name}</span>
         {project.isPersonal && (
           <span className="ml-auto rounded-full border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
@@ -115,6 +103,18 @@ function ProjectRow({
           </span>
         )}
       </Link>
+      {showControls && (
+        <button
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder ${project.name}`}
+          title="Drag to reorder"
+          className="mr-7 flex h-8 w-8 shrink-0 cursor-grab touch-none select-none items-center justify-center text-[10px] leading-none text-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+        >
+          ⋮⋮
+        </button>
+      )}
       {showControls && (
         <div className="absolute right-1 top-1/2 hidden -translate-y-1/2 flex-col group-hover:flex">
           <button
@@ -179,7 +179,7 @@ function ProjectList({
             active={
               pathname === `/p/${p.id}` || pathname.startsWith(`/p/${p.id}/`)
             }
-            showControls={canManage(p.role)}
+            showControls
           />
         ))}
       </SortableContext>

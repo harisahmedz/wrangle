@@ -15,10 +15,20 @@ import { QuickAddSheet } from "@/components/kanban/quick-add";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { href: "/today", label: "Today", icon: TodayIcon },
-  { href: "/boards", label: "Boards", icon: BoardsIcon },
-  { href: "/money", label: "Money", icon: MoneyIcon },
-  { href: "/learn", label: "Learn", icon: LearnIcon },
+  {
+    href: "/today",
+    label: "Today",
+    icon: TodayIcon,
+    matches: ["/today", "/shutdown", "/weekly", "/wrapped"],
+  },
+  {
+    href: "/boards",
+    label: "Boards",
+    icon: BoardsIcon,
+    matches: ["/boards", "/p", "/trash"],
+  },
+  { href: "/money", label: "Money", icon: MoneyIcon, matches: ["/money"] },
+  { href: "/learn", label: "Learn", icon: LearnIcon, matches: ["/learn"] },
 ];
 
 export function BottomTabs({
@@ -90,8 +100,10 @@ export function BottomTabs({
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-border bg-surface md:hidden"
       >
-        {tabs.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
+        {tabs.map(({ href, label, icon: Icon, matches }) => {
+          const active = matches.some(
+            (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+          );
           return (
             <Link
               key={href}

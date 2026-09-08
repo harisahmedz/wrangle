@@ -24,4 +24,8 @@ test("landing page renders the product pitch", async ({ page }) => {
     "href",
     "/signin",
   );
+  const hasHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(hasHorizontalOverflow).toBe(false);
 });

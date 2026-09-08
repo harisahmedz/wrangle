@@ -15,4 +15,6 @@ export type ExpenseRow = {
   categoryEmoji: string | null;
   categoryColor: string | null;
   receiptUrl: string | null;
+  paymentMethod: string | null;
+  currency: string;
 };

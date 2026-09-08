@@ -18,15 +18,6 @@ import { failure, type ActionResult } from "@/lib/actions/types";
 
 const MAX_PROJECTS_PER_USER = 50;
 
-async function nextPosition(): Promise<string> {
-  const [last] = await db
-    .select({ position: projects.position })
-    .from(projects)
-    .orderBy(desc(projects.position))
-    .limit(1);
-  return generateKeyBetween(last?.position ?? null, null);
-}
-
 export async function createProject(
   formData: FormData,
 ): Promise<ActionResult<{ projectId: string }>> {
@@ -48,8 +39,16 @@ export async function createProject(
     return failure("Project limit reached (50)");
   }
 
-  const position = await nextPosition();
   const projectId = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`projects:${userId}`}))`);
+    const [last] = await tx
+      .select({ position: memberships.position })
+      .from(memberships)
+      .where(eq(memberships.userId, userId))
+      .orderBy(desc(memberships.position))
+      .limit(1);
+    const position = generateKeyBetween(last?.position ?? null, null);
+
     const [project] = await tx
       .insert(projects)
       .values({ name, emoji, color, ownerId: userId, position })
@@ -58,6 +57,7 @@ export async function createProject(
       projectId: project.id,
       userId,
       role: "owner",
+      position,
     });
     await seedProjectBoards(tx, project.id);
     return project.id;
@@ -200,16 +200,16 @@ export async function moveProject(formData: FormData): Promise<ActionResult> {
   });
   if (!parsed.success) return failure("Invalid move");
 
-  const userId = await requireMembership(parsed.data.projectId, "admin").then(
+  const userId = await requireMembership(parsed.data.projectId, "viewer").then(
     (c) => c.userId,
   );
 
   const rows = await db
-    .select({ id: projects.id, position: projects.position })
+    .select({ id: projects.id, position: memberships.position })
     .from(memberships)
     .innerJoin(projects, eq(memberships.projectId, projects.id))
     .where(and(eq(memberships.userId, userId), isNull(projects.deletedAt)))
-    .orderBy(asc(projects.position));
+    .orderBy(asc(memberships.position));
 
   const index = rows.findIndex((r) => r.id === parsed.data.projectId);
   if (index === -1) return failure("Project not found");
@@ -233,9 +233,14 @@ export async function moveProject(formData: FormData): Promise<ActionResult> {
   if (!newPosition) return { ok: true };
 
   await db
-    .update(projects)
+    .update(memberships)
     .set({ position: newPosition })
-    .where(eq(projects.id, parsed.data.projectId));
+    .where(
+      and(
+        eq(memberships.projectId, parsed.data.projectId),
+        eq(memberships.userId, userId),
+      ),
+    );
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -248,12 +253,17 @@ export async function reorderProject(formData: FormData): Promise<ActionResult> 
   });
   if (!parsed.success) return failure("Invalid move");
 
-  await requireMembership(parsed.data.projectId, "admin");
+  const { userId } = await requireMembership(parsed.data.projectId, "viewer");
 
   await db
-    .update(projects)
+    .update(memberships)
     .set({ position: parsed.data.position })
-    .where(eq(projects.id, parsed.data.projectId));
+    .where(
+      and(
+        eq(memberships.projectId, parsed.data.projectId),
+        eq(memberships.userId, userId),
+      ),
+    );
 
   revalidatePath("/", "layout");
   return { ok: true };
