@@ -43,3 +43,6 @@ next-env.d.ts
 
 # playwright
 /test-results
+
+# design-review screenshots (.claude/tools/screens.mjs output)
+/.claude/tools/screens
