@@ -17,7 +17,9 @@ import {
 } from "@dnd-kit/sortable";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import type { ReactNode } from "react";
 import { generateKeyBetween } from "fractional-indexing";
+import { BoardTabs } from "@/components/kanban/board-tabs";
 import { AddColumn, Column } from "@/components/kanban/column";
 import {
   createColumn,
@@ -86,6 +88,9 @@ type Props = {
   cards: BoardCardData[];
   filterLabels: Array<{ id: string; name: string }>;
   filterMembers: Array<{ userId: string; name: string | null }>;
+  canEdit: boolean;
+  canManageColumns: boolean;
+  toolbarEnd: ReactNode;
 };
 
 type UpdateFilters = (mutate: (f: BoardFilters) => BoardFilters) => void;
@@ -134,13 +139,16 @@ function FilterBar({
     ids.includes(id) ? ids.filter((v) => v !== id) : [...ids, id];
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
+    <div
+      id="board-filters"
+      className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2"
+    >
       <input
         value={text}
         onChange={(e) => onTextChange(e.target.value)}
         placeholder="Filter by text…"
         aria-label="Filter cards by text"
-        className="h-8 w-40 rounded-md border border-border bg-surface-2 px-2 text-sm"
+        className="h-11 min-w-0 flex-[1_1_12rem] rounded-md border border-border bg-surface-2 px-3 text-sm"
       />
       <select
         value={filters.due ?? "any"}
@@ -151,7 +159,7 @@ function FilterBar({
           }))
         }
         aria-label="Filter by due date"
-        className="h-8 rounded-md border border-border bg-surface-2 px-1.5 text-sm"
+        className="h-11 rounded-md border border-border bg-surface-2 px-2 text-sm"
       >
         <option value="any">Due: any</option>
         <option value="overdue">Overdue</option>
@@ -169,7 +177,7 @@ function FilterBar({
                 onClick={() => update((f) => ({ ...f, labelIds: toggleId(f.labelIds, l.id) }))}
                 aria-pressed={active}
                 className={cn(
-                  "rounded-full border border-border px-2 py-0.5 text-xs",
+                  "min-h-11 rounded-full border border-border px-3 py-0.5 text-xs",
                   active ? "bg-accent/15 text-text" : "text-muted hover:text-text",
                 )}
               >
@@ -187,7 +195,7 @@ function FilterBar({
                 }
                 aria-pressed={active}
                 className={cn(
-                  "rounded-full border border-border px-2 py-0.5 text-xs",
+                  "min-h-11 rounded-full border border-border px-3 py-0.5 text-xs",
                   active ? "bg-accent/15 text-text" : "text-muted hover:text-text",
                 )}
               >
@@ -217,6 +225,9 @@ export function BoardView({
   cards: serverCards,
   filterLabels,
   filterMembers,
+  canEdit,
+  canManageColumns,
+  toolbarEnd,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -269,6 +280,8 @@ export function BoardView({
     filters.labelIds.length +
     filters.assigneeIds.length +
     (filters.due !== null ? 1 : 0);
+  const [filterOpen, setFilterOpen] = useState(activeFilterCount > 0);
+  const reorderEnabled = activeFilterCount === 0 && !sortByScore;
 
   const byColumn = (() => {
     const map = new Map<string, BoardCardData[]>();
@@ -319,13 +332,12 @@ export function BoardView({
         pushToast({ message: res.error });
         return;
       }
-      const lastPos = columns[columns.length - 1]?.position ?? null;
       setColumns((prev) => [
         ...prev,
         {
           id: res.data.columnId,
           name,
-          position: generateKeyBetween(lastPos, null),
+          position: res.data.position,
           color: null,
           wipLimit: null,
           isDone: false,
@@ -359,6 +371,7 @@ export function BoardView({
 
     // Column reorder path
     if (columns.some((c) => c.id === String(active.id))) {
+      if (!canManageColumns || !reorderEnabled) return;
       const result = reorderById(columns, String(active.id), String(over.id));
       if (!result || !columns.some((c) => c.id === String(over.id))) return;
       setColumns(result.items);
@@ -376,7 +389,7 @@ export function BoardView({
     }
 
     const activeCard = cards.find((c) => c.id === String(active.id));
-    if (!activeCard) return;
+    if (!activeCard || !canEdit || !reorderEnabled) return;
 
     const overIsColumn = columns.some((c) => c.id === String(over.id));
 
@@ -410,10 +423,7 @@ export function BoardView({
     } else {
       const targetList = [...(byColumn.get(targetColumnId) ?? [])];
       sourceList.splice(sourceIndex, 1);
-      insertAt =
-        sourceIndex < targetIndex && activeCard.columnId !== targetColumnId
-          ? Math.max(0, targetIndex - 1)
-          : targetIndex;
+      insertAt = targetIndex;
       targetList.splice(insertAt, 0, activeCard);
       finalList = targetList;
     }
@@ -433,8 +443,49 @@ export function BoardView({
   };
 
   return (
-    <div className="space-y-3">
-      {filterLabels.length > 0 || filterMembers.length > 0 ? (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <BoardTabs projectId={projectId} active={boardKind} />
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setFilterOpen((o) => !o)}
+            aria-expanded={filterOpen}
+            aria-controls="board-filters"
+            className={cn(
+              "flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors",
+              activeFilterCount > 0
+                ? "border-accent/50 bg-accent/10 text-text"
+                : "border-border text-muted hover:text-text",
+            )}
+          >
+            Filter
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-accent px-1.5 text-[11px] font-semibold tabular-nums text-accent-fg">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          {boardKind === "ideas" && (
+            <button
+              type="button"
+              onClick={() => setSortByScore((s) => !s)}
+              aria-pressed={sortByScore}
+              className={cn(
+                "min-h-11 rounded-md border px-3 text-sm transition-colors",
+                sortByScore
+                  ? "border-accent/50 bg-accent/10 text-text"
+                  : "border-border text-muted hover:text-text",
+              )}
+            >
+              Sort by score
+            </button>
+          )}
+          {toolbarEnd}
+        </div>
+      </div>
+
+      {filterOpen && (
         <FilterBar
           filters={filters}
           update={updateFilters}
@@ -442,30 +493,20 @@ export function BoardView({
           members={filterMembers}
           activeCount={activeFilterCount}
         />
-      ) : null}
+      )}
+
+      {!reorderEnabled && canEdit && (
+        <p className="text-xs text-muted">
+          Clear filters and score sorting to reorder cards.
+        </p>
+      )}
 
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragEnd={onDragEnd}
       >
-        {boardKind === "ideas" && (
-          <div className="flex items-center justify-end">
-            <button
-              onClick={() => setSortByScore((s) => !s)}
-              aria-pressed={sortByScore}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs transition-colors",
-                sortByScore
-                  ? "border-accent bg-accent/15 text-text"
-                  : "border-border text-muted hover:text-text",
-              )}
-            >
-              Sort by score
-            </button>
-          </div>
-        )}
-        <div className="-mx-4 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto px-4 pb-4 md:-mx-8 md:px-8">
+        <div className="scrollbar-thin -mx-4 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto px-4 pb-4 md:-mx-8 md:px-8">
           <SortableContext
             items={columns.map((col) => col.id)}
             strategy={horizontalListSortingStrategy}
@@ -478,10 +519,14 @@ export function BoardView({
                 cards={byColumn.get(col.id) ?? []}
                 onOpenCard={openCard}
                 showScore={boardKind === "ideas"}
+                canEdit={canEdit}
+                canManageColumns={canManageColumns}
+                reorderEnabled={reorderEnabled}
+                filtered={activeFilterCount > 0}
               />
             ))}
           </SortableContext>
-          <AddColumn onAdd={addColumn} />
+          {canManageColumns && <AddColumn onAdd={addColumn} />}
         </div>
       </DndContext>
     </div>

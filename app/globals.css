@@ -63,8 +63,8 @@ html.light {
   --color-success: var(--success);
   --color-warning: var(--warning);
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
@@ -95,6 +95,14 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+@media (pointer: coarse) {
+  button,
+  [role="button"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
@@ -107,5 +115,29 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ::-webkit-* rules cover Safari/older Chromium and drop Windows' arrow buttons. */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
+  &::-webkit-scrollbar-button {
+    display: none;
   }
 }

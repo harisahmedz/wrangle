@@ -31,12 +31,20 @@ export function Column({
   siblings,
   onOpenCard,
   showScore = false,
+  canEdit,
+  canManageColumns,
+  reorderEnabled,
+  filtered,
 }: {
   column: BoardColumnData;
   cards: BoardCardData[];
   siblings: BoardColumnData[];
   onOpenCard: (id: string) => void;
   showScore?: boolean;
+  canEdit: boolean;
+  canManageColumns: boolean;
+  reorderEnabled: boolean;
+  filtered: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
@@ -56,7 +64,10 @@ export function Column({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: column.id });
+  } = useSortable({
+    id: column.id,
+    disabled: { draggable: !canManageColumns || !reorderEnabled },
+  });
 
   const dragStyle = {
     transform: CSS.Transform.toString(transform),
@@ -128,6 +139,7 @@ export function Column({
         onAction: () => {
           const undoFd = new FormData();
           undoFd.set("columnId", column.id);
+          undoFd.set("movedCards", JSON.stringify(res.data.movedCards));
           void restoreColumn(undoFd);
         },
       });
@@ -141,7 +153,7 @@ export function Column({
       {...listeners}
       aria-label={`Reorder ${column.name}`}
       title="Drag to reorder"
-      className="shrink-0 cursor-grab touch-none select-none rounded px-1 text-xs leading-none text-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+      className="flex h-11 w-11 shrink-0 cursor-grab touch-none select-none items-center justify-center rounded text-xs leading-none text-muted transition-opacity sm:h-auto sm:w-auto sm:px-1 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
     >
       ⋮⋮
     </button>
@@ -156,18 +168,18 @@ export function Column({
           ...(column.color ? { borderLeftColor: column.color } : undefined),
         }}
         className={cn(
-          "group flex w-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-2 rounded-xl border-l-4 bg-surface-2/60 py-3",
-          column.isDone && "border-emerald-500",
+          "group flex w-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-2 rounded-xl border border-l-4 bg-surface py-3",
+          column.isDone && "border-l-emerald-500",
           isDragging && "opacity-40",
         )}
-        onClick={() => style({ isCollapsed: "false" })}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && style({ isCollapsed: "false" })}
+        onClick={canManageColumns ? () => style({ isCollapsed: "false" }) : undefined}
+        role={canManageColumns ? "button" : undefined}
+        tabIndex={canManageColumns ? 0 : undefined}
+        onKeyDown={canManageColumns ? (e) => e.key === "Enter" && style({ isCollapsed: "false" }) : undefined}
         aria-label={`Expand ${column.name}`}
         title={column.name}
       >
-        {grip}
+        {canManageColumns && grip}
         <span
           className="text-sm font-semibold"
           style={{ writingMode: "vertical-rl" }}
@@ -187,8 +199,8 @@ export function Column({
         ...(column.color ? { borderLeftColor: column.color } : undefined),
       }}
       className={cn(
-        "group flex w-[272px] shrink-0 snap-start flex-col rounded-xl border-l-4 bg-surface-2/60 p-2",
-        column.isDone && "border-emerald-500",
+        "group flex w-[272px] shrink-0 snap-start flex-col rounded-xl border border-l-4 bg-surface p-2",
+        column.isDone && "border-l-emerald-500",
         isDragging && "opacity-40",
       )}
     >
@@ -208,7 +220,7 @@ export function Column({
           />
         ) : (
           <div className="flex min-w-0 items-center gap-1">
-            {grip}
+            {canManageColumns && grip}
             <h2
               onDoubleClick={() => setRenaming(true)}
               title="Double-click to rename"
@@ -230,14 +242,16 @@ export function Column({
             </h2>
           </div>
         )}
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label={`Column menu for ${column.name}`}
-          aria-expanded={menuOpen}
-          className="rounded px-1.5 text-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-        >
-          ⋯
-        </button>
+        {canManageColumns && (
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label={`Column menu for ${column.name}`}
+            aria-expanded={menuOpen}
+            className="flex h-11 w-11 items-center justify-center rounded text-muted transition-opacity sm:h-auto sm:w-auto sm:px-1.5 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
+          >
+            ⋯
+          </button>
+        )}
         {menuOpen && (
           <div className="absolute right-0 top-7 z-20 w-48 overflow-hidden rounded-lg border border-border bg-surface py-1.5 shadow-lg">
             <div className="flex justify-between gap-1 px-2.5 pb-1.5">
@@ -312,19 +326,35 @@ export function Column({
         items={cards.map((c) => c.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex min-h-[8px] flex-col gap-2 overflow-y-auto">
+        <div className="scrollbar-thin flex min-h-10 flex-col gap-2 overflow-y-auto">
           {cards.map((card) => (
             <CardChip
               key={card.id}
               card={card}
               onOpen={onOpenCard}
               showScore={showScore}
+              draggable={canEdit && reorderEnabled}
             />
           ))}
+          {cards.length === 0 && !adding && (
+            !filtered && canEdit ? (
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted transition-colors hover:border-muted/50 hover:text-text"
+              >
+                Add the first card
+              </button>
+            ) : (
+              <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted">
+                {filtered ? "No cards match" : "No cards"}
+              </p>
+            )
+          )}
         </div>
       </SortableContext>
 
-      {adding ? (
+      {canEdit && (adding ? (
         <div className="mt-2">
           <textarea
             autoFocus
@@ -341,7 +371,7 @@ export function Column({
             placeholder="Card title…"
             rows={2}
             aria-label="New card title"
-            className="w-full resize-none rounded-lg border border-border bg-surface p-2 text-sm"
+            className="w-full resize-none rounded-lg border border-border bg-surface-2 p-2 text-sm"
           />
           <div className="mt-1 flex gap-2">
             <button
@@ -361,14 +391,14 @@ export function Column({
             </button>
           </div>
         </div>
-      ) : (
+      ) : (cards.length > 0 || filtered) && (
         <button
           onClick={() => setAdding(true)}
-          className="mt-2 rounded-md px-2 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface hover:text-text"
+          className="mt-2 w-full rounded-md px-2 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-text"
         >
           + Add card
         </button>
-      )}
+      ))}
 
       <Modal
         open={deleting}
@@ -443,7 +473,7 @@ export function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
   };
 
   return (
-    <div className="w-[240px] shrink-0 rounded-xl bg-surface-2/60 p-2">
+    <div className="w-[240px] shrink-0 rounded-xl border bg-surface p-2">
       <input
         autoFocus
         value={name}

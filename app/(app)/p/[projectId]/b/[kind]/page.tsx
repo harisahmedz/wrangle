@@ -22,7 +22,6 @@ import { hasMinRole, requireMembership } from "@/lib/authz";
 import { renderMarkdown } from "@/lib/markdown";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { cardHistory, describeEntry } from "@/lib/kanban/activity";
-import { BoardTabs } from "@/components/kanban/board-tabs";
 import { BoardView } from "@/components/kanban/board-view";
 import { CardDetail } from "@/components/kanban/card-detail";
 
@@ -66,7 +65,7 @@ export default async function BoardPage({ params, searchParams }: Props) {
       isCollapsed: columns.isCollapsed,
     })
     .from(columns)
-    .where(eq(columns.boardId, board.id))
+    .where(and(eq(columns.boardId, board.id), isNull(columns.deletedAt)))
     .orderBy(asc(columns.position));
 
   const boardCards = await db
@@ -103,7 +102,12 @@ export default async function BoardPage({ params, searchParams }: Props) {
           })
           .from(cardLabels)
           .innerJoin(labels, eq(cardLabels.labelId, labels.id))
-          .where(inArray(cardLabels.cardId, cardIds))
+          .where(
+            and(
+              inArray(cardLabels.cardId, cardIds),
+              isNull(labels.deletedAt),
+            ),
+          )
       : [];
   const assigneeRows =
     cardIds.length > 0
@@ -134,7 +138,7 @@ export default async function BoardPage({ params, searchParams }: Props) {
     db
       .select({ id: labels.id, name: labels.name })
       .from(labels)
-      .where(eq(labels.projectId, projectId)),
+      .where(and(eq(labels.projectId, projectId), isNull(labels.deletedAt))),
     db
       .select({ userId: memberships.userId, name: users.name })
       .from(memberships)
@@ -146,37 +150,7 @@ export default async function BoardPage({ params, searchParams }: Props) {
   const detailCardId = sp.card;
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <BoardTabs projectId={projectId} active={boardKind} />
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/p/${projectId}/members`}
-            className="rounded-md border border-border px-3 py-1.5 text-sm text-muted transition-colors hover:text-text"
-          >
-            Members
-          </Link>
-          <Link
-            href={`/p/${projectId}/activity`}
-            className="rounded-md border border-border px-3 py-1.5 text-sm text-muted transition-colors hover:text-text"
-          >
-            Activity
-          </Link>
-          <form action={`/p/${projectId}/search`} className="contents">
-            <input
-              type="search"
-              name="q"
-              placeholder="Search…"
-              aria-label="Search this project"
-              className="h-9 w-36 rounded-md border border-border bg-surface px-3 text-sm sm:w-48"
-            />
-          </form>
-          <p className="hidden text-sm text-muted lg:block">
-            Drag cards · long-press on touch · space to lift with keyboard
-          </p>
-        </div>
-      </div>
-
+    <div data-wide className="space-y-5">
       <Suspense fallback={null}>
         <BoardView
           projectId={projectId}
@@ -185,6 +159,42 @@ export default async function BoardPage({ params, searchParams }: Props) {
           columns={boardColumns}
           filterLabels={filterLabels}
           filterMembers={filterMembers}
+          canEdit={hasMinRole(ctx.role, "member")}
+          canManageColumns={hasMinRole(ctx.role, "admin")}
+          toolbarEnd={
+            <>
+              <Link
+                href={`/p/${projectId}/members`}
+                className="hidden min-h-11 items-center rounded-md border border-border px-3 text-sm text-muted transition-colors hover:text-text sm:flex"
+              >
+                Members
+              </Link>
+              <Link
+                href={`/p/${projectId}/activity`}
+                className="hidden min-h-11 items-center rounded-md border border-border px-3 text-sm text-muted transition-colors hover:text-text sm:flex"
+              >
+                Activity
+              </Link>
+              <form action={`/p/${projectId}/search`} className="min-w-0 flex-1 sm:flex-none">
+                <input
+                  type="search"
+                  name="q"
+                  placeholder="Search…"
+                  aria-label="Search this project"
+                  className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm sm:w-48"
+                />
+              </form>
+              <details className="relative sm:hidden">
+                <summary className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-md border border-border text-muted">
+                  <span className="sr-only">Project links</span>⋯
+                </summary>
+                <div className="absolute right-0 top-12 z-20 w-40 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg">
+                  <Link href={`/p/${projectId}/members`} className="block px-4 py-3 text-sm text-muted">Members</Link>
+                  <Link href={`/p/${projectId}/activity`} className="block px-4 py-3 text-sm text-muted">Activity</Link>
+                </div>
+              </details>
+            </>
+          }
           cards={boardCards.map((c) => ({
             id: c.id,
             columnId: c.columnId,
@@ -253,12 +263,17 @@ async function CardDetailView({
           isDone: checklistItems.isDone,
         })
         .from(checklistItems)
-        .where(eq(checklistItems.cardId, row.id))
+        .where(
+          and(
+            eq(checklistItems.cardId, row.id),
+            isNull(checklistItems.deletedAt),
+          ),
+        )
         .orderBy(asc(checklistItems.position)),
       db
         .select({ id: labels.id, name: labels.name, color: labels.color })
         .from(labels)
-        .where(eq(labels.projectId, projectId)),
+        .where(and(eq(labels.projectId, projectId), isNull(labels.deletedAt))),
       db
         .select({ labelId: cardLabels.labelId })
         .from(cardLabels)
@@ -297,7 +312,12 @@ async function CardDetailView({
           uploadedBy: attachments.uploadedBy,
         })
         .from(attachments)
-        .where(eq(attachments.cardId, row.id))
+        .where(
+          and(
+            eq(attachments.cardId, row.id),
+            isNull(attachments.deletedAt),
+          ),
+        )
         .orderBy(asc(attachments.createdAt)),
     ]);
 
@@ -308,6 +328,7 @@ async function CardDetailView({
       boardKind={boardKind}
       isIdeasBoard={boardKind === "ideas"}
       canManageLabels={hasMinRole(role, "admin")}
+      canEdit={hasMinRole(role, "member")}
       cloudinaryReady={isCloudinaryConfigured()}
       card={{
         id: row.id,
