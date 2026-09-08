@@ -3,8 +3,10 @@ import { ACCENT_HEX } from "@/lib/palette";
 
 export function Donut({
   slices,
+  currency = "USD",
 }: {
   slices: Array<{ label: string; value: number; color: string | null }>;
+  currency?: string;
 }) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total === 0) {
@@ -43,7 +45,7 @@ export function Donut({
           Total
         </text>
         <text x="70" y="82" textAnchor="middle" className="fill-[var(--text)] font-semibold text-[13px]">
-          {formatMinor(total)}
+          {formatMinor(total, currency)}
         </text>
       </svg>
 

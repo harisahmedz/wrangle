@@ -17,7 +17,7 @@ import { scoreOf, formatScore } from "@/lib/kanban/score";
 import { COVER_SWATCHES } from "@/lib/palette";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet } from "@/components/ui/dialog";
+import { Modal, Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import {
   AssigneesSection,
@@ -118,6 +118,17 @@ export function CardDetail({
   const [, startTransition] = useTransition();
 
   const done = card.completedAt !== null;
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const dirty =
+    canEdit &&
+    (title !== card.title ||
+      description !== (card.description ?? "") ||
+      allDay !== card.isAllDay ||
+      dueInput !== toLocalInput(card.dueAt, card.isAllDay));
+  const requestClose = () => {
+    if (dirty) setConfirmDiscard(true);
+    else close();
+  };
 
   const changeAllDay = (next: boolean) => {
     setAllDay(next);
@@ -126,7 +137,7 @@ export function CardDetail({
     );
   };
 
-  const save = () => {
+  const save = (thenClose = false) => {
     if (!title.trim()) return;
     let dueIso = "";
     if (dueInput) {
@@ -146,6 +157,7 @@ export function CardDetail({
     startSaveTransition(async () => {
       const res = await updateCard(fd);
       if (!res.ok) pushToast({ message: res.error });
+      else if (thenClose) close();
       else pushToast({ message: "Saved" });
     });
   };
@@ -268,7 +280,7 @@ export function CardDetail({
   };
 
   return (
-    <Sheet open variant="side" onClose={close} label="Card details">
+    <Sheet open variant="side" onClose={requestClose} label="Card details">
       <div className="space-y-5">
         <div className="flex items-start justify-between gap-3">
           {canEdit ? <button
@@ -287,7 +299,7 @@ export function CardDetail({
           </button> : <span className="h-6 w-6" />}
           <h2 className="sr-only">Card details</h2>
           <button
-            onClick={close}
+            onClick={requestClose}
             aria-label="Close"
             className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
           >
@@ -513,17 +525,36 @@ export function CardDetail({
           </section>
         )}
 
-        <div className="sticky bottom-0 -mx-5 flex items-center justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4">
+        <div className="sticky bottom-0 -mx-5 -mb-[calc(1.25rem+env(safe-area-inset-bottom))] flex items-center justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4">
           {canEdit ? <>
           <Button variant="danger" size="sm" onClick={remove}>
             Delete
           </Button>
-          <Button onClick={save} disabled={!title.trim() || pendingSave}>
+          <Button onClick={() => save()} disabled={!title.trim() || pendingSave}>
             {pendingSave ? "Saving…" : "Save"}
           </Button>
           </> : <Button className="ml-auto" variant="secondary" onClick={close}>Close</Button>}
         </div>
       </div>
+
+      <Modal
+        open={confirmDiscard}
+        onClose={() => setConfirmDiscard(false)}
+        label="Unsaved changes"
+      >
+        <h3 className="mb-2 text-lg font-semibold">Save your changes?</h3>
+        <p className="mb-4 text-sm text-muted">
+          You edited this card. Closing without saving loses those edits.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={close}>
+            Discard
+          </Button>
+          <Button onClick={() => save(true)} disabled={!title.trim() || pendingSave}>
+            {pendingSave ? "Saving…" : "Save & close"}
+          </Button>
+        </div>
+      </Modal>
     </Sheet>
   );
 }

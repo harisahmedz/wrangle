@@ -91,7 +91,7 @@ export function MembersTable({
             {myRole === "owner" || (ROLE_RANK[myRole] >= 2 && ROLE_RANK[m.role] < ROLE_RANK[myRole]) ? (
               <select
                 value={m.role}
-                disabled={m.role === "owner" || !canChangeRole(myRole, m.role, "viewer") && m.role !== "viewer"}
+                disabled={m.role === "owner"}
                 onChange={(e) => {
                   const fd = new FormData();
                   fd.set("projectId", projectId);
@@ -100,10 +100,14 @@ export function MembersTable({
                   run(changeMemberRole, fd);
                 }}
                 aria-label={`Role for ${m.name ?? "member"}`}
-                className="h-8 rounded-md border border-border bg-surface-2 px-1.5 text-xs"
+                className="h-11 rounded-md border border-border bg-surface-2 px-2 text-sm"
               >
                 {(["viewer", "member", "admin", "owner"] as ProjectRole[]).map((r) => (
-                  <option key={r} value={r} disabled={r === "owner"}>
+                  <option
+                    key={r}
+                    value={r}
+                    disabled={r !== m.role && !canChangeRole(myRole, m.role, r)}
+                  >
                     {r}
                   </option>
                 ))}

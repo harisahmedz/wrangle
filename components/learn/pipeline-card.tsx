@@ -28,6 +28,8 @@ const TYPE_EMOJI: Record<string, string> = {
   other: "📦",
 };
 
+const STATUS_LABEL = { want: "Want", learning: "Learning", learned: "Learned" } as const;
+
 export function PipelineCard({ item }: { item: LearnItemRow }) {
   const [, startTransition] = useTransition();
   const pushToast = useToast();
@@ -73,7 +75,7 @@ export function PipelineCard({ item }: { item: LearnItemRow }) {
           <div
             className={cn(
               "h-full rounded-full",
-              item.progressPct === 100 ? "bg-emerald-500" : "bg-accent",
+              item.progressPct === 100 ? "bg-success" : "bg-accent",
             )}
             style={{ width: `${item.progressPct}%` }}
           />
@@ -90,17 +92,17 @@ export function PipelineCard({ item }: { item: LearnItemRow }) {
         </p>
       )}
 
-      <div className="mt-2 flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <div className="mt-2 flex items-center gap-1.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:focus-within:opacity-100">
         {backTo && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               move(backTo);
             }}
-            aria-label="Move back"
-            className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted hover:text-text"
+            aria-label={`Move back to ${STATUS_LABEL[backTo]}`}
+            className="rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-text"
           >
-            ← {backTo}
+            Back to {STATUS_LABEL[backTo]}
           </button>
         )}
         {advanceTo && (
@@ -109,10 +111,10 @@ export function PipelineCard({ item }: { item: LearnItemRow }) {
               e.stopPropagation();
               move(advanceTo, advanceTo === "learned");
             }}
-            aria-label={`Move to ${advanceTo}`}
-            className="rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent-strong"
+            aria-label={`Move to ${STATUS_LABEL[advanceTo]}`}
+            className="rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-xs font-medium text-accent-strong"
           >
-            → {advanceTo === "learned" ? "Learned 🎉" : advanceTo}
+            {advanceTo === "learned" ? "Mark learned" : `Move to ${STATUS_LABEL[advanceTo]}`}
           </button>
         )}
       </div>

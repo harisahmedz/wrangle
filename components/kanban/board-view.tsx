@@ -502,6 +502,7 @@ export function BoardView({
       )}
 
       <DndContext
+        id="board"
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragEnd={onDragEnd}

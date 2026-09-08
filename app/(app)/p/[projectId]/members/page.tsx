@@ -9,6 +9,7 @@ import { listProjectInvites, revokeInvite } from "@/lib/actions/invites";
 import { leaveProject } from "@/lib/actions/projects-members";
 import { ShareButton } from "@/components/projects/share-button";
 import { MembersTable } from "@/components/projects/members-table";
+import { LeaveProjectButton } from "@/components/projects/leave-project-button";
 
 type Props = { params: Promise<{ projectId: string }> };
 
@@ -73,15 +74,7 @@ export default async function MembersPage({ params }: Props) {
       />
 
       {canLeave(ctx.role) && (
-        <form action={leave}>
-          <input type="hidden" name="projectId" value={projectId} />
-          <button
-            type="submit"
-            className="rounded-md border border-danger/30 px-3 py-2 text-sm text-danger transition-colors hover:bg-danger hover:text-white"
-          >
-            Leave project
-          </button>
-        </form>
+        <LeaveProjectButton projectId={projectId} action={leave} />
       )}
 
       {invites.length > 0 && (

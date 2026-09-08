@@ -21,6 +21,7 @@ import {
   toggleMilestone,
   updateLearningItem,
 } from "@/lib/actions/learning";
+import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import type { LearnItemRow } from "@/components/learn/types";
@@ -338,7 +339,7 @@ export function LearnDetailSheet({
           </div>
         </section>
 
-        <div className="sticky bottom-0 -mx-5 flex justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4">
+        <div className="sticky bottom-0 -mx-5 -mb-[calc(1.25rem+env(safe-area-inset-bottom))] flex justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4">
           <button onClick={remove} className="text-sm text-danger hover:underline">
             Delete
           </button>
@@ -421,26 +422,33 @@ function NoteInput({
   onAdd: (fd: FormData) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [body, setBody] = useState("");
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
+  const submit = () => {
+    if (!body.trim()) return;
+    const fd = new FormData();
+    fd.set("itemId", itemId);
+    fd.set("body", body.trim());
+    startTransition(async () => {
+      const res = await onAdd(fd);
+      if (res.ok) setBody("");
+    });
+  };
   return (
-    <textarea
-      value={body}
-      onChange={(e) => setBody(e.target.value)}
-      rows={2}
-      placeholder="Journal note… (⌘↵ to save)"
-      aria-label="New journal note"
-      className="w-full resize-none rounded-md border border-border bg-surface-2 p-2 text-sm"
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && body.trim()) {
-          const fd = new FormData();
-          fd.set("itemId", itemId);
-          fd.set("body", body.trim());
-          startTransition(async () => {
-            const res = await onAdd(fd);
-            if (res.ok) setBody("");
-          });
-        }
-      }}
-    />
+    <div className="space-y-2">
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        rows={2}
+        placeholder="Journal note…"
+        aria-label="New journal note"
+        className="w-full resize-none rounded-md border border-border bg-surface-2 p-2 text-sm"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+        }}
+      />
+      <Button size="sm" variant="secondary" onClick={submit} disabled={!body.trim() || pending}>
+        {pending ? "Saving…" : "Save note"}
+      </Button>
+    </div>
   );
 }

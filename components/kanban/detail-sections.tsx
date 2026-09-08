@@ -659,8 +659,7 @@ export function AttachmentsSection({
       </div>
       {!cloudinaryReady && !readOnly && (
         <p className="rounded-md border border-dashed border-border p-2 text-xs text-muted">
-          Set CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET in .env.local to enable
-          signed uploads.
+          File uploads aren&apos;t set up for this workspace yet.
         </p>
       )}
       <ul className="space-y-1">

@@ -164,6 +164,7 @@ function ProjectList({
 
   return (
     <DndContext
+      id="sidebar-projects"
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={onDragEnd}

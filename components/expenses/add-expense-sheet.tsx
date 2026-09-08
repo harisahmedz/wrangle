@@ -14,6 +14,11 @@ import { ACCENT_HEX } from "@/lib/palette";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
 
+function sanitizeAmount(value: string): string {
+  const [whole, ...rest] = value.replace(/[^0-9.]/g, "").split(".");
+  return rest.length ? `${whole}.${rest.join("").slice(0, 2)}` : whole;
+}
+
 type ReceiptUpload = {
   publicId: string;
   url: string;
@@ -104,9 +109,18 @@ export function ExpenseSheet({
     return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null;
   })();
 
+  const symbol =
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol",
+    })
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value ?? currency;
+
   const pickFile = async (file: File) => {
     if (!cloudinaryReady) {
-      setUploadError("Receipts need Cloudinary keys — add them in settings first.");
+      setUploadError("Receipt uploads aren't set up yet.");
       return;
     }
     setUploadError(null);
@@ -223,22 +237,20 @@ export function ExpenseSheet({
       label={editing ? "Edit expense" : "Add expense"}
     >
       <div className="space-y-4">
-        <div className="text-center">
-          <p className="text-4xl font-bold tabular-nums" aria-live="polite">
-            {new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency,
-              currencyDisplay: "narrowSymbol",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            })
-              .formatToParts(0)
-              .find((part) => part.type === "currency")?.value ?? currency}
-            {raw || "0.00"}
-          </p>
+        <div className="flex items-baseline justify-center gap-1 text-4xl font-bold tabular-nums">
+          <span aria-hidden className="text-muted">{symbol}</span>
+          <input
+            value={raw}
+            onChange={(e) => setRaw(sanitizeAmount(e.target.value))}
+            onKeyDown={(e) => e.key === "Enter" && save()}
+            inputMode="decimal"
+            placeholder="0.00"
+            aria-label={`Amount in ${currency}`}
+            className="w-44 min-w-0 bg-transparent text-center outline-none placeholder:text-muted/50"
+          />
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5 md:hidden">
           {KEYS.map((k) => (
             <button
               key={k}
@@ -373,11 +385,11 @@ export function ExpenseSheet({
           >
             {cloudinaryReady
               ? "📎 Attach receipt (optional)"
-              : "📎 Receipts need Cloudinary keys"}
+              : "Receipt uploads aren't available yet"}
           </button>
         )}
 
-        <div className="sticky bottom-0 -mx-5 flex items-center justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-3">
+        <div className="sticky bottom-0 -mx-5 -mb-[calc(1.25rem+env(safe-area-inset-bottom))] flex items-center justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-3 sm:-mb-5">
           {editing ? (
             <button
               onClick={remove}

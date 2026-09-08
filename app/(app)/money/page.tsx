@@ -241,14 +241,14 @@ export default async function MoneyPage({ searchParams }: Props) {
 
         <section className="rounded-xl border border-border bg-surface p-4">
           <p className="mb-2 text-xs uppercase tracking-wider text-muted">By category</p>
-          <Donut slices={slices} />
+          <Donut slices={slices} currency={currency} />
         </section>
 
         <section className="rounded-xl border border-border bg-surface p-4 sm:col-span-2">
           <p className="mb-2 text-xs uppercase tracking-wider text-muted">
             Last 6 months
           </p>
-          <TrendBars months={months6} />
+          <TrendBars months={months6} currency={currency} />
         </section>
       </div>
 

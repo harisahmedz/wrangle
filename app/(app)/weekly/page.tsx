@@ -161,7 +161,13 @@ export default async function WeeklyPage({ searchParams }: Props) {
         })
         .from(cards)
         .innerJoin(boards, and(eq(cards.boardId, boards.id), eq(boards.kind, "ideas")))
-        .innerJoin(memberships, memberJoin)
+        .innerJoin(
+          memberships,
+          and(
+            eq(memberships.projectId, boards.projectId),
+            eq(memberships.userId, userId),
+          ),
+        )
         .where(
           and(
             isNull(cards.deletedAt),

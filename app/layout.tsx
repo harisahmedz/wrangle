@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   description:
     "What to do, what you're thinking about, what you're learning, what you're spending.",
   applicationName: "Wrangle",
+  appleWebApp: {
+    capable: true,
+    title: "Wrangle",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
@@ -18,12 +23,6 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-};
-
-export const appleWebApp = {
-  capable: true,
-  title: "Wrangle",
-  statusBarStyle: "black-translucent" as const,
 };
 
 const themeInitScript = `try{var d=document.documentElement,m=window.matchMedia('(prefers-color-scheme: light)'),t=null;try{t=localStorage.getItem('wrangle-theme')}catch(e){}d.classList.toggle('light',t==='light'||(t!=='dark'&&m.matches));if(m.addEventListener)m.addEventListener('change',function(e){var s=null;try{s=localStorage.getItem('wrangle-theme')}catch(err){}if(s!=='light'&&s!=='dark')d.classList.toggle('light',e.matches)})}catch(e){}`;

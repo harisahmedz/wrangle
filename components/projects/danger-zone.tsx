@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { deleteToTrash, restoreFromTrash, setArchived } from "@/lib/actions/projects";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 
@@ -23,6 +24,10 @@ export function DangerZone({
   const [pending, startTransition] = useTransition();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const cancelDelete = () => {
+    setConfirmingDelete(false);
+    setConfirmText("");
+  };
 
   const archive = (archived: boolean) => {
     const fd = new FormData();
@@ -104,10 +109,7 @@ export function DangerZone({
 
       <Modal
         open={confirmingDelete}
-        onClose={() => {
-          setConfirmingDelete(false);
-          setConfirmText("");
-        }}
+        onClose={cancelDelete}
         label={`Delete ${projectName}`}
       >
         <h3 className="mb-2 text-lg font-semibold">Delete {projectName}?</h3>
@@ -115,15 +117,17 @@ export function DangerZone({
           It goes to trash and can be restored for 30 days. Type{" "}
           <span className="font-mono text-text">DELETE</span> to confirm.
         </p>
-        <input
+        <Input
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
-          className="mb-4 h-10 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
+          className="mb-4"
           placeholder="DELETE"
           aria-label="Type DELETE to confirm"
+          autoCapitalize="characters"
+          autoComplete="off"
         />
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
+          <Button variant="ghost" onClick={cancelDelete}>
             Cancel
           </Button>
           <Button

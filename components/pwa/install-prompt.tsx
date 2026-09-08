@@ -89,37 +89,34 @@ export function InstallPrompt() {
   return (
     <>
       {showAndroid && deferred && (
-        <div className="fixed inset-x-0 bottom-24 z-[85] flex justify-center px-4 md:bottom-6">
-          <div className="flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-2 text-sm shadow-lg">
-            <span aria-hidden>📲</span>
-            <span>Install Wrangle on your phone</span>
+        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+8rem)] z-[85] flex justify-center px-4 md:bottom-6">
+          <div className="flex w-full max-w-md flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface px-4 py-2 text-sm shadow-lg">
+            <span className="min-w-0 flex-1">Install Wrangle on your phone</span>
             <button
               onClick={() => void install()}
-              className="font-semibold text-accent-strong hover:underline"
+              className="min-h-11 px-2 font-semibold text-accent-strong hover:underline"
             >
               Install
             </button>
             <button
               onClick={dismiss}
-              aria-label="Dismiss install banner"
-              className="text-muted hover:text-text"
+              className="min-h-11 px-2 text-muted hover:text-text"
             >
-              ✕
+              Not now
             </button>
           </div>
         </div>
       )}
 
       {showIosHint && (
-        <div className="fixed inset-x-0 bottom-24 z-[85] flex justify-center px-4 md:bottom-6">
-          <div className="flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-2 text-xs shadow-lg">
-            <span>
-              📲 <b>Add to Home Screen:</b> Share <span aria-hidden>→</span> Add to Home Screen
+        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+8rem)] z-[85] flex justify-center px-4 md:bottom-6">
+          <div className="flex w-full max-w-md flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface px-4 py-2 text-sm shadow-lg">
+            <span className="min-w-0 flex-1">
+              Add Wrangle to your Home Screen: tap Share, then <b>Add to Home Screen</b>.
             </span>
             <button
               onClick={dismiss}
-              aria-label="Dismiss hint"
-              className="font-semibold text-accent-strong"
+              className="min-h-11 px-2 font-semibold text-accent-strong"
             >
               Got it
             </button>

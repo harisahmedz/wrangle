@@ -28,16 +28,9 @@ export function AddExpenseButton({
       <button
         onClick={() => setOpen(true)}
         aria-label="Add expense"
-        className="hidden h-11 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg md:inline-flex"
+        className="inline-flex h-11 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg"
       >
         + Add
-      </button>
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Add expense"
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+64px)] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-2xl text-accent-fg shadow-lg transition-transform active:scale-95 md:hidden"
-      >
-        +
       </button>
       <ExpenseSheet
         open={open}
