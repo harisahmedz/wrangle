@@ -2,26 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { quickAddCard } from "@/lib/kanban/phase3-actions";
+import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
-
-function MicIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={className}
-    >
-      <rect x="9" y="3" width="6" height="11" rx="3" />
-      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-    </svg>
-  );
-}
 
 export function QuickAddSheet({
   defaultOpen = false,
@@ -72,7 +55,7 @@ export function QuickAddSheet({
         setError(res.error);
         return;
       }
-      pushToast({ message: `“${res.data.title}” → My Space · To-Do` });
+      pushToast({ message: `Added “${res.data.title}” to My Space` });
       close();
     });
   };
@@ -80,7 +63,7 @@ export function QuickAddSheet({
   return (
     <Sheet open={open} onClose={close} label="Quick add">
       <h2 className="mb-1 text-lg font-semibold">Quick add</h2>
-      <p className="mb-4 text-xs text-muted">Saves to My Space → To-Do → Backlog.</p>
+      <p className="mb-4 text-sm text-muted">Saves to My Space, on the To-Do board.</p>
       <input
         autoFocus
         value={title}
@@ -92,34 +75,18 @@ export function QuickAddSheet({
         maxLength={300}
       />
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
-      <div className="mt-3 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handOffToDump}
-          className="min-h-[44px] px-1 text-sm font-medium text-accent-strong hover:underline"
-        >
-          Sort this…
-        </button>
-        <button
-          type="button"
-          onClick={handOffToDump}
-          aria-label="Sort with voice in the Dump"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-muted transition-colors hover:text-text"
-        >
-          <MicIcon className="h-5 w-5" />
-        </button>
-      </div>
-      <div className="mt-2 flex justify-end gap-2">
-        <button onClick={close} className="px-3 py-2 text-sm text-muted hover:text-text">
-          Cancel
-        </button>
-        <button
-          onClick={submit}
-          disabled={pending || !title.trim()}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-50"
-        >
-          {pending ? "Adding…" : "Add task"}
-        </button>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" onClick={handOffToDump}>
+          Sort in the Dump
+        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={close}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={pending || !title.trim()}>
+            {pending ? "Adding…" : "Add task"}
+          </Button>
+        </div>
       </div>
     </Sheet>
   );

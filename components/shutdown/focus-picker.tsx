@@ -7,6 +7,7 @@ import {
 } from "@/lib/actions/shutdown";
 import { useToast } from "@/components/ui/toast";
 import type { ActionResult } from "@/lib/actions/types";
+import { CheckIcon } from "@/components/icons";
 
 export type FocusedCard = {
   id: string;
@@ -51,7 +52,7 @@ export function FocusPicker({
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+        <h2 className="text-sm font-medium text-muted">
           Plan today
         </h2>
         <span className="text-xs text-muted">
@@ -61,7 +62,7 @@ export function FocusPicker({
 
       {focused.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border bg-surface/50 px-4 py-6 text-center text-sm text-muted">
-          Nothing planned yet — pick up to 3.
+          Nothing planned yet. Pick up to 3.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -75,9 +76,9 @@ export function FocusPicker({
               >
                 <span
                   aria-hidden
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] text-accent-fg"
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-accent-fg"
                 >
-                  ✓
+                  <CheckIcon className="h-3 w-3" />
                 </span>
                 <span className="min-w-0 flex-1 truncate">{card.title}</span>
                 <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
@@ -93,17 +94,22 @@ export function FocusPicker({
         <div className="space-y-2 pt-1">
           <p className="px-1 text-xs font-medium text-muted">
             {full
-              ? "Focus is full — unfocus one to swap."
+              ? "Focus is full. Unfocus one to swap."
               : "Tap a card to focus it."}
           </p>
           <ul className="space-y-1.5">
             {candidates.map((card) => (
               <li key={card.id}>
                 <button
-                  onClick={() =>
-                    run(setCardFocus, card.id, "Couldn't focus the card")
-                  }
-                  disabled={pending || full}
+                  onClick={() => {
+                    if (full) {
+                      pushToast({ message: "Focus is full. Unfocus one to swap." });
+                      return;
+                    }
+                    run(setCardFocus, card.id, "Couldn't focus the card");
+                  }}
+                  disabled={pending}
+                  aria-disabled={full}
                   aria-label={`Focus ${card.title}`}
                   className="flex min-h-[44px] w-full items-center gap-2.5 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm transition-colors hover:bg-surface-2 disabled:opacity-50"
                 >

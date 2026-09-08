@@ -22,6 +22,7 @@ import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { moveProject, reorderProject } from "@/lib/actions/projects";
 import { reorderById } from "@/lib/order";
 import { cn } from "@/lib/utils";
+import { ChevronRightIcon, GripIcon } from "@/components/icons";
 
 export type SidebarProject = {
   id: string;
@@ -91,15 +92,17 @@ function ProjectRow({
           aria-hidden
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-sm"
           style={{
-            backgroundColor: project.color ? `${project.color}22` : undefined,
+            backgroundColor: project.color
+              ? `color-mix(in srgb, ${project.color} 15%, transparent)`
+              : undefined,
           }}
         >
           {project.emoji ?? "📁"}
         </span>
         <span className="truncate">{project.name}</span>
         {project.isPersonal && (
-          <span className="ml-auto rounded-full border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-            home
+          <span className="ml-auto rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted">
+            Home
           </span>
         )}
       </Link>
@@ -110,26 +113,26 @@ function ProjectRow({
           {...listeners}
           aria-label={`Reorder ${project.name}`}
           title="Drag to reorder"
-          className="mr-7 flex h-8 w-8 shrink-0 cursor-grab touch-none select-none items-center justify-center text-[10px] leading-none text-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+          className="mr-7 flex h-8 w-8 shrink-0 cursor-grab touch-none select-none items-center justify-center text-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
         >
-          ⋮⋮
+          <GripIcon className="h-4 w-4" />
         </button>
       )}
       {showControls && (
-        <div className="absolute right-1 top-1/2 hidden -translate-y-1/2 flex-col group-hover:flex">
+        <div className="absolute right-1 top-1/2 hidden -translate-y-1/2 flex-col group-hover:flex group-focus-within:flex">
           <button
             onClick={() => move("up")}
             aria-label={`Move ${project.name} up`}
-            className="h-4 w-5 rounded bg-surface text-[10px] leading-none text-muted hover:text-text"
+            className="flex h-4 w-5 items-center justify-center rounded bg-surface text-muted hover:text-text"
           >
-            ▲
+            <ChevronRightIcon className="h-3 w-3 -rotate-90" />
           </button>
           <button
             onClick={() => move("down")}
             aria-label={`Move ${project.name} down`}
-            className="h-4 w-5 rounded bg-surface text-[10px] leading-none text-muted hover:text-text"
+            className="flex h-4 w-5 items-center justify-center rounded bg-surface text-muted hover:text-text"
           >
-            ▼
+            <ChevronRightIcon className="h-3 w-3 rotate-90" />
           </button>
         </div>
       )}
@@ -198,7 +201,7 @@ export function SideProjects({ projects }: { projects: SidebarProject[] }) {
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col gap-1 border-l border-border bg-surface/40 p-3 md:flex">
-      <p className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-wider text-muted">
+      <p className="px-2 pb-2 pt-1 text-sm font-medium text-muted">
         Projects
       </p>
       <nav className="flex flex-col gap-0.5">
@@ -219,10 +222,12 @@ export function SideProjects({ projects }: { projects: SidebarProject[] }) {
           <button
             onClick={() => setArchivedOpen((o) => !o)}
             aria-expanded={archivedOpen}
-            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted hover:text-text"
+            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-medium text-muted hover:text-text"
           >
             Archived ({archived.length})
-            <span>{archivedOpen ? "▾" : "▸"}</span>
+            <ChevronRightIcon
+              className={cn("h-3.5 w-3.5 transition-transform", archivedOpen && "rotate-90")}
+            />
           </button>
           {archivedOpen && (
             <nav className="mt-1 flex flex-col gap-0.5 opacity-70">

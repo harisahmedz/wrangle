@@ -15,6 +15,7 @@ import {
 } from "@/lib/wrapped/month";
 import { WrappedDeck } from "@/components/wrapped/deck";
 import { WrappedGateView } from "@/components/wrapped/gate";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 type Props = { searchParams: Promise<{ m?: string }> };
 
@@ -51,21 +52,23 @@ export default async function WrappedPage({ searchParams }: Props) {
           <Link
             href={`/wrapped?m=${formatYearMonth(prev.year, prev.monthIndex)}`}
             aria-label="Previous month"
-            className="rounded px-2 py-1 text-muted hover:text-text"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
           >
-            ←
+            <ChevronLeftIcon className="h-4 w-4" />
           </Link>
           <span className="min-w-32 text-center text-sm font-medium">{label}</span>
           {hasNext ? (
             <Link
               href={`/wrapped?m=${formatYearMonth(next.year, next.monthIndex)}`}
               aria-label="Next month"
-              className="rounded px-2 py-1 text-muted hover:text-text"
+              className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
             >
-              →
+              <ChevronRightIcon className="h-4 w-4" />
             </Link>
           ) : (
-            <span aria-hidden className="px-2 py-1 opacity-30">→</span>
+            <span aria-hidden className="flex h-11 w-11 items-center justify-center opacity-30">
+              <ChevronRightIcon className="h-4 w-4" />
+            </span>
           )}
         </div>
       </div>

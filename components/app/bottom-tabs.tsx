@@ -39,6 +39,8 @@ export function BottomTabs({
   quickAutoOpen?: boolean;
 }) {
   const pathname = usePathname();
+  // Shutdown has its own full-width primary action; the FAB would sit on top of it.
+  const hideQuickAdd = pathname.startsWith("/shutdown");
   const holdRef = useRef({ timer: null as number | null, fired: false, x: 0, y: 0 });
 
   const cancelHold = () => {
@@ -51,6 +53,7 @@ export function BottomTabs({
 
   return (
     <>
+      {!hideQuickAdd && (
       <button
         onPointerDown={(e) => {
           const hold = holdRef.current;
@@ -86,6 +89,7 @@ export function BottomTabs({
       >
         <PlusIcon className="h-6 w-6" />
       </button>
+      )}
 
       <QuickAddSheet
         key={quickPrefill ?? ""}

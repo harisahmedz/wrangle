@@ -42,7 +42,7 @@ export function DayNote({ initialNote }: { initialNote: string }) {
     <section className="space-y-2">
       <label
         htmlFor="day-note"
-        className="text-sm font-semibold uppercase tracking-wider text-muted"
+        className="text-sm font-medium text-muted"
       >
         One line about today
       </label>
@@ -51,7 +51,7 @@ export function DayNote({ initialNote }: { initialNote: string }) {
         value={note}
         maxLength={MAX_NOTE}
         rows={3}
-        placeholder="One line about today…"
+        placeholder="What happened, what mattered?"
         onChange={(e) => {
           setError(null);
           setStatus("pending");
@@ -60,7 +60,7 @@ export function DayNote({ initialNote }: { initialNote: string }) {
         className="w-full rounded-md border border-border bg-surface-2 px-3 py-2.5 text-sm"
       />
       <div className="flex items-center justify-between px-1 text-xs">
-        <span className={status === "error" ? "text-danger" : "text-muted"}>
+        <span role="status" className={status === "error" ? "text-danger" : "text-muted"}>
           {status === "error" ? error : STATUS_TEXT[status]}
         </span>
         <span className="text-muted">

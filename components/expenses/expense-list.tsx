@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ExpenseSheet } from "@/components/expenses/add-expense-sheet";
 import { formatMinor } from "@/lib/money";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { CategoryChip, ExpenseRow } from "@/components/expenses/types";
 
 export function ExpenseList({
@@ -40,22 +42,23 @@ export function ExpenseList({
     <>
       <div className="space-y-5">
         {rows.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
-            <p className="text-sm text-muted">Nothing logged this month.</p>
-            <button
-              onClick={openAdd}
-              className="mt-2 text-sm font-medium text-accent-strong hover:underline"
-            >
-              Add your first expense
-            </button>
-          </div>
+          <EmptyState
+            icon="💸"
+            title="Nothing logged this month"
+            description="Add an expense and it shows up here, grouped by day."
+            action={
+              <Button variant="secondary" size="sm" onClick={openAdd}>
+                Add your first expense
+              </Button>
+            }
+          />
         )}
 
         {Object.entries(grouped)
           .sort(([a], [b]) => (a > b ? -1 : 1))
           .map(([day, dayRows]) => (
             <div key={day} className="space-y-1.5">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted">
+              <p className="text-xs font-medium text-muted">
                 {new Date(`${day}T12:00:00Z`).toLocaleDateString("en-US", {
                   weekday: "short",
                   month: "short",
@@ -75,7 +78,7 @@ export function ExpenseList({
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm"
                         style={{
                           backgroundColor: r.categoryColor
-                            ? `${r.categoryColor}22`
+                            ? `color-mix(in srgb, ${r.categoryColor} 15%, transparent)`
                             : undefined,
                         }}
                       >
@@ -85,9 +88,11 @@ export function ExpenseList({
                         <span className="block truncate text-sm">
                           {r.note || r.categoryName}
                         </span>
-                        <span className="block text-xs text-muted">
-                          {r.categoryName}
-                          {r.paymentMethod ? ` · ${r.paymentMethod}` : ""}
+                        <span className="flex gap-2 text-xs text-muted">
+                          <span className="truncate">{r.categoryName}</span>
+                          {r.paymentMethod && (
+                            <span className="truncate">{r.paymentMethod}</span>
+                          )}
                         </span>
                       </span>
                       <span className="shrink-0 tabular-nums text-sm font-medium">

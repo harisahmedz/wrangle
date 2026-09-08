@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { createInvite } from "@/lib/actions/invites";
+import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import type { InviteableRole } from "@/lib/sharing/permissions";
 
 const ROLE_OPTIONS: Array<{ value: InviteableRole; label: string; hint: string }> = [
   { value: "viewer", label: "Viewer", hint: "Read-only" },
   { value: "member", label: "Member", hint: "Edit cards" },
-  { value: "admin", label: "Admin", hint: "Manage columns, invites" },
+  { value: "admin", label: "Admin", hint: "Manage columns and invites" },
 ];
+
+type CopyState = "idle" | "copied" | "failed";
 
 export function ShareDialog({
   projectId,
@@ -27,13 +31,19 @@ export function ShareDialog({
   const [maxUses, setMaxUses] = useState(10);
   const [link, setLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [, startTransition] = useTransition();
+  const [copy, setCopy] = useState<CopyState>("idle");
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (copy !== "copied") return;
+    const t = setTimeout(() => setCopy("idle"), 2000);
+    return () => clearTimeout(t);
+  }, [copy]);
 
   const close = () => {
     setLink(null);
     setError(null);
-    setCopied(false);
+    setCopy("idle");
     onClose();
   };
 
@@ -53,6 +63,16 @@ export function ShareDialog({
     });
   };
 
+  const copyLink = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopy("copied");
+    } catch {
+      setCopy("failed");
+    }
+  };
+
   const roles = ROLE_OPTIONS.filter(
     (r) => r.value !== "admin" || isOwner,
   );
@@ -63,7 +83,7 @@ export function ShareDialog({
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Invite link ready</h2>
           <p className="text-sm text-muted">
-            Shown once — copy it now. It grants{" "}
+            Shown once, so copy it now. It grants{" "}
             <span className="font-medium text-text">{role}</span> access.
           </p>
           <div className="flex gap-2">
@@ -71,29 +91,20 @@ export function ShareDialog({
               readOnly
               value={link}
               aria-label="Invite link"
-              className="h-10 flex-1 rounded-md border border-border bg-surface-2 px-3 font-mono text-xs"
+              className="h-11 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-3 font-mono text-sm"
               onFocus={(e) => e.currentTarget.select()}
             />
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(link!);
-                  setCopied(true);
-                } catch {
-                  setCopied(false);
-                }
-              }}
-              className="rounded-md bg-accent px-4 text-sm font-medium text-accent-fg"
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
+            <Button onClick={() => void copyLink()}>
+              {copy === "copied" ? "Copied" : "Copy"}
+            </Button>
           </div>
-          <button
-            onClick={close}
-            className="w-full rounded-md border border-border py-2.5 text-sm text-muted hover:text-text"
-          >
+          <p role="status" className={cn("text-xs", copy === "failed" ? "text-danger" : "text-muted")}>
+            {copy === "copied" && "Link copied to your clipboard."}
+            {copy === "failed" && "Couldn't copy automatically. Tap the link, select all, and copy."}
+          </p>
+          <Button variant="secondary" className="w-full" onClick={close}>
             Done
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -101,21 +112,21 @@ export function ShareDialog({
 
           <div>
             <p className="mb-1.5 text-sm font-medium">Role</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-2 sm:grid-cols-3">
               {roles.map((r) => (
                 <button
                   key={r.value}
                   onClick={() => setRole(r.value)}
                   aria-pressed={role === r.value}
-                  title={r.hint}
-                  className={
-                    "rounded-full border px-3 py-1.5 text-xs transition-colors " +
-                    (role === r.value
-                      ? "border-accent bg-accent/15 text-text"
-                      : "border-border text-muted hover:text-text")
-                  }
+                  className={cn(
+                    "min-h-11 rounded-lg border p-3 text-left transition-colors",
+                    role === r.value
+                      ? "border-accent bg-accent/10"
+                      : "border-border hover:bg-surface-2",
+                  )}
                 >
-                  {r.label}
+                  <span className="block text-sm font-medium">{r.label}</span>
+                  <span className="block text-xs text-muted">{r.hint}</span>
                 </button>
               ))}
             </div>
@@ -127,7 +138,7 @@ export function ShareDialog({
               <select
                 value={expiry}
                 onChange={(e) => setExpiry(Number(e.target.value))}
-                className="h-9 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
+                className="h-11 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
               >
                 <option value={1}>In 1 day</option>
                 <option value={7}>In 7 days</option>
@@ -139,7 +150,7 @@ export function ShareDialog({
               <select
                 value={maxUses}
                 onChange={(e) => setMaxUses(Number(e.target.value))}
-                className="h-9 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
+                className="h-11 w-full rounded-md border border-border bg-surface-2 px-2 text-sm"
               >
                 {[1, 5, 10, 25].map((n) => (
                   <option key={n} value={n}>
@@ -153,18 +164,12 @@ export function ShareDialog({
           {error && <p className="text-sm text-danger">{error}</p>}
 
           <div className="flex justify-end gap-2 pt-1">
-            <button
-              onClick={close}
-              className="rounded-md px-3 py-2 text-sm text-muted hover:text-text"
-            >
+            <Button variant="ghost" onClick={close}>
               Cancel
-            </button>
-            <button
-              onClick={create}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg"
-            >
-              Create link
-            </button>
+            </Button>
+            <Button onClick={create} disabled={pending}>
+              {pending ? "Creating…" : "Create link"}
+            </Button>
           </div>
         </div>
       )}

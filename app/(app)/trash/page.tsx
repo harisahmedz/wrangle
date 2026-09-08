@@ -15,6 +15,8 @@ import { restoreExpense } from "@/lib/actions/expenses";
 import { restoreFromTrash } from "@/lib/actions/projects";
 import { formatMinor } from "@/lib/money";
 import { EmptyState } from "@/components/ui/empty-state";
+import Link from "next/link";
+import { Button, buttonStyles } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Trash" };
 
@@ -67,6 +69,7 @@ export default async function TrashPage() {
         id: expenses.id,
         note: expenses.note,
         amountMinor: expenses.amountMinor,
+        currency: expenses.currency,
         categoryName: expenseCategories.name,
         daysLeft: sql<number>`greatest(0, ${TRASH_RETENTION_DAYS} - extract(day from now() - ${expenses.deletedAt})::int)`,
       })
@@ -109,11 +112,22 @@ export default async function TrashPage() {
         </p>
       </div>
 
-      {empty && <EmptyState icon="🗑️" title="Trash is empty" />}
+      {empty && (
+        <EmptyState
+          icon="🗑️"
+          title="Trash is empty"
+          description={`Deleted cards, projects and expenses stay here for ${TRASH_RETENTION_DAYS} days before they're gone for good.`}
+          action={
+            <Link href="/today" className={buttonStyles({ variant: "secondary", size: "sm" })}>
+              Back to Today
+            </Link>
+          }
+        />
+      )}
 
       {trashedProjects.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          <h2 className="text-sm font-medium text-muted">
             Projects
           </h2>
           <ul className="space-y-2">
@@ -122,7 +136,7 @@ export default async function TrashPage() {
                 key={p.id}
                 icon={p.emoji ?? "📁"}
                 title={p.name}
-                meta={`${p.daysLeft} day${p.daysLeft === 1 ? "" : "s"} left`}
+                daysLeft={p.daysLeft}
                 actionFn={restoreProjectForm} fieldName="projectId" id={p.id} label="Restore"
               />
             ))}
@@ -132,7 +146,7 @@ export default async function TrashPage() {
 
       {trashedCards.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          <h2 className="text-sm font-medium text-muted">
             Cards
           </h2>
           <ul className="space-y-2">
@@ -141,7 +155,8 @@ export default async function TrashPage() {
                 key={c.id}
                 icon="🗂️"
                 title={c.title}
-                meta={`${c.projectName} · ${c.columnName} · ${c.daysLeft}d left`}
+                meta={`${c.projectName} / ${c.columnName}`}
+                daysLeft={c.daysLeft}
                 actionFn={restoreCardForm} fieldName="cardId" id={c.id} label="Restore"
               />
             ))}
@@ -151,7 +166,7 @@ export default async function TrashPage() {
 
       {trashedExpenses.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          <h2 className="text-sm font-medium text-muted">
             Expenses
           </h2>
           <ul className="space-y-2">
@@ -160,7 +175,8 @@ export default async function TrashPage() {
                 key={e.id}
                 icon="💸"
                 title={e.note || e.categoryName}
-                meta={`${formatMinor(e.amountMinor)} · ${e.categoryName} · ${e.daysLeft}d left`}
+                meta={`${formatMinor(e.amountMinor, e.currency)} in ${e.categoryName}`}
+                daysLeft={e.daysLeft}
                 actionFn={restoreExpenseForm} fieldName="expenseId" id={e.id} label="Restore"
               />
             ))}
@@ -175,6 +191,7 @@ function TrashRow({
   icon,
   title,
   meta,
+  daysLeft,
   actionFn,
   fieldName,
   id,
@@ -182,7 +199,8 @@ function TrashRow({
 }: {
   icon: string;
   title: string;
-  meta: string;
+  meta?: string;
+  daysLeft: number;
   actionFn: (formData: FormData) => Promise<void>;
   fieldName: string;
   id: string;
@@ -193,16 +211,16 @@ function TrashRow({
       <span className="text-lg opacity-70">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{title}</p>
-        <p className="text-xs text-muted">{meta}</p>
+        {meta && <p className="truncate text-xs text-muted">{meta}</p>}
       </div>
+      <span className="shrink-0 text-xs tabular-nums text-muted">
+        {daysLeft} day{daysLeft === 1 ? "" : "s"} left
+      </span>
       <form action={actionFn}>
         <input type="hidden" name={fieldName} value={id} />
-        <button
-          type="submit"
-          className="rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-surface-2"
-        >
+        <Button type="submit" variant="secondary" size="sm">
           {label}
-        </button>
+        </Button>
       </form>
     </li>
   );

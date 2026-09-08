@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { CloseIcon } from "@/components/icons";
 import {
   listExpenseCategoriesForDump,
   listLearningTopicsForDump,
@@ -273,8 +275,8 @@ export function DumpSheet() {
       {stage === "capture" ? (
         <div>
           <h2 className="mb-1 text-lg font-semibold">The Dump</h2>
-          <p className="mb-4 text-xs text-muted">
-            Say or paste anything — Wrangle sorts it into tasks, expenses, ideas and learning.
+          <p className="mb-4 text-sm text-muted">
+            Say or paste anything. Wrangle sorts it into tasks, expenses, ideas and learning.
           </p>
           <textarea
             autoFocus
@@ -320,28 +322,19 @@ export function DumpSheet() {
             </span>
           </div>
           <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={closeAll}
-              className="min-h-[44px] px-3 py-2 text-sm text-muted hover:text-text"
-            >
+            <Button variant="ghost" onClick={closeAll}>
               Cancel
-            </button>
-            <button
-              type="button"
-              onClick={openTray}
-              disabled={!text.trim()}
-              className="min-h-[44px] rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-50"
-            >
-              Sort it →
-            </button>
+            </Button>
+            <Button onClick={openTray} disabled={!text.trim()}>
+              Sort it
+            </Button>
           </div>
         </div>
       ) : (
         <div>
           <header className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">
-              Sorted — {rows.length} {rows.length === 1 ? "thing" : "things"}
+              Sorted: {rows.length} {rows.length === 1 ? "thing" : "things"}
             </h2>
             <button
               type="button"
@@ -349,7 +342,7 @@ export function DumpSheet() {
               aria-label="Close"
               className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:text-text"
             >
-              <span aria-hidden="true" className="text-lg leading-none">✕</span>
+              <CloseIcon className="h-5 w-5" />
             </button>
           </header>
 
@@ -361,7 +354,7 @@ export function DumpSheet() {
 
           {rows.length === 0 ? (
             <p className="rounded-lg border border-border bg-surface-2 p-4 text-sm text-muted">
-              Nothing left here — everything was removed.
+              Nothing left here. Everything was removed.
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
@@ -393,24 +386,13 @@ export function DumpSheet() {
             </ul>
           )}
 
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={closeAll}
-              className="min-h-[44px] px-3 py-2 text-sm text-muted hover:text-text"
-            >
+          <div className="sticky bottom-0 -mx-5 -mb-[calc(1.25rem+env(safe-area-inset-bottom))] mt-4 flex justify-end gap-2 border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-3 sm:-mb-5">
+            <Button variant="ghost" onClick={closeAll}>
               Discard
-            </button>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={pending || hasErrors || rows.length === 0}
-              className="min-h-[44px] rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-50"
-            >
-              {pending
-                ? "Filing…"
-                : `Save all ${rows.length}`}
-            </button>
+            </Button>
+            <Button onClick={submit} disabled={pending || hasErrors || rows.length === 0}>
+              {pending ? "Filing…" : `Save all ${rows.length}`}
+            </Button>
           </div>
         </div>
       )}

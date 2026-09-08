@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createLearningItem } from "@/lib/actions/learning";
+import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 
 const TYPES = [
@@ -55,12 +56,7 @@ export function AddLearningButton() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-fg"
-      >
-        + Add
-      </button>
+      <Button onClick={() => setOpen(true)}>+ Add</Button>
       <Sheet open={open} onClose={close} label="Add learning item">
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Want to learn something?</h2>
@@ -72,7 +68,7 @@ export function AddLearningButton() {
             placeholder="Title…"
             aria-label="Title"
             maxLength={200}
-            className="h-10 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
+            className="h-11 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
           />
           <div className="flex flex-wrap gap-1.5">
             {TYPES.map(([v, label]) => (
@@ -97,7 +93,7 @@ export function AddLearningButton() {
             placeholder="https://source-url… (optional)"
             inputMode="url"
             aria-label="Source URL"
-            className="h-10 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
+            className="h-11 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
           />
           <textarea
             value={whyNote}
@@ -114,21 +110,17 @@ export function AddLearningButton() {
               value={targetDate}
               onChange={(e) => setTargetDate(e.target.value)}
               aria-label="Target date"
-              className="h-9 flex-1 rounded-md border border-border bg-surface-2 px-2"
+              className="h-11 flex-1 rounded-md border border-border bg-surface-2 px-2"
             />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
-            <button onClick={close} className="px-3 py-2 text-sm text-muted hover:text-text">
+            <Button variant="ghost" onClick={close}>
               Cancel
-            </button>
-            <button
-              onClick={submit}
-              disabled={!title.trim()}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-50"
-            >
+            </Button>
+            <Button onClick={submit} disabled={!title.trim()}>
               Add to Want
-            </button>
+            </Button>
           </div>
         </div>
       </Sheet>

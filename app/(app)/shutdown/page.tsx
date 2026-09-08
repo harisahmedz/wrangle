@@ -36,6 +36,7 @@ import {
   CloseDayButton,
   ReopenDayButton,
 } from "@/components/shutdown/close-day";
+import { ChevronRightIcon } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Shutdown" };
 
@@ -49,12 +50,13 @@ export default async function ShutdownPage() {
   const userId = await requireUser();
 
   const [user] = await db
-    .select({ timezone: users.timezone })
+    .select({ timezone: users.timezone, currency: users.currency })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
 
   const timeZone = user?.timezone || "UTC";
+  const currency = user?.currency ?? "USD";
   const now = new Date();
   const today = todayWindow(timeZone);
   const todayKey = localDateKey(now, timeZone);
@@ -190,7 +192,7 @@ export default async function ShutdownPage() {
     closedDateRows.map((r) => r.date),
     todayKey,
   );
-  const consistencyLine = `Closed ${stats.closedLast7} of the last 7 days · ${stats.totalAllTime} all-time`;
+  const consistencyLine = `Closed ${stats.closedLast7} of the last 7 days (${stats.totalAllTime} all-time)`;
 
   const toRow = (r: (typeof leftoverRows)[number]): LeftoverRow & {
     focused: boolean;
@@ -226,7 +228,7 @@ export default async function ShutdownPage() {
       <p className="text-sm text-muted">{consistencyLine}</p>
       {stats.showNeverMissTwiceNudge && (
         <p className="mt-1 text-sm">
-          Missed yesterday — closing today keeps the rhythm.
+          Missed yesterday? Closing today keeps the rhythm.
         </p>
       )}
     </section>
@@ -234,16 +236,19 @@ export default async function ShutdownPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold tracking-tight">
-        Shutdown · {headerLabel}
-      </h1>
-
-      <Link
-        href="/weekly"
-        className="text-sm text-muted transition-colors hover:text-text"
-      >
-        This week in review →
-      </Link>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Shutdown</h1>
+          <p className="text-sm text-muted">{headerLabel}</p>
+        </div>
+        <Link
+          href="/weekly"
+          className="flex min-h-11 items-center gap-1 text-sm text-muted transition-colors hover:text-text"
+        >
+          This week in review
+          <ChevronRightIcon className="h-4 w-4" />
+        </Link>
+      </div>
 
       {todayReview?.closed ? (
         <section className="space-y-4 rounded-xl border border-border bg-surface p-6 text-center">
@@ -262,7 +267,7 @@ export default async function ShutdownPage() {
           <FocusPicker focused={focusedCards} candidates={candidates} />
 
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+            <h2 className="text-sm font-medium text-muted">
               Left from today ({leftovers.length})
             </h2>
             {leftovers.length === 0 ? (
@@ -279,11 +284,21 @@ export default async function ShutdownPage() {
             )}
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-4">
-            <p className="text-sm text-muted">
-              Today: {closedAgg[0].n} closed · {learnedAgg[0].minutes}m learned
-              · {formatMinor(spentAgg[0].minor)} spent
-            </p>
+          <section className="grid grid-cols-3 divide-x divide-border rounded-xl border border-border bg-surface p-4 text-center">
+            <div>
+              <p className="text-lg font-semibold tabular-nums">{closedAgg[0].n}</p>
+              <p className="text-xs text-muted">closed</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold tabular-nums">{learnedAgg[0].minutes}m</p>
+              <p className="text-xs text-muted">learned</p>
+            </div>
+            <div>
+              <p className="truncate px-1 text-lg font-semibold tabular-nums">
+                {formatMinor(spentAgg[0].minor, currency)}
+              </p>
+              <p className="text-xs text-muted">spent</p>
+            </div>
           </section>
 
           <DayNote initialNote={todayReview?.note ?? ""} />

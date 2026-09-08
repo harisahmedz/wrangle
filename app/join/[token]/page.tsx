@@ -6,6 +6,8 @@ import { auth, signIn } from "@/auth";
 import { redeemInviteForUser } from "@/lib/actions/invites";
 import { hashToken } from "@/lib/sharing/tokens";
 import { hitRateLimit } from "@/lib/sharing/ratelimit";
+import { ProviderButton } from "@/components/auth/provider-button";
+import { buttonStyles } from "@/components/ui/button";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -68,12 +70,7 @@ export default async function JoinPage({ params }: Props) {
               await signIn("google", { redirectTo: `/join/${token}` });
             }}
           >
-            <button
-              type="submit"
-              className="h-12 w-full rounded-md border border-border bg-surface text-sm font-medium hover:bg-surface-2"
-            >
-              Continue with Google
-            </button>
+            <ProviderButton provider="google" />
           </form>
           <form
             action={async () => {
@@ -81,12 +78,7 @@ export default async function JoinPage({ params }: Props) {
               await signIn("github", { redirectTo: `/join/${token}` });
             }}
           >
-            <button
-              type="submit"
-              className="h-12 w-full rounded-md border border-border bg-surface text-sm font-medium hover:bg-surface-2"
-            >
-              Continue with GitHub
-            </button>
+            <ProviderButton provider="github" />
           </form>
         </div>
       </main>
@@ -128,7 +120,7 @@ function JoinState({
       </span>
       <h1 className="text-xl font-bold tracking-tight">{copy.title}</h1>
       <p className="max-w-sm text-sm text-muted">{copy.detail}</p>
-      <Link href="/today" className="text-sm text-accent-strong hover:underline">
+      <Link href="/today" className={buttonStyles({ variant: "secondary", size: "sm" })}>
         Go to Wrangle
       </Link>
     </main>

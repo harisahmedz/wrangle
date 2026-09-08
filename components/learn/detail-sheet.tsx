@@ -23,6 +23,7 @@ import {
 } from "@/lib/actions/learning";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
+import { CheckIcon, CloseIcon } from "@/components/icons";
 import { useToast } from "@/components/ui/toast";
 import type { LearnItemRow } from "@/components/learn/types";
 
@@ -158,7 +159,7 @@ export function LearnDetailSheet({
         <div className="flex items-start justify-between">
           <h2 className="text-lg font-semibold leading-tight break-words">{item.title}</h2>
           <button onClick={close} aria-label="Close" className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text">
-            ✕
+            <CloseIcon className="h-5 w-5" />
           </button>
         </div>
 
@@ -189,17 +190,18 @@ export function LearnDetailSheet({
             Target
             <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} aria-label="Target date" className="h-11 flex-1 rounded-md border border-border bg-surface-2 px-2" />
           </div>
-          <button onClick={saveMeta} className="w-full rounded-md border border-border py-2 text-sm font-medium hover:bg-surface-2">
+          <Button variant="secondary" className="w-full" onClick={saveMeta}>
             Save details
-          </button>
+          </Button>
         </section>
 
         <section className="space-y-2">
           <p className="text-sm font-medium">Log a session</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input type="number" min={1} max={1440} value={sessionMinutes} onChange={(e) => setSessionMinutes(e.target.value)} placeholder="min" aria-label="Minutes" className="h-11 w-20 rounded-md border border-border bg-surface-2 px-2 text-sm tabular-nums" />
-            <input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} aria-label="Session date" className="h-11 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-2 text-sm" />
-            <button
+            <input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} aria-label="Session date" className="h-11 min-w-[10rem] flex-1 rounded-md border border-border bg-surface-2 px-2 text-sm" />
+            <Button
+              size="sm"
               onClick={() => {
                 if (!Number(sessionMinutes)) return;
                 const fd = new FormData();
@@ -209,12 +211,11 @@ export function LearnDetailSheet({
                 run(addSession, fd, () => setSessionMinutes(""));
               }}
               disabled={!Number(sessionMinutes)}
-              className="rounded-md bg-accent px-3 text-sm font-medium text-accent-fg disabled:opacity-50"
             >
               Log
-            </button>
+            </Button>
           </div>
-          <ul className="max-h-32 space-y-1 overflow-y-auto">
+          <ul className="space-y-1">
             {sessions.map((s) => (
               <li key={s.id} className="group flex items-center gap-2 rounded px-1 py-1 text-xs hover:bg-surface-2">
                 <span className="tabular-nums text-muted">
@@ -227,9 +228,9 @@ export function LearnDetailSheet({
                     removeChild(deleteSession, restoreSession, "sessionId", s.id, "Session deleted");
                   }}
                   aria-label="Delete session"
-                  className="ml-auto flex h-11 w-11 items-center justify-center text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
+                  className="ml-auto flex h-11 w-11 items-center justify-center text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 hover:text-danger"
                 >
-                  ✕
+                  <CloseIcon className="h-4 w-4" />
                 </button>
               </li>
             ))}
@@ -255,12 +256,16 @@ export function LearnDetailSheet({
                   }}
                   aria-pressed={m.isDone}
                   aria-label={`Toggle ${m.text}`}
-                  className={
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] " +
-                    (m.isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-border hover:border-accent")
-                  }
+                  className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center"
                 >
-                  {m.isDone && "✓"}
+                  <span
+                    className={
+                      "flex h-4 w-4 items-center justify-center rounded border " +
+                      (m.isDone ? "border-success bg-success text-accent-fg" : "border-border hover:border-accent")
+                    }
+                  >
+                    {m.isDone && <CheckIcon className="h-3 w-3" />}
+                  </span>
                 </button>
                 <span className={"flex-1 text-sm " + (m.isDone ? "text-muted line-through" : "")}>{m.text}</span>
                 <button
@@ -268,9 +273,9 @@ export function LearnDetailSheet({
                     removeChild(deleteMilestone, restoreMilestone, "milestoneId", m.id, "Milestone deleted");
                   }}
                   aria-label={`Delete ${m.text}`}
-                  className="flex h-11 w-11 items-center justify-center text-xs text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
+                  className="flex h-11 w-11 items-center justify-center text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 hover:text-danger"
                 >
-                  ✕
+                  <CloseIcon className="h-4 w-4" />
                 </button>
               </li>
             ))}
@@ -294,9 +299,9 @@ export function LearnDetailSheet({
                     removeChild(deleteResource, restoreResource, "resourceId", r.id, "Resource deleted");
                   }}
                   aria-label="Delete resource"
-                  className="flex h-11 w-11 items-center justify-center text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
+                  className="flex h-11 w-11 items-center justify-center text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 hover:text-danger"
                 >
-                  ✕
+                  <CloseIcon className="h-4 w-4" />
                 </button>
               </li>
             ))}
@@ -314,9 +319,9 @@ export function LearnDetailSheet({
                       removeChild(deleteLearningNote, restoreLearningNote, "noteId", n.id, "Note deleted");
                     }}
                     aria-label="Delete note"
-                    className="flex h-11 w-11 items-center justify-center sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
+                    className="flex h-11 w-11 items-center justify-center sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 hover:text-danger"
                   >
-                    ✕
+                    <CloseIcon className="h-4 w-4" />
                   </button>
                 </div>
               </li>
@@ -328,24 +333,24 @@ export function LearnDetailSheet({
         <section className="space-y-2 rounded-lg border border-dashed border-border p-3">
           <p className="text-sm font-medium">Add to a project board</p>
           <div className="flex gap-2">
-            <select value={boardProject} onChange={(e) => setBoardProject(e.target.value)} aria-label="Project" className="h-9 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-1.5 text-sm">
+            <select value={boardProject} onChange={(e) => setBoardProject(e.target.value)} aria-label="Project" className="h-11 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-2 text-sm">
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
-            <button onClick={addToBoard} disabled={!boardProject} className="rounded-md bg-accent px-3 text-sm font-medium text-accent-fg disabled:opacity-50">
+            <Button size="sm" onClick={addToBoard} disabled={!boardProject}>
               Create card
-            </button>
+            </Button>
           </div>
         </section>
 
         <div className="sticky bottom-0 -mx-5 -mb-[calc(1.25rem+env(safe-area-inset-bottom))] flex justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4">
-          <button onClick={remove} className="text-sm text-danger hover:underline">
+          <Button variant="danger" size="sm" onClick={remove}>
             Delete
-          </button>
-          <button onClick={close} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-surface-2">
+          </Button>
+          <Button variant="secondary" onClick={close}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </Sheet>

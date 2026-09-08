@@ -110,7 +110,7 @@ export default async function BoardsPage() {
           description="Create a project from the sidebar — each one gets To-Do, Ideas, and Work boards."
         />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-2">
           {myProjects.map((p) => (
             <li
               key={p.id}
@@ -121,18 +121,22 @@ export default async function BoardsPage() {
                   aria-hidden
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-base"
                   style={{
-                    backgroundColor: p.color ? `${p.color}22` : undefined,
+                    backgroundColor: p.color
+                      ? `color-mix(in srgb, ${p.color} 15%, transparent)`
+                      : undefined,
                   }}
                 >
                   {p.emoji ?? "📁"}
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{p.name}</p>
-                  <p className="truncate text-xs text-muted">
-                    {p.isPersonal ? "Personal space" : "Shared project"} ·{" "}
-                    {lastByProject.has(p.id)
-                      ? `Active ${lastByProject.get(p.id)}`
-                      : "No activity yet"}
+                  <p className="flex flex-wrap gap-x-3 text-xs text-muted">
+                    <span>{p.isPersonal ? "Personal space" : "Shared project"}</span>
+                    <span>
+                      {lastByProject.has(p.id)
+                        ? `Active ${lastByProject.get(p.id)}`
+                        : "No activity yet"}
+                    </span>
                   </p>
                 </div>
               </div>

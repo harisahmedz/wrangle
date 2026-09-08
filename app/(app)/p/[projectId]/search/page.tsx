@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireMembership } from "@/lib/authz";
 import { searchProjectCards } from "@/lib/kanban/search";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 
 type Props = {
@@ -10,6 +12,8 @@ type Props = {
 };
 
 export const metadata: Metadata = { title: "Search" };
+
+const KIND_LABEL: Record<string, string> = { todo: "To-Do", ideas: "Ideas", work: "Work" };
 
 export default async function ProjectSearchPage({ params, searchParams }: Props) {
   const { projectId } = await params;
@@ -21,25 +25,31 @@ export default async function ProjectSearchPage({ params, searchParams }: Props)
     <div className="space-y-5">
       <h1 className="text-2xl font-bold tracking-tight">Search</h1>
       <form action={`/p/${projectId}/search`} className="flex gap-2">
-        <input
+        <Input
           type="search"
           name="q"
           defaultValue={q}
           placeholder="Search cards in this project…"
           aria-label="Search cards"
-          className="h-10 flex-1 rounded-md border border-border bg-surface-2 px-3 text-sm"
-          autoFocus
+          className="flex-1"
         />
-        <button
-          type="submit"
-          className="rounded-md bg-accent px-4 text-sm font-medium text-accent-fg"
-        >
-          Search
-        </button>
+        <Button type="submit">Search</Button>
       </form>
 
+      {!q && (
+        <EmptyState
+          icon="🔍"
+          title="Search this project"
+          description="Find cards by title across the To-Do, Ideas and Work boards."
+        />
+      )}
+
       {q && hits.length === 0 && (
-        <EmptyState icon="🔍" title={`No matches for “${q}”`} />
+        <EmptyState
+          icon="🔍"
+          title={`No matches for “${q}”`}
+          description="Try a shorter word, or check that the card isn't in the trash."
+        />
       )}
 
       {hits.length > 0 && (
@@ -48,11 +58,11 @@ export default async function ProjectSearchPage({ params, searchParams }: Props)
             <li key={hit.id}>
               <Link
                 href={`/p/${projectId}/b/${hit.kind}?card=${hit.id}`}
-                className="flex items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-surface-2"
+                className="flex min-h-11 items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-surface-2"
               >
                 <span className="truncate">{hit.title}</span>
-                <span className="ml-3 shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-                  {hit.kind}
+                <span className="ml-3 shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted">
+                  {KIND_LABEL[hit.kind] ?? hit.kind}
                 </span>
               </Link>
             </li>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ExpenseSheet } from "@/components/expenses/add-expense-sheet";
+import { Button } from "@/components/ui/button";
 import type { CategoryChip } from "@/components/expenses/types";
 
 export function AddExpenseButton({
@@ -25,13 +26,9 @@ export function AddExpenseButton({
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Add expense"
-        className="inline-flex h-11 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg"
-      >
+      <Button onClick={() => setOpen(true)} aria-label="Add expense">
         + Add
-      </button>
+      </Button>
       <ExpenseSheet
         open={open}
         onClose={() => setOpen(false)}

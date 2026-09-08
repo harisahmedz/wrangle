@@ -148,7 +148,7 @@ export function Modal({ open, onClose, children, className, label }: DialogProps
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center sm:p-4"
       onClick={onClose}
       role="presentation"
     >
@@ -160,7 +160,7 @@ export function Modal({ open, onClose, children, className, label }: DialogProps
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "w-full max-w-md rounded-xl border border-border bg-surface p-5 shadow-lg",
+          "w-full max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-xl border border-border bg-surface p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-lg sm:max-w-md sm:rounded-xl sm:pb-5",
           className,
         )}
       >
@@ -219,7 +219,7 @@ export function Sheet({
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "w-full border-border bg-surface shadow-lg",
+          "w-full overscroll-contain border-border bg-surface shadow-lg",
           variant === "side"
             ? "h-full max-h-none overflow-y-auto rounded-l-xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] sm:max-w-md sm:p-5"
             : "max-h-[85dvh] overflow-y-auto rounded-t-xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-xl sm:pb-5",

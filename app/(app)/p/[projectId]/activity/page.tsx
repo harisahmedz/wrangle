@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { requireMembership } from "@/lib/authz";
 import { describeEntry, projectFeed } from "@/lib/kanban/activity";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Props = { params: Promise<{ projectId: string }> };
 
@@ -14,15 +15,17 @@ export default async function ActivityPage({ params }: Props) {
 
   return (
     <div className="space-y-5">
-      <Link href={`/p/${projectId}/b/todo`} className="text-sm text-muted hover:text-text">
-        ← Back to board
-      </Link>
-      <h1 className="text-2xl font-bold tracking-tight">Activity</h1>
+      <PageHeader
+        title="Activity"
+        back={{ href: `/p/${projectId}`, label: "Back to board" }}
+      />
 
       {feed.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted">
-          Nothing has happened yet.
-        </p>
+        <EmptyState
+          icon="🕒"
+          title="Nothing has happened yet"
+          description="Move a card, tick a checklist item or leave a comment and it shows up here."
+        />
       ) : (
         <ul className="space-y-1">
           {feed.map((e) => (

@@ -57,7 +57,7 @@ export function ProjectSettingsForm({
 
       <div>
         <p className="mb-2 text-sm font-medium">Icon</p>
-        <div className="grid grid-cols-8 gap-1 sm:w-96">
+        <div className="grid grid-cols-6 gap-1 sm:w-96 sm:grid-cols-8">
           {PROJECT_EMOJIS.map((e) => (
             <button
               key={e}
@@ -66,7 +66,7 @@ export function ProjectSettingsForm({
               aria-label={`Emoji ${e}`}
               aria-pressed={emoji === e}
               className={cn(
-                "flex h-9 items-center justify-center rounded-md text-lg transition-colors",
+                "flex h-11 items-center justify-center rounded-md text-lg transition-colors",
                 emoji === e
                   ? "bg-accent/20 ring-1 ring-accent"
                   : "hover:bg-surface-2",
@@ -80,7 +80,7 @@ export function ProjectSettingsForm({
 
       <div>
         <p className="mb-2 text-sm font-medium">Color</p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-1">
           {PROJECT_COLORS.map((c) => (
             <button
               key={c}
@@ -88,13 +88,17 @@ export function ProjectSettingsForm({
               aria-label={`Color ${c}`}
               aria-pressed={color === c}
               onClick={() => setColor(c)}
-              style={{ backgroundColor: c }}
-              className={cn(
-                "h-7 w-7 rounded-full transition-transform",
-                color === c &&
-                  "scale-110 ring-2 ring-text ring-offset-2 ring-offset-surface",
-              )}
-            />
+              className="flex h-11 w-11 items-center justify-center rounded-md"
+            >
+              <span
+                style={{ backgroundColor: c }}
+                className={cn(
+                  "h-7 w-7 rounded-full transition-transform",
+                  color === c &&
+                    "scale-110 ring-2 ring-text ring-offset-2 ring-offset-surface",
+                )}
+              />
+            </button>
           ))}
         </div>
       </div>

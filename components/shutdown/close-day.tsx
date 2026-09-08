@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { closeDay, reopenDay } from "@/lib/actions/shutdown";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
 export function CloseDayButton() {
@@ -18,13 +19,9 @@ export function CloseDayButton() {
   };
 
   return (
-    <button
-      onClick={close}
-      disabled={pending}
-      className="min-h-[48px] w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-50"
-    >
-      {pending ? "Closing…" : "Close the day ✓"}
-    </button>
+    <Button size="lg" className="w-full" onClick={close} disabled={pending}>
+      {pending ? "Closing…" : "Close the day"}
+    </Button>
   );
 }
 
@@ -41,12 +38,8 @@ export function ReopenDayButton() {
   };
 
   return (
-    <button
-      onClick={reopen}
-      disabled={pending}
-      className="mx-auto block min-h-[44px] px-4 py-2 text-sm text-muted transition-colors hover:text-text disabled:opacity-50"
-    >
+    <Button variant="ghost" onClick={reopen} disabled={pending}>
       {pending ? "Reopening…" : "Reopen today"}
-    </button>
+    </Button>
   );
 }

@@ -23,6 +23,7 @@ import { renderMarkdown } from "@/lib/markdown";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { cardHistory, describeEntry } from "@/lib/kanban/activity";
 import { BoardView } from "@/components/kanban/board-view";
+import { MoreIcon } from "@/components/icons";
 import { CardDetail } from "@/components/kanban/card-detail";
 
 type Props = {
@@ -186,7 +187,8 @@ export default async function BoardPage({ params, searchParams }: Props) {
               </form>
               <details className="relative sm:hidden">
                 <summary className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-md border border-border text-muted">
-                  <span className="sr-only">Project links</span>⋯
+                  <span className="sr-only">Project links</span>
+                  <MoreIcon className="h-4 w-4" />
                 </summary>
                 <div className="absolute right-0 top-12 z-20 w-40 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg">
                   <Link href={`/p/${projectId}/members`} className="block px-4 py-3 text-sm text-muted">Members</Link>

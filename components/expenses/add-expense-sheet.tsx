@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -391,26 +392,22 @@ export function ExpenseSheet({
 
         <div className="sticky bottom-0 -mx-5 -mb-[calc(1.25rem+env(safe-area-inset-bottom))] flex items-center justify-between border-t border-border bg-surface px-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-3 sm:-mb-5">
           {editing ? (
-            <button
-              onClick={remove}
-              className="text-sm text-danger hover:underline"
-            >
+            <Button variant="danger" size="sm" onClick={remove}>
               Delete
-            </button>
+            </Button>
           ) : (
             <span />
           )}
           <div className="flex gap-2">
-            <button onClick={close} className="px-3 py-2 text-sm text-muted hover:text-text">
+            <Button variant="ghost" onClick={close}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={save}
               disabled={!minorValue || !categoryId || !spentOn || pending}
-              className="rounded-md bg-accent px-5 py-2 text-sm font-medium text-accent-fg disabled:opacity-50"
             >
               {pending ? "Saving…" : editing ? "Save" : "Add"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

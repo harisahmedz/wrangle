@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
@@ -7,6 +6,7 @@ import { projects } from "@/db/schema";
 import { hasMinRole, requireMembership } from "@/lib/authz";
 import { ProjectSettingsForm } from "@/components/projects/project-settings-form";
 import { DangerZone } from "@/components/projects/danger-zone";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Props = { params: Promise<{ projectId: string }> };
 
@@ -26,17 +26,10 @@ export default async function ProjectSettingsPage({ params }: Props) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <Link
-          href={`/p/${project.id}`}
-          className="text-sm text-muted hover:text-text"
-        >
-          ← Back to project
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight">
-          Project settings
-        </h1>
-      </div>
+      <PageHeader
+        title="Project settings"
+        back={{ href: `/p/${project.id}`, label: "Back to project" }}
+      />
 
       <section>
         <h2 className="mb-4 font-semibold">General</h2>

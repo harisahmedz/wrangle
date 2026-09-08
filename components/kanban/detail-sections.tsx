@@ -23,7 +23,9 @@ import {
   signUpload,
   toggleChecklistItem,
 } from "@/lib/kanban/detail-actions";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { CheckIcon, CloseIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { LABEL_COLORS } from "@/lib/palette";
 
@@ -122,11 +124,16 @@ export function ChecklistSection({
           <div
             className={cn(
               "h-full rounded-full transition-all",
-              pct === 100 ? "bg-emerald-500" : "bg-accent",
+              pct === 100 ? "bg-success" : "bg-accent",
             )}
             style={{ width: `${pct}%` }}
           />
         </div>
+      )}
+      {optimisticItems.length === 0 && (
+        <p className="rounded-md border border-dashed border-border px-3 py-3 text-center text-xs text-muted">
+          No steps yet.
+        </p>
       )}
       <ul className="space-y-1">
         {optimisticItems.map((item) => (
@@ -157,13 +164,13 @@ export function ChecklistSection({
             >
               <span
                 className={cn(
-                  "flex h-4 w-4 items-center justify-center rounded border text-[10px]",
+                  "flex h-4 w-4 items-center justify-center rounded border",
                   item.isDone
-                    ? "border-emerald-500 bg-emerald-500 text-white"
+                    ? "border-success bg-success text-accent-fg"
                     : "border-border hover:border-accent",
                 )}
               >
-                {item.isDone && "✓"}
+                {item.isDone && <CheckIcon className="h-3 w-3" />}
               </span>
             </button>
             <span className={cn("flex-1 text-sm", item.isDone && "text-muted line-through")}>
@@ -191,9 +198,9 @@ export function ChecklistSection({
                 });
               }}
               aria-label={`Delete ${item.text}`}
-              className="flex h-11 w-11 items-center justify-center text-xs text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
+              className="flex h-11 w-11 items-center justify-center text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 hover:text-danger"
             >
-              ✕
+              <CloseIcon className="h-4 w-4" />
             </button>}
           </li>
         ))}
@@ -294,29 +301,31 @@ export function LabelsSection({
             onKeyDown={(e) => e.key === "Enter" && add()}
             placeholder="Label name"
             aria-label="Label name"
-            className="h-8 w-full rounded-md border border-border bg-surface px-2 text-sm"
+            className="h-11 w-full rounded-md border border-border bg-surface px-2 text-sm"
           />
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {LABEL_COLORS.map((c) => (
               <button
                 key={c}
                 type="button"
                 onClick={() => setColor(c)}
                 aria-label={`Color ${c}`}
-                style={{ backgroundColor: c }}
-                className={cn(
-                  "h-5 w-5 rounded-full",
-                  color === c && "ring-2 ring-text ring-offset-1 ring-offset-surface",
-                )}
-              />
+                aria-pressed={color === c}
+                className="flex h-11 w-11 items-center justify-center rounded-md"
+              >
+                <span
+                  style={{ backgroundColor: c }}
+                  className={cn(
+                    "h-6 w-6 rounded-full",
+                    color === c && "ring-2 ring-text ring-offset-2 ring-offset-surface-2",
+                  )}
+                />
+              </button>
             ))}
           </div>
-          <button
-            onClick={add}
-            className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg"
-          >
+          <Button size="sm" onClick={add}>
             Create label
-          </button>
+          </Button>
         </div>
       )}
       <div className="flex flex-wrap gap-1.5">
@@ -499,20 +508,21 @@ export function CommentsSection({
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) post();
         }}
-        placeholder="Write a comment… (markdown, ⌘↵ to send)"
+        placeholder="Write a comment… (markdown)"
         rows={3}
         maxLength={5000}
         aria-label="New comment"
         className="w-full resize-y rounded-md border border-border bg-surface-2 p-2 text-sm"
       />}
-      {!readOnly && body.trim() && (
-        <button
-          onClick={post}
-          disabled={sending}
-          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg disabled:opacity-50"
-        >
+      {!readOnly && (
+        <Button size="sm" onClick={post} disabled={sending || !body.trim()}>
           Comment
-        </button>
+        </Button>
+      )}
+      {optimisticComments.length === 0 && (
+        <p className="rounded-md border border-dashed border-border px-3 py-3 text-center text-xs text-muted">
+          No comments yet.
+        </p>
       )}
       <ul className="space-y-3">
         {optimisticComments.map((c) => (
@@ -544,9 +554,9 @@ export function CommentsSection({
                       });
                     }}
                     aria-label="Delete comment"
-                    className="flex h-11 w-11 items-center justify-center transition-opacity sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
+                    className="flex h-11 w-11 items-center justify-center transition-opacity sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 hover:text-danger"
                   >
-                    ✕
+                    <CloseIcon className="h-4 w-4" />
                   </button>
                 )}
               </span>
@@ -662,6 +672,11 @@ export function AttachmentsSection({
           File uploads aren&apos;t set up for this workspace yet.
         </p>
       )}
+      {attachments.length === 0 && cloudinaryReady && (
+        <p className="rounded-md border border-dashed border-border px-3 py-3 text-center text-xs text-muted">
+          No files yet.
+        </p>
+      )}
       <ul className="space-y-1">
         {attachments.map((a) => (
           <li key={a.id} className="group flex items-center gap-2 rounded-md border border-border bg-surface-2/50 px-2 py-1.5 text-sm">
@@ -700,9 +715,9 @@ export function AttachmentsSection({
                   });
                 }}
                 aria-label="Delete attachment"
-                className="flex h-11 w-11 items-center justify-center text-xs text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
+                className="flex h-11 w-11 items-center justify-center text-muted sm:h-auto sm:w-auto sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 hover:text-danger"
               >
-                ✕
+                <CloseIcon className="h-4 w-4" />
               </button>
             )}
           </li>

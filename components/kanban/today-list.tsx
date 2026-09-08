@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toggleCardComplete } from "@/lib/kanban/actions";
 import { cn } from "@/lib/utils";
+import { CheckIcon } from "@/components/icons";
+import { EmptyState } from "@/components/ui/empty-state";
+import { buttonStyles } from "@/components/ui/button";
 
 export type TodayRow = {
   id: string;
@@ -31,9 +34,11 @@ function Row({ card }: { card: TodayRow }) {
           });
         }}
         aria-label={`Complete ${card.title}`}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-[10px] transition-colors hover:border-emerald-500 hover:bg-emerald-500 hover:text-white"
+        className="group/done -m-3 flex h-11 w-11 shrink-0 items-center justify-center"
       >
-        ✓
+        <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border text-muted transition-colors group-hover/done:border-success group-hover/done:bg-success group-hover/done:text-accent-fg">
+          <CheckIcon className="h-3 w-3" />
+        </span>
       </button>
       <Link
         href={`/p/${card.projectId}/b/${card.boardKind}?card=${card.id}`}
@@ -77,13 +82,15 @@ export function TodayList({ rows }: { rows: TodayRow[] }) {
 
 export function EmptyToday() {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-surface/50 px-6 py-14 text-center">
-      <span className="text-4xl opacity-70">🌤️</span>
-      <p className="font-medium">Nothing due today</p>
-      <p className="max-w-sm text-sm text-muted">
-        Cards due today or overdue from all your projects land here — the screen
-        to open first every morning.
-      </p>
-    </div>
+    <EmptyState
+      icon="🌤️"
+      title="Nothing due today"
+      description="Cards due today or overdue from any project land here. Give a card a due date and it shows up tomorrow morning."
+      action={
+        <Link href="/boards" className={buttonStyles({ variant: "secondary", size: "sm" })}>
+          Open your boards
+        </Link>
+      }
+    />
   );
 }

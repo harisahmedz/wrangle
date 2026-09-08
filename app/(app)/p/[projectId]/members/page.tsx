@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { memberships, users } from "@/db/schema";
@@ -10,6 +9,8 @@ import { leaveProject } from "@/lib/actions/projects-members";
 import { ShareButton } from "@/components/projects/share-button";
 import { MembersTable } from "@/components/projects/members-table";
 import { LeaveProjectButton } from "@/components/projects/leave-project-button";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Props = { params: Promise<{ projectId: string }> };
 
@@ -48,17 +49,15 @@ export default async function MembersPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href={`/p/${projectId}`} className="text-sm text-muted hover:text-text">
-          ← Back to board
-        </Link>
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">Members</h1>
-          {canInvite(ctx.role) && (
+      <PageHeader
+        title="Members"
+        back={{ href: `/p/${projectId}`, label: "Back to board" }}
+        actions={
+          canInvite(ctx.role) ? (
             <ShareButton projectId={projectId} isOwner={ctx.role === "owner"} />
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       <MembersTable
         projectId={projectId}
@@ -79,7 +78,7 @@ export default async function MembersPage({ params }: Props) {
 
       {invites.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          <h2 className="text-sm font-medium text-muted">
             Active invites
           </h2>
           <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
@@ -105,12 +104,9 @@ export default async function MembersPage({ params }: Props) {
                     <form action={revoke}>
                       <input type="hidden" name="projectId" value={projectId} />
                       <input type="hidden" name="inviteId" value={inv.id} />
-                      <button
-                        type="submit"
-                        className="text-xs text-muted transition-colors hover:text-danger"
-                      >
+                      <Button type="submit" variant="ghost" size="sm">
                         Revoke
-                      </button>
+                      </Button>
                     </form>
                   )}
                 </li>

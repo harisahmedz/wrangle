@@ -22,6 +22,8 @@ import {
   RescheduleAllButton,
 } from "@/components/weekly/buttons";
 import { EmptyState } from "@/components/ui/empty-state";
+import { buttonStyles } from "@/components/ui/button";
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Weekly review" };
 
@@ -205,36 +207,38 @@ export default async function WeeklyPage({ searchParams }: Props) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Weekly review</h1>
-          <p className="text-xs text-muted">{review.weekLabel}</p>
+          <h1 className="text-2xl font-bold tracking-tight">Weekly review</h1>
+          <p className="text-sm text-muted">{review.weekLabel}</p>
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1 text-sm">
-          {weeksAgo > 0 ? (
-            <>
-              <Link
-                href={weeksAgo === 1 ? "/weekly" : `/weekly?w=${weeksAgo - 1}`}
-                aria-label="Later week"
-                className="rounded px-2 py-1 text-muted hover:text-text"
-              >
-                →
-              </Link>
-              <span className="min-w-20 text-center text-xs font-medium">
-                {review.weekLabel}
-              </span>
-            </>
-          ) : (
-            <span className="px-2 py-1 text-xs text-muted">This week</span>
-          )}
           <Link
             href={`/weekly?w=${weeksAgo + 1}`}
             aria-label="Earlier week"
-            className="rounded px-2 py-1 text-muted hover:text-text"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
           >
-            ←
+            <ChevronLeftIcon className="h-4 w-4" />
           </Link>
+          <span className="min-w-24 text-center text-xs font-medium">
+            {weeksAgo > 0 ? review.weekLabel : "This week"}
+          </span>
+          {weeksAgo > 0 ? (
+            <Link
+              href={weeksAgo === 1 ? "/weekly" : `/weekly?w=${weeksAgo - 1}`}
+              aria-label="Later week"
+              className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
+            >
+              <ChevronRightIcon className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span aria-hidden className="flex h-11 w-11 items-center justify-center opacity-30">
+              <ChevronRightIcon className="h-4 w-4" />
+            </span>
+          )}
         </div>
       </div>
 
+      {!isEmptyWeek && (
+      <>
       {/* Slipped */}
       <section className="space-y-2 rounded-xl border border-border bg-surface p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -279,16 +283,19 @@ export default async function WeeklyPage({ searchParams }: Props) {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {review.shippedByProject.map((group) => (
-              <div key={group.name} className="rounded-lg border border-border p-3">
-                <p className="mb-1 text-xs text-muted">
-                  {group.emoji ? `${group.emoji} ` : ""}
-                  {group.name}{" "}
-                  <span className="tabular-nums">· {group.cards.length}</span>
+              <div key={group.name} className="rounded-lg border border-border bg-surface-2 p-3">
+                <p className="mb-1 flex items-center justify-between gap-2 text-xs text-muted">
+                  <span className="truncate">
+                    {group.emoji ? `${group.emoji} ` : ""}
+                    {group.name}
+                  </span>
+                  <span className="tabular-nums">{group.cards.length}</span>
                 </p>
                 <ul className="space-y-1 text-sm">
                   {group.cards.slice(0, 5).map((c) => (
-                    <li key={c.id} className="truncate">
-                      ✓ {c.title}
+                    <li key={c.id} className="flex items-center gap-1.5">
+                      <CheckIcon className="h-3.5 w-3.5 shrink-0 text-success" />
+                      <span className="truncate">{c.title}</span>
                     </li>
                   ))}
                   {group.cards.length > 5 && (
@@ -315,8 +322,8 @@ export default async function WeeklyPage({ searchParams }: Props) {
           </p>
           {review.topLearningItem && (
             <p className="text-xs text-muted truncate">
-              Top: {review.topLearningItem.title} ·{" "}
-              <span className="tabular-nums">{review.topLearningItem.minutes}m</span>
+              Top: {review.topLearningItem.title}{" "}
+              <span className="tabular-nums">({review.topLearningItem.minutes}m)</span>
             </p>
           )}
         </section>
@@ -343,9 +350,9 @@ export default async function WeeklyPage({ searchParams }: Props) {
           ))}
           {review.topCategory && (
             <p className="text-xs text-muted truncate">
-              Top: {review.topCategory.emoji} {review.topCategory.name} ·{" "}
+              Top: {review.topCategory.emoji} {review.topCategory.name}{" "}
               <span className="tabular-nums">
-                {formatMinor(review.topCategory.minor, review.dominantCurrency ?? "USD")}
+                ({formatMinor(review.topCategory.minor, review.dominantCurrency ?? "USD")})
               </span>
             </p>
           )}
@@ -378,13 +385,15 @@ export default async function WeeklyPage({ searchParams }: Props) {
           </p>
         )}
       </section>
+      </>
+      )}
 
       {!review.containsToday && (
         <Link
           href="/weekly"
-          className="block text-center text-xs text-muted hover:text-text"
+          className="flex min-h-11 items-center justify-center text-sm text-muted hover:text-text"
         >
-          Back to this week →
+          Back to this week
         </Link>
       )}
 
@@ -392,7 +401,12 @@ export default async function WeeklyPage({ searchParams }: Props) {
         <EmptyState
           icon="🗓️"
           title="A quiet week"
-          description="Nothing shipped, learned, spent or captured yet."
+          description="Nothing shipped, learned, spent or captured yet. Close a card or log a session and it shows up here."
+          action={
+            <Link href="/today" className={buttonStyles({ variant: "secondary", size: "sm" })}>
+              Go to Today
+            </Link>
+          }
         />
       )}
     </div>

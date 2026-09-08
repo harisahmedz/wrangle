@@ -3,6 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
+import { CheckIcon, GripIcon, LinesIcon } from "@/components/icons";
 import { formatScore, scoreOf } from "@/lib/kanban/score";
 import type { BoardCardData } from "@/lib/kanban/types";
 
@@ -78,7 +79,7 @@ export function CardChip({
               className={cn(
                 "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
                 score >= 4
-                  ? "bg-emerald-500/15 text-emerald-500"
+                  ? "bg-success/15 text-success"
                   : score >= 1
                     ? "bg-accent/15 text-accent-strong"
                     : "bg-surface text-muted",
@@ -99,8 +100,8 @@ export function CardChip({
               />
             ))}
             {card.hasDescription && (
-              <span aria-label="Has description" className="text-xs text-muted">
-                ☰
+              <span aria-label="Has description" className="text-muted">
+                <LinesIcon className="h-3.5 w-3.5" />
               </span>
             )}
             {card.dueAt && (
@@ -115,7 +116,7 @@ export function CardChip({
                 {formatDue(card.dueAt)}
               </span>
             )}
-            {done && <span className="text-xs text-muted">✓</span>}
+            {done && <CheckIcon className="h-3.5 w-3.5 text-success" />}
           </div>
         )}
       </button>
@@ -128,7 +129,7 @@ export function CardChip({
           aria-label={`Reorder ${card.title}`}
           className="flex w-11 shrink-0 cursor-grab touch-none items-center justify-center border-l border-border text-muted active:cursor-grabbing"
         >
-          ⋮⋮
+          <GripIcon className="h-4 w-4" />
         </button>
       )}
     </div>

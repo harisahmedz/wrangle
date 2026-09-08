@@ -14,6 +14,7 @@ import {
 } from "@/lib/money";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { Donut, TrendBars } from "@/components/expenses/charts";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import {
   ExpenseList,
 } from "@/components/expenses/expense-list";
@@ -199,9 +200,9 @@ export default async function MoneyPage({ searchParams }: Props) {
           <Link
             href={`/money?m=${prevMonth}`}
             aria-label="Previous month"
-            className="rounded px-2 py-1 text-muted hover:text-text"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
           >
-            ←
+            <ChevronLeftIcon className="h-4 w-4" />
           </Link>
           <span className="min-w-32 text-center text-sm font-medium">
             {monthLabel(month)}
@@ -210,19 +211,21 @@ export default async function MoneyPage({ searchParams }: Props) {
             <Link
               href={`/money?m=${nextMonth}`}
               aria-label="Next month"
-              className="rounded px-2 py-1 text-muted hover:text-text"
+              className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
             >
-              →
+              <ChevronRightIcon className="h-4 w-4" />
             </Link>
           ) : (
-            <span aria-hidden className="px-2 py-1 opacity-30">→</span>
+            <span aria-hidden className="flex h-11 w-11 items-center justify-center opacity-30">
+              <ChevronRightIcon className="h-4 w-4" />
+            </span>
           )}
           </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <section className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-xs uppercase tracking-wider text-muted">Spent this month</p>
+          <p className="text-xs font-medium text-muted">Spent this month</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">
             {formatMinor(totalThis, currency)}
           </p>
@@ -232,20 +235,20 @@ export default async function MoneyPage({ searchParams }: Props) {
                 ? "—"
                 : "No data for last month"
               : delta > 0
-                ? `▲ ${delta}% vs last month`
+                ? `Up ${delta}% vs last month`
                 : delta < 0
-                  ? `▼ ${Math.abs(delta)}% vs last month`
+                  ? `Down ${Math.abs(delta)}% vs last month`
                   : "Same as last month"}
           </p>
         </section>
 
         <section className="rounded-xl border border-border bg-surface p-4">
-          <p className="mb-2 text-xs uppercase tracking-wider text-muted">By category</p>
+          <p className="mb-2 text-xs font-medium text-muted">By category</p>
           <Donut slices={slices} currency={currency} />
         </section>
 
         <section className="rounded-xl border border-border bg-surface p-4 sm:col-span-2">
-          <p className="mb-2 text-xs uppercase tracking-wider text-muted">
+          <p className="mb-2 text-xs font-medium text-muted">
             Last 6 months
           </p>
           <TrendBars months={months6} currency={currency} />
@@ -262,7 +265,7 @@ export default async function MoneyPage({ searchParams }: Props) {
 
       {biggest.length >= 2 && (
         <section className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <p className="text-sm font-medium text-muted">
             Biggest this month
           </p>
           <ul className="space-y-1 text-sm">

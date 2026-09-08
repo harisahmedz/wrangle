@@ -55,10 +55,15 @@ export function Hotkeys() {
   }, [router]);
 
   return (
-    <div className="pointer-events-none fixed bottom-2 right-3 z-[10] hidden text-[10px] text-muted lg:block">
-      <kbd>T</kbd> today · <kbd>B</kbd> boards · <kbd>M</kbd> money ·{" "}
-      <kbd>L</kbd> learn · <kbd>S</kbd> shutdown · <kbd>W</kbd> week ·{" "}
-      <kbd>N</kbd> new · <kbd>/</kbd> search
+    <div className="pointer-events-none fixed bottom-2 right-3 z-[10] hidden gap-3 text-[10px] text-muted lg:flex">
+      <span><kbd>T</kbd> today</span>
+      <span><kbd>B</kbd> boards</span>
+      <span><kbd>M</kbd> money</span>
+      <span><kbd>L</kbd> learn</span>
+      <span><kbd>S</kbd> shutdown</span>
+      <span><kbd>W</kbd> week</span>
+      <span><kbd>N</kbd> new</span>
+      <span><kbd>/</kbd> search</span>
     </div>
   );
 }

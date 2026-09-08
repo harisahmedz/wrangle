@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { buttonStyles } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
@@ -10,10 +11,7 @@ export default function NotFound() {
       <p className="max-w-sm text-sm text-muted">
         This page doesn&apos;t exist, or you don&apos;t have access to it.
       </p>
-      <Link
-        href="/today"
-        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg"
-      >
+      <Link href="/today" className={buttonStyles()}>
         Back to Today
       </Link>
     </main>

@@ -13,6 +13,7 @@ import {
 import {
   QuickAddTrigger,
 } from "@/components/pwa/triggers";
+import { ChevronRightIcon } from "@/components/icons";
 
 type Props = { searchParams: Promise<{ title?: string; text?: string; link?: string; quick?: string }> };
 
@@ -122,16 +123,6 @@ export default async function TodayPage({ searchParams }: Props) {
       )}
       <h1 className="text-2xl font-bold tracking-tight">Today</h1>
 
-      <Link
-        href="/shutdown"
-        className="block rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:bg-surface-2"
-      >
-        <span className="block text-sm font-medium">Close the day →</span>
-        <span className="mt-0.5 block text-xs text-muted">
-          The Shutdown — plan tomorrow, let go of the rest.
-        </span>
-      </Link>
-
       {onboarding ? (
         <section className="space-y-3 rounded-xl border border-border bg-surface p-5">
           <h2 className="font-semibold">Welcome to Wrangle 👋</h2>
@@ -141,11 +132,11 @@ export default async function TodayPage({ searchParams }: Props) {
               (or just use <b className="text-text">My Space</b>).
             </li>
             <li>
-              <b className="text-text">2.</b> Open its board and add cards —
+              <b className="text-text">2.</b> Open its board and add cards, then
               drag them across columns.
             </li>
             <li>
-              <b className="text-text">3.</b> Give cards due dates — they&apos;ll
+              <b className="text-text">3.</b> Give cards due dates. They&apos;ll
               show up right here every morning.
             </li>
           </ol>
@@ -153,7 +144,7 @@ export default async function TodayPage({ searchParams }: Props) {
       ) : (
         <>
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+            <h2 className="text-sm font-medium text-muted">
               Due today &amp; overdue ({dueTodayOrOverdue.length})
             </h2>
             {dueTodayOrOverdue.length === 0 ? (
@@ -170,7 +161,7 @@ export default async function TodayPage({ searchParams }: Props) {
 
           {dueThisWeek.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+              <h2 className="text-sm font-medium text-muted">
                 Next 7 days ({dueThisWeek.length})
               </h2>
               {groupByProject(dueThisWeek).map(([project, projectRows]) => (
@@ -183,6 +174,19 @@ export default async function TodayPage({ searchParams }: Props) {
           )}
         </>
       )}
+
+      <Link
+        href="/shutdown"
+        className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:bg-surface-2"
+      >
+        <span>
+          <span className="block text-sm font-medium">Close the day</span>
+          <span className="mt-0.5 block text-xs text-muted">
+            The Shutdown: plan tomorrow, let go of the rest.
+          </span>
+        </span>
+        <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted" />
+      </Link>
     </div>
   );
 }

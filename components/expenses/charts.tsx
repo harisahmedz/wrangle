@@ -83,8 +83,8 @@ export function TrendBars({
         const h = Math.round((m.total / max) * 72);
         return (
           <div key={m.key} className="group flex min-w-0 flex-1 flex-col items-center gap-1">
-            <span className="text-[10px] tabular-nums text-muted opacity-0 transition-opacity group-hover:opacity-100">
-              {formatMinor(m.total, currency)}
+            <span className="h-4 text-[10px] tabular-nums text-muted">
+              {m.total > 0 ? formatMinor(m.total, currency) : ""}
             </span>
             <div
               className="w-full max-w-10 rounded-t-md bg-accent/70 transition-colors group-hover:bg-accent"

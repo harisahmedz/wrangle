@@ -72,31 +72,31 @@ function Leftover({ row }: { row: LeftoverRow }) {
           }}
           disabled={pending}
           aria-label={`Move ${row.title} to tomorrow`}
-          className="min-h-[44px] rounded-md border border-border bg-surface-2 px-2 py-2 text-xs font-medium transition-colors hover:bg-surface disabled:opacity-50"
+          className="min-h-11 rounded-md border border-border bg-surface-2 px-2 py-2 text-xs font-medium transition-colors hover:bg-surface disabled:opacity-50"
         >
-          → tmrw
+          Tomorrow
         </button>
         <button
           onClick={() => {
             setGone(true);
-            run(completeCardNow, "Done — nice.");
+            run(completeCardNow, "Done. Nice.");
           }}
           disabled={pending}
           aria-label={`Complete ${row.title}`}
-          className="min-h-[44px] rounded-md border border-emerald-600/40 bg-emerald-600/10 px-2 py-2 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-600/20 disabled:opacity-50"
+          className="min-h-11 rounded-md border border-success/40 bg-success/10 px-2 py-2 text-xs font-medium text-success transition-colors hover:bg-success/20 disabled:opacity-50"
         >
-          ✓ done
+          Done
         </button>
         <button
           onClick={() => {
             setGone(true);
-            run(letGoOfCard, "Let go — no guilt.");
+            run(letGoOfCard, "Let go. No guilt.");
           }}
           disabled={pending}
           aria-label={`Let go of ${row.title}`}
-          className="min-h-[44px] rounded-md border border-border bg-surface-2 px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-text disabled:opacity-50"
+          className="min-h-11 rounded-md border border-border bg-surface-2 px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-text disabled:opacity-50"
         >
-          let go
+          Let go
         </button>
       </div>
     </li>

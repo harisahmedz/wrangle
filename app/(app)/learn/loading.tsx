@@ -5,12 +5,12 @@ export default function Loading() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <Skeleton className="h-8 w-20" />
-        <Skeleton className="h-9 w-20" />
+        <Skeleton className="h-11 w-20" />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <Skeleton className="h-48" />
-        <Skeleton className="h-48" />
-        <Skeleton className="h-48" />
+        <Skeleton className="hidden h-48 sm:block" />
+        <Skeleton className="hidden h-48 sm:block" />
       </div>
     </div>
   );

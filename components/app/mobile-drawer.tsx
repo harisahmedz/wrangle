@@ -8,6 +8,7 @@ import {
   NewProjectDialog,
 } from "@/components/projects/new-project-dialog";
 import type { SidebarProject } from "@/components/app/side-projects";
+import { LinesIcon } from "@/components/icons";
 
 export function MobileProjectsDrawer({
   projects,
@@ -28,13 +29,11 @@ export function MobileProjectsDrawer({
         aria-label="Open projects"
         className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text md:hidden"
       >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <path d="M4 7h16M4 12h16M4 17h10" />
-        </svg>
+        <LinesIcon className="h-5 w-5" />
       </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} label="Projects">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+        <h2 className="mb-3 text-sm font-medium text-muted">
           Projects
         </h2>
         <nav className="flex flex-col gap-0.5">
@@ -56,7 +55,7 @@ export function MobileProjectsDrawer({
                 <span aria-hidden className="text-base">{p.emoji ?? "📁"}</span>
                 <span className="truncate">{p.name}</span>
                 {p.archivedAt && (
-                  <span className="ml-auto text-[10px] uppercase text-muted">archived</span>
+                  <span className="ml-auto text-[10px] text-muted">Archived</span>
                 )}
               </Link>
             );
@@ -65,7 +64,7 @@ export function MobileProjectsDrawer({
 
         {archived.length > 0 && (
           <>
-            <h3 className="mb-1 mt-4 text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className="mb-1 mt-4 text-xs font-medium text-muted">
               Archived
             </h3>
             <nav className="flex flex-col gap-0.5 opacity-70">

@@ -56,7 +56,7 @@ export function PipelineCard({ item }: { item: LearnItemRow }) {
       tabIndex={0}
       onClick={open}
       onKeyDown={(e) => e.key === "Enter" && open()}
-      className="group cursor-pointer rounded-lg border border-border bg-surface p-3 text-sm shadow-sm transition-colors hover:border-muted/50"
+      className="group cursor-pointer rounded-lg border border-border bg-surface-2 p-3 text-sm transition-colors hover:border-muted/50"
     >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 break-words">
@@ -65,13 +65,13 @@ export function PipelineCard({ item }: { item: LearnItemRow }) {
           </span>
           {item.title}
         </p>
-        <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
+        <span className="shrink-0 rounded-full bg-surface px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
           {item.hoursLogged}h
         </span>
       </div>
 
       {item.status !== "want" && (
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface">
           <div
             className={cn(
               "h-full rounded-full",

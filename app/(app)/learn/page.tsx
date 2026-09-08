@@ -28,10 +28,26 @@ const COLUMNS: Array<{
   status: (typeof learningStatus.enumValues)[number];
   label: string;
   hint: string;
+  empty: string;
 }> = [
-  { status: "want", label: "Want to learn", hint: "The backlog of curiosity" },
-  { status: "learning", label: "Learning", hint: "In progress now" },
-  { status: "learned", label: "Learned", hint: "Finished & celebrated" },
+  {
+    status: "want",
+    label: "Want to learn",
+    hint: "The backlog of curiosity",
+    empty: "Add something you want to learn",
+  },
+  {
+    status: "learning",
+    label: "Learning",
+    hint: "In progress now",
+    empty: "Move an item here when you start it",
+  },
+  {
+    status: "learned",
+    label: "Learned",
+    hint: "Finished & celebrated",
+    empty: "Finished items land here",
+  },
 ];
 
 export default async function LearnPage({ searchParams }: Props) {
@@ -190,14 +206,14 @@ export default async function LearnPage({ searchParams }: Props) {
 
       <div className="-mx-4 grid snap-x snap-mandatory grid-flow-col auto-cols-[88%] gap-4 overflow-x-auto px-4 pb-2 sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-3 sm:snap-none md:-mx-8 md:px-8">
         {COLUMNS.map((col) => (
-          <section key={col.status} className="min-w-0 snap-start space-y-2.5 rounded-xl bg-surface-2/60 p-2.5">
+          <section key={col.status} className="min-w-0 snap-start space-y-2.5 rounded-xl border border-border bg-surface p-2.5">
             <div className="flex items-baseline justify-between px-1">
               <h2 className="text-sm font-semibold">{col.label}</h2>
-              <span className="text-xs text-muted">
+              <span className="text-xs tabular-nums text-muted">
                 {grouped.get(col.status)?.length ?? 0}
               </span>
             </div>
-            <p className="hidden px-1 text-[11px] text-muted sm:block">{col.hint}</p>
+            <p className="px-1 text-xs text-muted">{col.hint}</p>
             <div className="space-y-2">
               {(grouped.get(col.status) ?? []).map((item) => (
                 <PipelineCard
@@ -216,8 +232,8 @@ export default async function LearnPage({ searchParams }: Props) {
                 />
               ))}
               {(grouped.get(col.status) ?? []).length === 0 && (
-                <p className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted">
-                  Empty
+                <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted">
+                  {col.empty}
                 </p>
               )}
             </div>

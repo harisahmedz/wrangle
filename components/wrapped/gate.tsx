@@ -1,6 +1,8 @@
+import Link from "next/link";
 import type { WrappedGate } from "@/lib/actions/wrapped";
+import { buttonStyles } from "@/components/ui/button";
 
-const TEASERS = ["Your archetype", "One plot twist", "Shipped · learned · spent"];
+const TEASERS = ["Your archetype", "One plot twist", "What you shipped, learned and spent"];
 
 export function WrappedGateView({ gate }: { gate: WrappedGate }) {
   const empty = gate.activeCount === 0;
@@ -19,7 +21,7 @@ export function WrappedGateView({ gate }: { gate: WrappedGate }) {
         </h2>
         <p className="text-sm text-muted">
           {empty
-            ? `It unlocks after ${gate.threshold} active days — you're off to a start.`
+            ? `It unlocks after ${gate.threshold} active days. You're off to a start.`
             : `${gate.activeCount}/${gate.threshold} days so far.`}
         </p>
       </div>
@@ -47,15 +49,17 @@ export function WrappedGateView({ gate }: { gate: WrappedGate }) {
       </p>
 
       <div className="space-y-2 border-t border-border pt-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-          Waiting inside your wrap
-        </p>
+        <p className="text-sm font-medium text-muted">Waiting inside your wrap</p>
         <ul className="space-y-1 text-sm text-muted">
           {TEASERS.map((t) => (
             <li key={t}>{t}</li>
           ))}
         </ul>
       </div>
+
+      <Link href="/today" className={buttonStyles({ variant: "secondary", size: "sm", className: "w-full" })}>
+        Log something today
+      </Link>
     </section>
   );
 }

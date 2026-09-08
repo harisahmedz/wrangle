@@ -16,6 +16,13 @@ import {
   updateColumnStyle,
 } from "@/lib/kanban/actions";
 import { CardChip } from "@/components/kanban/card-chip";
+import {
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  GripIcon,
+  MoreIcon,
+} from "@/components/icons";
 import { Modal } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import type {
@@ -155,7 +162,7 @@ export function Column({
       title="Drag to reorder"
       className="flex h-11 w-11 shrink-0 cursor-grab touch-none select-none items-center justify-center rounded text-xs leading-none text-muted transition-opacity sm:h-auto sm:w-auto sm:px-1 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
     >
-      ⋮⋮
+      <GripIcon className="h-4 w-4" />
     </button>
   );
 
@@ -169,7 +176,7 @@ export function Column({
         }}
         className={cn(
           "group flex w-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-2 rounded-xl border border-l-4 bg-surface py-3",
-          column.isDone && "border-l-emerald-500",
+          column.isDone && "border-l-success",
           isDragging && "opacity-40",
         )}
         onClick={canManageColumns ? () => style({ isCollapsed: "false" }) : undefined}
@@ -200,7 +207,7 @@ export function Column({
       }}
       className={cn(
         "group flex w-[272px] shrink-0 snap-start flex-col rounded-xl border border-l-4 bg-surface p-2",
-        column.isDone && "border-l-emerald-500",
+        column.isDone && "border-l-success",
         isDragging && "opacity-40",
       )}
     >
@@ -237,7 +244,7 @@ export function Column({
                 {column.wipLimit !== null && `/${column.wipLimit}`}
               </span>
               {column.isDone && (
-                <span className="ml-1.5 text-xs text-emerald-500">✓</span>
+                <CheckIcon className="ml-1.5 inline h-3.5 w-3.5 text-success" />
               )}
             </h2>
           </div>
@@ -249,7 +256,7 @@ export function Column({
             aria-expanded={menuOpen}
             className="flex h-11 w-11 items-center justify-center rounded text-muted transition-opacity sm:h-auto sm:w-auto sm:px-1.5 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
           >
-            ⋯
+            <MoreIcon className="h-4 w-4" />
           </button>
         )}
         {menuOpen && (
@@ -297,15 +304,15 @@ export function Column({
             <div className="flex border-t border-border text-xs">
               <button
                 onClick={() => shift("left")}
-                className="flex-1 px-3 py-2 text-left text-muted hover:bg-surface-2 hover:text-text"
+                className="flex flex-1 items-center gap-1 px-3 py-2 text-muted hover:bg-surface-2 hover:text-text"
               >
-                ◀ Move
+                <ChevronLeftIcon className="h-3.5 w-3.5" /> Move
               </button>
               <button
                 onClick={() => shift("right")}
-                className="flex-1 px-3 py-2 text-right text-muted hover:bg-surface-2 hover:text-text"
+                className="flex flex-1 items-center justify-end gap-1 px-3 py-2 text-muted hover:bg-surface-2 hover:text-text"
               >
-                Move ▶
+                Move <ChevronRightIcon className="h-3.5 w-3.5" />
               </button>
             </div>
             <button

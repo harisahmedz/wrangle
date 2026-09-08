@@ -6,6 +6,7 @@ import {
   createCategory,
   updateCategory,
 } from "@/lib/actions/expenses";
+import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -44,13 +45,9 @@ export function CategoryManagerButton({
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Manage categories"
-        className="h-11 rounded-md border border-border px-3 text-sm text-muted transition-colors hover:text-text"
-      >
+      <Button variant="secondary" onClick={() => setOpen(true)} aria-label="Manage categories">
         Categories
-      </button>
+      </Button>
       <Sheet open={open} onClose={() => setOpen(false)} label="Manage categories">
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Categories</h2>
@@ -88,7 +85,7 @@ export function CategoryManagerButton({
                 </button>
               ))}
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {CATEGORY_COLORS.map((c) => (
                 <button
                   key={c}
@@ -104,13 +101,9 @@ export function CategoryManagerButton({
               ))}
             </div>
             {error && <p className="text-sm text-danger">{error}</p>}
-            <button
-              onClick={create}
-              disabled={!name.trim()}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-50"
-            >
+            <Button onClick={create} disabled={!name.trim()}>
               Create
-            </button>
+            </Button>
           </div>
         </div>
       </Sheet>
@@ -164,7 +157,7 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
             </button>
           ))}
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {CATEGORY_COLORS.map((col) => (
             <button
               key={col}
@@ -180,12 +173,12 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
           ))}
         </div>
         <div className="flex gap-2">
-          <button onClick={save} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg">
+          <Button size="sm" onClick={save}>
             Save
-          </button>
-          <button onClick={() => setEditing(false)} className="px-2 text-xs text-muted">
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
             Cancel
-          </button>
+          </Button>
         </div>
       </li>
     );
@@ -198,7 +191,7 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
       <button
         onClick={() => setEditing(true)}
         aria-label={`Edit ${c.name}`}
-        className="flex h-11 items-center px-2 text-xs text-muted sm:h-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-text"
+        className="flex h-11 items-center px-2 text-xs text-muted sm:h-auto sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 hover:text-text"
       >
         Edit
       </button>
@@ -224,7 +217,7 @@ function CategoryRow({ category: c }: { category: CategoryChip }) {
           });
         }}
         aria-label={`Archive ${c.name}`}
-        className="flex h-11 items-center px-2 text-xs text-muted sm:h-auto sm:opacity-0 sm:group-hover:opacity-100 hover:text-danger"
+        className="flex h-11 items-center px-2 text-xs text-muted sm:h-auto sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 hover:text-danger"
       >
         Archive
       </button>

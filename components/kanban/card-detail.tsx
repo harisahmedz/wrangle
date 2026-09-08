@@ -16,6 +16,7 @@ import { promoteIdea, updateCardScore } from "@/lib/kanban/phase3-actions";
 import { scoreOf, formatScore } from "@/lib/kanban/score";
 import { COVER_SWATCHES } from "@/lib/palette";
 import { Button } from "@/components/ui/button";
+import { CheckIcon, CloseIcon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
 import { Modal, Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
@@ -65,6 +66,8 @@ type Props = {
   history?: Array<{ text: string; when: string }>;
   viewerName?: string;
 };
+
+const BOARD_LABEL: Record<string, string> = { todo: "To-Do", ideas: "Ideas", work: "Work" };
 
 function toLocalInput(dueAt: Date | null, allDay: boolean): string {
   if (!dueAt) return "";
@@ -288,14 +291,18 @@ export function CardDetail({
             disabled={pendingToggle}
             aria-pressed={done}
             aria-label={done ? "Mark as not done" : "Mark as done"}
-            className={
-              "mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors " +
-              (done
-                ? "border-emerald-500 bg-emerald-500 text-white"
-                : "border-border hover:border-accent")
-            }
+            className="-mx-2.5 -mb-2.5 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center"
           >
-            {done && <span className="text-xs">✓</span>}
+            <span
+              className={
+                "flex h-6 w-6 items-center justify-center rounded-full border transition-colors " +
+                (done
+                  ? "border-success bg-success text-accent-fg"
+                  : "border-border hover:border-accent")
+              }
+            >
+              {done && <CheckIcon className="h-3.5 w-3.5" />}
+            </span>
           </button> : <span className="h-6 w-6" />}
           <h2 className="sr-only">Card details</h2>
           <button
@@ -303,7 +310,7 @@ export function CardDetail({
             aria-label="Close"
             className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
           >
-            ✕
+            <CloseIcon className="h-5 w-5" />
           </button>
         </div>
 
@@ -370,19 +377,24 @@ export function CardDetail({
 
         {canEdit && <section className="space-y-2">
           <p className="text-sm font-medium">Cover</p>
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {COVER_SWATCHES.map((c) => (
                 <button
                   key={c || "none"}
                   onClick={() => setCover(c)}
                   aria-label={c ? `Cover ${c}` : "No cover"}
-                  className={
-                    "h-6 w-6 rounded-md border " +
-                    (c ? "border-transparent" : "border-dashed border-muted") +
-                    ((card.coverColor ?? "") === c ? " ring-2 ring-text ring-offset-2 ring-offset-surface" : "")
-                  }
-                  style={c ? { backgroundColor: c } : undefined}
-                />
+                  aria-pressed={(card.coverColor ?? "") === c}
+                  className="flex h-11 w-11 items-center justify-center rounded-md"
+                >
+                  <span
+                    className={
+                      "h-6 w-6 rounded-md border " +
+                      (c ? "border-transparent" : "border-dashed border-muted") +
+                      ((card.coverColor ?? "") === c ? " ring-2 ring-text ring-offset-2 ring-offset-surface" : "")
+                    }
+                    style={c ? { backgroundColor: c } : undefined}
+                  />
+                </button>
               ),
             )}
           </div>
@@ -391,29 +403,21 @@ export function CardDetail({
         <section className="space-y-2">
           <p className="text-sm font-medium">Actions</p>
           <div className="flex flex-wrap gap-2">
-            {canEdit && <button
-              onClick={duplicate}
-              className="rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:text-text"
-            >
-              ⧉ Duplicate
-            </button>}
-            <button
-              onClick={() => void copyLink()}
-              className="rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:text-text"
-            >
-              🔗 Copy link
-            </button>
+            {canEdit && (
+              <Button variant="secondary" size="sm" onClick={duplicate}>
+                Duplicate
+              </Button>
+            )}
+            <Button variant="secondary" size="sm" onClick={() => void copyLink()}>
+              Copy link
+            </Button>
             {canEdit && !isIdeasBoard &&
               ["todo", "ideas", "work"]
                 .filter((k) => k !== boardKind)
                 .map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => moveTo(k)}
-                    className="rounded-md border border-border px-3 py-1.5 text-xs capitalize text-muted hover:text-text"
-                  >
-                    → {k}
-                  </button>
+                  <Button key={k} variant="secondary" size="sm" onClick={() => moveTo(k)}>
+                    Move to {BOARD_LABEL[k]}
+                  </Button>
                 ))}
           </div>
         </section>
@@ -450,9 +454,9 @@ export function CardDetail({
                     )
                   }
                   aria-label="Impact"
-                  className="h-8 rounded-md border border-border bg-surface-2 px-1.5 text-sm"
+                  className="h-11 rounded-md border border-border bg-surface-2 px-2 text-sm"
                 >
-                  <option value="">–</option>
+                  <option value="">Not set</option>
                   {[1, 2, 3, 4, 5].map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}
@@ -469,9 +473,9 @@ export function CardDetail({
                     )
                   }
                   aria-label="Effort"
-                  className="h-8 rounded-md border border-border bg-surface-2 px-1.5 text-sm"
+                  className="h-11 rounded-md border border-border bg-surface-2 px-2 text-sm"
                 >
-                  <option value="">–</option>
+                  <option value="">Not set</option>
                   {[1, 2, 3, 4, 5].map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}
@@ -484,9 +488,9 @@ export function CardDetail({
         {isIdeasBoard && canEdit && (
           <button
             onClick={promote}
-            className="w-full rounded-md border border-accent/40 bg-accent/10 py-2.5 text-sm font-medium text-accent-strong transition-colors hover:bg-accent hover:text-white"
+            className="min-h-11 w-full rounded-md border border-accent/40 bg-accent/10 text-sm font-medium text-accent-strong transition-colors hover:bg-accent hover:text-accent-fg"
           >
-            Promote to To-Do board →
+            Promote to To-Do
           </button>
         )}
 
