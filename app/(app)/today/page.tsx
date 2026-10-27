@@ -27,12 +27,13 @@ export default async function TodayPage({ searchParams }: Props) {
     [sp.text, sp.link].filter(Boolean).join(" ").slice(0, 280) || null;
 
   const [user] = await db
-    .select({ timezone: users.timezone, now: sql<Date>`now()` })
+    // Raw sql isn't mapped through a column type, so the driver returns a string.
+    .select({ timezone: users.timezone, now: sql<string>`now()` })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   const timeZone = user?.timezone || "UTC";
-  const now = user?.now ?? new Date(0);
+  const now = user?.now ? new Date(user.now) : new Date(0);
 
   const today = todayWindow(timeZone);
   const upcoming = upcomingWindow(timeZone);
