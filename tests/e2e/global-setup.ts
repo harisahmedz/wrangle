@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
+import { E2E_ORIGIN, E2E_PORT } from "./port";
 
-const HEALTH_URL = "http://127.0.0.1:3100/api/health";
+const HEALTH_URL = `${E2E_ORIGIN}/api/health`;
+const IN_USE = `Port ${E2E_PORT} is already in use`;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,9 +12,9 @@ function delay(ms: number) {
 export default async function globalSetup() {
   try {
     const existing = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(500) });
-    if (existing.ok) throw new Error("Port 3100 is already in use");
+    if (existing.ok) throw new Error(IN_USE);
   } catch (error) {
-    if (error instanceof Error && error.message === "Port 3100 is already in use") {
+    if (error instanceof Error && error.message === IN_USE) {
       throw error;
     }
   }
@@ -25,7 +27,7 @@ export default async function globalSetup() {
     "bin",
     "next",
   );
-  const server = spawn(process.execPath, [nextBin, "start", "-p", "3100"], {
+  const server = spawn(process.execPath, [nextBin, "start", "-p", String(E2E_PORT)], {
     detached: true,
     stdio: "ignore",
     windowsHide: true,
