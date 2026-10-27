@@ -37,6 +37,7 @@ import {
   ReopenDayButton,
 } from "@/components/shutdown/close-day";
 import { ChevronRightIcon } from "@/components/icons";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const metadata: Metadata = { title: "Shutdown" };
 
@@ -236,19 +237,19 @@ export default async function ShutdownPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Shutdown</h1>
-          <p className="text-sm text-muted">{headerLabel}</p>
-        </div>
-        <Link
-          href="/weekly"
-          className="flex min-h-11 items-center gap-1 text-sm text-muted transition-colors hover:text-text"
-        >
-          This week in review
-          <ChevronRightIcon className="h-4 w-4" />
-        </Link>
-      </div>
+      <PageHeader
+        title="Shutdown"
+        subtitle={headerLabel}
+        actions={
+          <Link
+            href="/weekly"
+            className="flex min-h-11 items-center gap-1 text-sm text-muted transition-colors hover:text-text"
+          >
+            This week in review
+            <ChevronRightIcon className="h-4 w-4" />
+          </Link>
+        }
+      />
 
       {todayReview?.closed ? (
         <section className="space-y-4 rounded-xl border border-border bg-surface p-6 text-center">

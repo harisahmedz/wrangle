@@ -14,6 +14,7 @@ import {
   QuickAddTrigger,
 } from "@/components/pwa/triggers";
 import { ChevronRightIcon } from "@/components/icons";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Props = { searchParams: Promise<{ title?: string; text?: string; link?: string; quick?: string }> };
 
@@ -122,7 +123,7 @@ export default async function TodayPage({ searchParams }: Props) {
       {(sharedText || sp.quick || sp.title) && (
         <QuickAddTrigger prefill={sp.title ? `${sp.title} ${sharedText ?? ""}`.trim() : (sharedText ?? "")} />
       )}
-      <h1 className="text-2xl font-bold tracking-tight">Today</h1>
+      <PageHeader title="Today" />
 
       {onboarding ? (
         <section className="space-y-3 rounded-xl border border-border bg-surface p-5">

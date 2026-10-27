@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
+import { PageHeader } from "@/components/ui/page-header";
 import { AppearanceForm } from "@/components/settings/appearance-form";
 import { TimezoneForm } from "@/components/settings/timezone-form";
 import { DataAndAccount } from "@/components/settings/data-account";
@@ -32,7 +33,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+      <PageHeader title="Settings" />
 
       <section>
         <h2 className="mb-3 font-semibold">Appearance</h2>

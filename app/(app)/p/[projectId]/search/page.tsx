@@ -5,6 +5,7 @@ import { searchProjectCards } from "@/lib/kanban/search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Props = {
   params: Promise<{ projectId: string }>;
@@ -23,7 +24,7 @@ export default async function ProjectSearchPage({ params, searchParams }: Props)
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold tracking-tight">Search</h1>
+      <PageHeader title="Search" />
       <form action={`/p/${projectId}/search`} className="flex gap-2">
         <Input
           type="search"

@@ -16,6 +16,7 @@ import {
 import { WrappedDeck } from "@/components/wrapped/deck";
 import { WrappedGateView } from "@/components/wrapped/gate";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Props = { searchParams: Promise<{ m?: string }> };
 
@@ -46,32 +47,34 @@ export default async function WrappedPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Life Wrapped</h1>
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
-          <Link
-            href={`/wrapped?m=${formatYearMonth(prev.year, prev.monthIndex)}`}
-            aria-label="Previous month"
-            className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
-          >
-            <ChevronLeftIcon className="h-4 w-4" />
-          </Link>
-          <span className="min-w-32 text-center text-sm font-medium">{label}</span>
-          {hasNext ? (
+      <PageHeader
+        title="Life Wrapped"
+        actions={
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
             <Link
-              href={`/wrapped?m=${formatYearMonth(next.year, next.monthIndex)}`}
-              aria-label="Next month"
+              href={`/wrapped?m=${formatYearMonth(prev.year, prev.monthIndex)}`}
+              aria-label="Previous month"
               className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
             >
-              <ChevronRightIcon className="h-4 w-4" />
+              <ChevronLeftIcon className="h-4 w-4" />
             </Link>
-          ) : (
-            <span aria-hidden className="flex h-11 w-11 items-center justify-center opacity-30">
-              <ChevronRightIcon className="h-4 w-4" />
-            </span>
-          )}
-        </div>
-      </div>
+            <span className="min-w-32 text-center text-sm font-medium">{label}</span>
+            {hasNext ? (
+              <Link
+                href={`/wrapped?m=${formatYearMonth(next.year, next.monthIndex)}`}
+                aria-label="Next month"
+                className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Link>
+            ) : (
+              <span aria-hidden className="flex h-11 w-11 items-center justify-center opacity-30">
+                <ChevronRightIcon className="h-4 w-4" />
+              </span>
+            )}
+          </div>
+        }
+      />
 
       {payload.status === "ready" ? (
         <WrappedDeck

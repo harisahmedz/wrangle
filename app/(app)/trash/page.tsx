@@ -15,6 +15,7 @@ import { restoreExpense } from "@/lib/actions/expenses";
 import { restoreFromTrash } from "@/lib/actions/projects";
 import { formatMinor } from "@/lib/money";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 import { Button, buttonStyles } from "@/components/ui/button";
 
@@ -105,12 +106,10 @@ export default async function TrashPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Trash</h1>
-        <p className="mt-1 text-sm text-muted">
-          Deleted items restorable for {TRASH_RETENTION_DAYS} days.
-        </p>
-      </div>
+      <PageHeader
+        title="Trash"
+        subtitle={`Deleted items restorable for ${TRASH_RETENTION_DAYS} days.`}
+      />
 
       {empty && (
         <EmptyState

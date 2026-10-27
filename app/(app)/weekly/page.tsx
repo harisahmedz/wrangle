@@ -24,6 +24,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonStyles } from "@/components/ui/button";
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const metadata: Metadata = { title: "Weekly review" };
 
@@ -205,37 +206,37 @@ export default async function WeeklyPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Weekly review</h1>
-          <p className="text-sm text-muted">{review.weekLabel}</p>
-        </div>
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1 text-sm">
-          <Link
-            href={`/weekly?w=${weeksAgo + 1}`}
-            aria-label="Earlier week"
-            className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
-          >
-            <ChevronLeftIcon className="h-4 w-4" />
-          </Link>
-          <span className="min-w-24 text-center text-xs font-medium">
-            {weeksAgo > 0 ? review.weekLabel : "This week"}
-          </span>
-          {weeksAgo > 0 ? (
+      <PageHeader
+        title="Weekly review"
+        subtitle={review.weekLabel}
+        actions={
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1 text-sm">
             <Link
-              href={weeksAgo === 1 ? "/weekly" : `/weekly?w=${weeksAgo - 1}`}
-              aria-label="Later week"
+              href={`/weekly?w=${weeksAgo + 1}`}
+              aria-label="Earlier week"
               className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
             >
-              <ChevronRightIcon className="h-4 w-4" />
+              <ChevronLeftIcon className="h-4 w-4" />
             </Link>
-          ) : (
-            <span aria-hidden className="flex h-11 w-11 items-center justify-center opacity-30">
-              <ChevronRightIcon className="h-4 w-4" />
+            <span className="min-w-24 text-center text-xs font-medium">
+              {weeksAgo > 0 ? review.weekLabel : "This week"}
             </span>
-          )}
-        </div>
-      </div>
+            {weeksAgo > 0 ? (
+              <Link
+                href={weeksAgo === 1 ? "/weekly" : `/weekly?w=${weeksAgo - 1}`}
+                aria-label="Later week"
+                className="flex h-11 w-11 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Link>
+            ) : (
+              <span aria-hidden className="flex h-11 w-11 items-center justify-center opacity-30">
+                <ChevronRightIcon className="h-4 w-4" />
+              </span>
+            )}
+          </div>
+        }
+      />
 
       {!isEmptyWeek && (
       <>

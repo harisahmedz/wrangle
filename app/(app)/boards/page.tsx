@@ -12,6 +12,7 @@ import {
 import type { BoardKind } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const metadata: Metadata = { title: "Boards" };
 
@@ -102,7 +103,7 @@ export default async function BoardsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold tracking-tight">Boards</h1>
+      <PageHeader title="Boards" />
       {myProjects.length === 0 ? (
         <EmptyState
           icon="🗂️"

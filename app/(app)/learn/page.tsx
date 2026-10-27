@@ -14,6 +14,7 @@ import {
 import type { learningStatus } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import { todayKey } from "@/lib/money";
+import { PageHeader } from "@/components/ui/page-header";
 import { AddLearningButton } from "@/components/learn/add-learning";
 import { PipelineCard } from "@/components/learn/pipeline-card";
 import {
@@ -199,10 +200,7 @@ export default async function LearnPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Learn</h1>
-        <AddLearningButton />
-      </div>
+      <PageHeader title="Learn" actions={<AddLearningButton />} />
 
       <div className="-mx-4 grid snap-x snap-mandatory grid-flow-col auto-cols-[88%] gap-4 overflow-x-auto px-4 pb-2 sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-3 sm:snap-none md:-mx-8 md:px-8">
         {COLUMNS.map((col) => (
