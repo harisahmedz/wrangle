@@ -45,6 +45,10 @@ export const users = pgTable(
     timezone: text("timezone").notNull().default("UTC"),
     theme: projectTheme("theme").notNull().default("system"),
     currency: char("currency", { length: 3 }).notNull().default("USD"),
+    // Per-user view preferences (ROADMAP-V2 D1): `{ views: { [boardId]: {...} } }`.
+    // Validated at the edges by lib/validation/prefs.ts; stored loose here so
+    // S4b (Learn) can add a "learn" key without another migration.
+    prefs: jsonb("prefs"),
     onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

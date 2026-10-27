@@ -178,6 +178,17 @@ export function LinesIcon(props: IconProps) {
   );
 }
 
+export function SlidersIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 6h8M16 6h4M4 12h4M12 12h8M4 18h11M19 18h1" />
+      <circle cx="14" cy="6" r="2" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="12" r="2" fill="currentColor" stroke="none" />
+      <circle cx="17" cy="18" r="2" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
 export function CalendarIcon(props: IconProps) {
   return (
     <Svg {...props}>

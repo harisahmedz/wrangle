@@ -31,6 +31,7 @@ import { useToast } from "@/components/ui/toast";
 import type { BoardKind } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { scoreOf } from "@/lib/kanban/score";
+import { passesFilters } from "@/lib/kanban/filters";
 import {
   EMPTY_BOARD_FILTERS,
   parseBoardFilters,
@@ -40,45 +41,6 @@ import {
   type BoardSearchRecord,
   type DueFilter,
 } from "@/lib/kanban/types";
-
-function matchesDue(card: BoardCardData, due: DueFilter | null): boolean {
-  if (!due) return true;
-  if (due === "none") return card.dueAt === null;
-  if (!card.dueAt) return false;
-  const t = new Date(card.dueAt).getTime();
-  const now = new Date();
-  const todayStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  ).getTime();
-  if (due === "overdue") return t < todayStart && card.completedAt === null;
-  if (due === "today") return t < todayStart + DAY_MS;
-  return t < todayStart + 8 * DAY_MS;
-}
-
-const DAY_MS = 86_400_000;
-
-function passesFilters(card: BoardCardData, f: BoardFilters): boolean {
-  if (f.q) {
-    const q = f.q.toLowerCase();
-    if (
-      !card.title.toLowerCase().includes(q)
-    ) {
-      return false;
-    }
-  }
-  if (f.labelIds.length > 0 && !f.labelIds.some((id) => card.labelIds.includes(id))) {
-    return false;
-  }
-  if (
-    f.assigneeIds.length > 0 &&
-    !f.assigneeIds.some((id) => card.assigneeIds.includes(id))
-  ) {
-    return false;
-  }
-  return matchesDue(card, f.due);
-}
 
 type Props = {
   projectId: string;
@@ -91,6 +53,10 @@ type Props = {
   canEdit: boolean;
   canManageColumns: boolean;
   toolbarEnd: ReactNode;
+  /** The View menu (Layout/Group by/Sort/Show completed), V2 S4. Optional so other BoardView usages keep working untouched. */
+  viewMenu?: ReactNode;
+  /** The viewer's `users.timezone` (S4) — decides the "today" boundary for the due filter via `lib/kanban/filters.ts`. */
+  timeZone: string;
 };
 
 type UpdateFilters = (mutate: (f: BoardFilters) => BoardFilters) => void;
@@ -228,6 +194,8 @@ export function BoardView({
   canEdit,
   canManageColumns,
   toolbarEnd,
+  viewMenu,
+  timeZone,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -287,7 +255,7 @@ export function BoardView({
     const map = new Map<string, BoardCardData[]>();
     for (const col of columns) map.set(col.id, []);
     for (const c of cards) {
-      if (activeFilterCount === 0 || passesFilters(c, filters)) {
+      if (activeFilterCount === 0 || passesFilters(c, filters, timeZone)) {
         map.get(c.columnId)?.push(c);
       }
     }
@@ -481,6 +449,7 @@ export function BoardView({
               Sort by score
             </button>
           )}
+          {viewMenu}
           {toolbarEnd}
         </div>
       </div>

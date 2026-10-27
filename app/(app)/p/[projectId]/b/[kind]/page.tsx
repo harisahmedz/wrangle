@@ -22,9 +22,11 @@ import { hasMinRole, requireMembership } from "@/lib/authz";
 import { renderMarkdown } from "@/lib/markdown";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { cardHistory, describeEntry } from "@/lib/kanban/activity";
-import { BoardView } from "@/components/kanban/board-view";
+import { BoardSwitcher } from "@/components/kanban/board-switcher";
 import { MoreIcon } from "@/components/icons";
 import { CardDetail } from "@/components/kanban/card-detail";
+import { resolveInitialLayout } from "@/lib/kanban/view-resolve";
+import { parseUserPrefs } from "@/lib/validation/prefs";
 
 type Props = {
   params: Promise<{ projectId: string; kind: string }>;
@@ -34,6 +36,7 @@ type Props = {
     label?: string | string[];
     assignee?: string | string[];
     due?: string;
+    view?: string;
   }>;
 };
 
@@ -135,7 +138,7 @@ export default async function BoardPage({ params, searchParams }: Props) {
     assigneeIdsByCard.set(row.cardId, ids);
   }
 
-  const [filterLabels, filterMembers] = await Promise.all([
+  const [filterLabels, filterMembers, [userRow]] = await Promise.all([
     db
       .select({ id: labels.id, name: labels.name })
       .from(labels)
@@ -145,15 +148,24 @@ export default async function BoardPage({ params, searchParams }: Props) {
       .from(memberships)
       .innerJoin(users, eq(memberships.userId, users.id))
       .where(eq(memberships.projectId, projectId)),
+    db
+      .select({ timezone: users.timezone, prefs: users.prefs })
+      .from(users)
+      .where(eq(users.id, ctx.userId))
+      .limit(1),
   ]);
+  const timeZone = userRow?.timezone || "UTC";
+  const boardPref = parseUserPrefs(userRow?.prefs).views?.[board.id];
 
   const sp = await searchParams;
   const detailCardId = sp.card;
+  const initialLayout = resolveInitialLayout(sp.view, boardPref);
 
   return (
     <div data-wide className="space-y-5">
       <Suspense fallback={null}>
-        <BoardView
+        <BoardSwitcher
+          key={board.id}
           projectId={projectId}
           boardId={board.id}
           boardKind={boardKind}
@@ -162,6 +174,11 @@ export default async function BoardPage({ params, searchParams }: Props) {
           filterMembers={filterMembers}
           canEdit={hasMinRole(ctx.role, "member")}
           canManageColumns={hasMinRole(ctx.role, "admin")}
+          timeZone={timeZone}
+          initialLayout={initialLayout}
+          initialGroupBy={boardPref?.groupBy ?? "column"}
+          initialSort={boardPref?.sort ?? "manual"}
+          initialShowCompleted={boardPref?.showCompleted ?? false}
           toolbarEnd={
             <>
               <Link

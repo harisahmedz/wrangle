@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CheckIcon, CalendarIcon } from "@/components/icons";
 import { dueToneClass, type DueMeta } from "@/components/tasks/due-label";
@@ -26,20 +26,31 @@ export type TaskRowProps = {
   onOpen?: () => void;
   /** docs/OFFLINE-OUTBOX.md §7: dashed circle = pending, warning ring = failed. */
   sync?: "pending" | "failed";
+  /** Drag handle for reorderable contexts (List view, V2 S4). Omit when the row isn't draggable. */
+  dragHandle?: ReactNode;
+  /** dnd-kit transform/transition, applied to the row's `<li>`. */
+  style?: CSSProperties;
+  className?: string;
 };
 
-export function TaskRow({
-  title,
-  href,
-  completed,
-  onToggle,
-  due,
-  project,
-  showProjectOnPhone,
-  trailing,
-  onOpen,
-  sync,
-}: TaskRowProps) {
+export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(function TaskRow(
+  {
+    title,
+    href,
+    completed,
+    onToggle,
+    due,
+    project,
+    showProjectOnPhone,
+    trailing,
+    onOpen,
+    sync,
+    dragHandle,
+    style,
+    className,
+  },
+  ref,
+) {
   const checkboxGlyph = (
     <span
       className={cn(
@@ -65,7 +76,7 @@ export function TaskRow({
   );
 
   return (
-    <li className="border-b border-border py-2.5 last:border-b-0">
+    <li ref={ref} style={style} className={cn("border-b border-border py-2.5 last:border-b-0", className)}>
       <div className="flex items-start gap-3">
         {onToggle ? (
           <button
@@ -79,7 +90,8 @@ export function TaskRow({
           </button>
         ) : (
           <span
-            aria-hidden="true"
+            role="img"
+            aria-label={completed ? `${title} is done` : `${title} is not done`}
             className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center"
           >
             {checkboxGlyph}
@@ -132,9 +144,11 @@ export function TaskRow({
             )}
           />
         )}
+
+        {dragHandle}
       </div>
 
       {trailing && <div className="mt-2.5">{trailing}</div>}
     </li>
   );
-}
+});
