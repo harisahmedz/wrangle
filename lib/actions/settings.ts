@@ -18,7 +18,7 @@ import type { Theme } from "@/db/schema";
 import { requireMembership, requireUser } from "@/lib/authz";
 import { destroyAsset, isCloudinaryConfigured } from "@/lib/cloudinary";
 import { updateProfileSchema } from "@/lib/validation/settings";
-import { viewPrefSchema } from "@/lib/validation/prefs";
+import { LEARN_VIEW_KEY, viewPrefSchema } from "@/lib/validation/prefs";
 import { failure, type ActionResult } from "@/lib/actions/types";
 
 export async function updateProfile(formData: FormData): Promise<ActionResult> {
@@ -61,13 +61,17 @@ export async function setViewPref(formData: FormData): Promise<ActionResult> {
   const parsed = viewPrefSchema.safeParse(patchRaw);
   if (!parsed.success) return failure("Invalid preference");
 
-  const [board] = await db
-    .select({ projectId: boards.projectId })
-    .from(boards)
-    .where(eq(boards.id, boardId))
-    .limit(1);
-  if (!board) return failure("Board not found");
-  await requireMembership(board.projectId, "viewer");
+  // `LEARN_VIEW_KEY` is the one non-board key in `views` — Learn is personal
+  // (no project), so it skips the board lookup/membership check below.
+  if (boardId !== LEARN_VIEW_KEY) {
+    const [board] = await db
+      .select({ projectId: boards.projectId })
+      .from(boards)
+      .where(eq(boards.id, boardId))
+      .limit(1);
+    if (!board) return failure("Board not found");
+    await requireMembership(board.projectId, "viewer");
+  }
 
   // One atomic UPDATE instead of read-merge-write (SELECT then UPDATE would
   // lose a concurrent write from another tab/device). Built with nested `||`

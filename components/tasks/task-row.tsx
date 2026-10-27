@@ -15,6 +15,10 @@ export type TaskRowProps = {
    * plain, non-button circle instead of a checkbox. */
   onToggle?: () => void;
   due?: DueMeta;
+  /** Freeform meta line for rows with no literal due date (e.g. Learn's
+   * type/progress%/target-date summary, V2 S4b). Ignored when `due` is set —
+   * a row has at most one meta line. */
+  meta?: ReactNode;
   project?: { name: string; href: string };
   /** Show the project tag below `sm` too — mixed-project lists (Upcoming,
    * Today's "Next up") need it visible at every width, unlike grouped
@@ -40,6 +44,7 @@ export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(function TaskRow(
     completed,
     onToggle,
     due,
+    meta,
     project,
     showProjectOnPhone,
     trailing,
@@ -120,6 +125,7 @@ export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(function TaskRow(
               <span>{due.label}</span>
             </div>
           )}
+          {!due && meta && <p className="mt-0.5 truncate text-xs text-muted">{meta}</p>}
         </div>
 
         {project && (

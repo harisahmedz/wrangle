@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setLearningStatus } from "@/lib/actions/learning";
 import { nextStatus, prevStatus } from "@/lib/learning/logic";
+import { formatTargetDate } from "@/lib/learning/list-groups";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
@@ -83,12 +84,7 @@ export function PipelineCard({ item }: { item: LearnItemRow }) {
       )}
       {item.targetDate && (
         <p className="mt-1.5 text-xs text-muted">
-          Target{" "}
-          {new Date(`${item.targetDate}T12:00:00Z`).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            timeZone: "UTC",
-          })}
+          Target {formatTargetDate(item.targetDate)}
         </p>
       )}
 

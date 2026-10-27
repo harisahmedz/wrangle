@@ -8,15 +8,17 @@ import type { GroupBy, SortMode, ViewLayout } from "@/lib/validation/prefs";
 
 type Props = {
   layout: ViewLayout | null;
-  groupBy: GroupBy;
-  sort: SortMode;
-  showCompleted: boolean;
+  groupBy?: GroupBy;
+  sort?: SortMode;
+  showCompleted?: boolean;
   /** Board ignores Group by/Sort/Show completed — hide them when Board is the resolved layout. */
-  showListOptions: boolean;
+  showListOptions?: boolean;
+  /** Learn (V2 S4b) only offers the Board/List switch — no group/sort/show-completed section at all, not even the "switch to List" hint. */
+  layoutOnly?: boolean;
   onLayoutChange: (layout: ViewLayout) => void;
-  onGroupByChange: (groupBy: GroupBy) => void;
-  onSortChange: (sort: SortMode) => void;
-  onShowCompletedChange: (showCompleted: boolean) => void;
+  onGroupByChange?: (groupBy: GroupBy) => void;
+  onSortChange?: (sort: SortMode) => void;
+  onShowCompletedChange?: (showCompleted: boolean) => void;
 };
 
 /** Top-right "View" popover: Layout, Group by, Sort, Show completed (ROADMAP-V2 F1). */
@@ -26,6 +28,7 @@ export function ViewMenu({
   sort,
   showCompleted,
   showListOptions,
+  layoutOnly,
   onLayoutChange,
   onGroupByChange,
   onSortChange,
@@ -68,46 +71,47 @@ export function ViewMenu({
           </div>
         </div>
 
-        {showListOptions ? (
-          <>
-            <label className="mb-4 block">
-              <span className="mb-1.5 block text-xs font-medium text-muted">Group by</span>
-              <select
-                value={groupBy}
-                onChange={(e) => onGroupByChange(e.target.value as GroupBy)}
-                className="h-11 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
-              >
-                <option value="column">Column</option>
-                <option value="due">Due date</option>
-                <option value="none">None</option>
-              </select>
-            </label>
+        {!layoutOnly &&
+          (showListOptions ? (
+            <>
+              <label className="mb-4 block">
+                <span className="mb-1.5 block text-xs font-medium text-muted">Group by</span>
+                <select
+                  value={groupBy}
+                  onChange={(e) => onGroupByChange?.(e.target.value as GroupBy)}
+                  className="h-11 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
+                >
+                  <option value="column">Column</option>
+                  <option value="due">Due date</option>
+                  <option value="none">None</option>
+                </select>
+              </label>
 
-            <label className="mb-4 block">
-              <span className="mb-1.5 block text-xs font-medium text-muted">Sort</span>
-              <select
-                value={sort}
-                onChange={(e) => onSortChange(e.target.value as SortMode)}
-                className="h-11 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
-              >
-                <option value="manual">Manual</option>
-                <option value="due">Due date</option>
-              </select>
-            </label>
+              <label className="mb-4 block">
+                <span className="mb-1.5 block text-xs font-medium text-muted">Sort</span>
+                <select
+                  value={sort}
+                  onChange={(e) => onSortChange?.(e.target.value as SortMode)}
+                  className="h-11 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
+                >
+                  <option value="manual">Manual</option>
+                  <option value="due">Due date</option>
+                </select>
+              </label>
 
-            <label className="flex min-h-11 items-center justify-between gap-2 text-sm">
-              Show completed
-              <input
-                type="checkbox"
-                checked={showCompleted}
-                onChange={(e) => onShowCompletedChange(e.target.checked)}
-                className="h-5 w-5"
-              />
-            </label>
-          </>
-        ) : (
-          <p className="text-xs text-muted">Switch Layout to List to group, sort, or show completed tasks.</p>
-        )}
+              <label className="flex min-h-11 items-center justify-between gap-2 text-sm">
+                Show completed
+                <input
+                  type="checkbox"
+                  checked={showCompleted}
+                  onChange={(e) => onShowCompletedChange?.(e.target.checked)}
+                  className="h-5 w-5"
+                />
+              </label>
+            </>
+          ) : (
+            <p className="text-xs text-muted">Switch Layout to List to group, sort, or show completed tasks.</p>
+          ))}
       </Sheet>
     </>
   );

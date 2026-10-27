@@ -1,4 +1,5 @@
 import { createCard, moveCard, toggleCardComplete } from "@/lib/kanban/actions";
+import { setLearningStatus } from "@/lib/actions/learning";
 import type { Mutation, MutationResult } from "@/lib/mutations/types";
 
 export type { Mutation, MutationResult } from "@/lib/mutations/types";
@@ -8,8 +9,8 @@ export type { Mutation, MutationResult } from "@/lib/mutations/types";
  * Maps each queued kind straight onto today's Server Action; S8 swaps this
  * body for the real IndexedDB-backed queue without changing call sites.
  *
- * Only the kinds List view (V2 S4) needs are wired so far — `card.update`,
- * `checklist.set`, `learning.setStatus` and `expense.create` land in S5/S8.
+ * Only the kinds List view (V2 S4) and Learn list (V2 S4b) need are wired so
+ * far — `card.update`, `checklist.set` and `expense.create` land in S5/S8.
  * Callers should not `await` this to drive UI (apply changes locally first,
  * call `mutate`, and treat a `{ok:false}` result as a toast).
  */
@@ -39,6 +40,14 @@ export async function mutate(m: Mutation): Promise<MutationResult> {
         fd.set("toColumnId", m.toColumnId);
         fd.set("position", m.position);
         return await moveCard(fd);
+      }
+      case "learning.setStatus": {
+        const fd = new FormData();
+        fd.set("itemId", m.itemId);
+        fd.set("status", m.status);
+        // Already a true set server-side (setLearningStatus writes the
+        // given status, never flips), so no V0 toggle caveat applies here.
+        return await setLearningStatus(fd);
       }
       default:
         return { ok: false, error: `mutations: "${m.kind}" isn't wired yet` };

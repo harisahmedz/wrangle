@@ -11,55 +11,31 @@ import {
   projects,
   users,
 } from "@/db/schema";
-import type { learningStatus } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import { todayKey } from "@/lib/money";
+import { resolveInitialLayout } from "@/lib/kanban/view-resolve";
+import { parseUserPrefs, LEARN_VIEW_KEY } from "@/lib/validation/prefs";
 import { PageHeader } from "@/components/ui/page-header";
 import { AddLearningButton } from "@/components/learn/add-learning";
-import { PipelineCard } from "@/components/learn/pipeline-card";
+import { LearnSwitcher } from "@/components/learn/learn-switcher";
 import {
   LearnDetailSheet,
 } from "@/components/learn/detail-sheet";
 
-type Props = { searchParams: Promise<{ item?: string }> };
+type Props = { searchParams: Promise<{ item?: string; view?: string }> };
 
 export const metadata: Metadata = { title: "Learn" };
-
-const COLUMNS: Array<{
-  status: (typeof learningStatus.enumValues)[number];
-  label: string;
-  hint: string;
-  empty: string;
-}> = [
-  {
-    status: "want",
-    label: "Want to learn",
-    hint: "The backlog of curiosity",
-    empty: "Add something you want to learn",
-  },
-  {
-    status: "learning",
-    label: "Learning",
-    hint: "In progress now",
-    empty: "Move an item here when you start it",
-  },
-  {
-    status: "learned",
-    label: "Learned",
-    hint: "Finished & celebrated",
-    empty: "Finished items land here",
-  },
-];
 
 export default async function LearnPage({ searchParams }: Props) {
   const userId = await requireUser();
 
   const [user] = await db
-    .select({ timezone: users.timezone })
+    .select({ timezone: users.timezone, prefs: users.prefs })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   const timeZone = user?.timezone || "UTC";
+  const learnPref = parseUserPrefs(user?.prefs).views?.[LEARN_VIEW_KEY];
 
   const items = await db
     .select()
@@ -72,13 +48,21 @@ export default async function LearnPage({ searchParams }: Props) {
     )
     .orderBy(asc(learningItems.position));
 
-  const grouped = new Map<string, typeof items>();
-  for (const col of COLUMNS) grouped.set(col.status, []);
-  for (const item of items) {
-    grouped.get(item.status)?.push(item);
-  }
+  const rows = items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    type: item.type,
+    status: item.status,
+    sourceUrl: item.sourceUrl,
+    whyNote: item.whyNote,
+    targetDate: item.targetDate,
+    progressPct: item.progressPct,
+    hoursLogged: String(item.hoursLogged),
+  }));
 
-  const detailId = (await searchParams).item;
+  const sp = await searchParams;
+  const detailId = sp.item;
+  const initialLayout = resolveInitialLayout(sp.view, learnPref);
   let detail = null;
 
   if (detailId) {
@@ -202,42 +186,7 @@ export default async function LearnPage({ searchParams }: Props) {
     <div className="space-y-5">
       <PageHeader title="Learn" actions={<AddLearningButton />} />
 
-      <div className="-mx-4 grid snap-x snap-mandatory grid-flow-col auto-cols-[88%] gap-4 overflow-x-auto px-4 pb-2 sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-3 sm:snap-none md:-mx-8 md:px-8">
-        {COLUMNS.map((col) => (
-          <section key={col.status} className="min-w-0 snap-start space-y-2.5 rounded-xl border border-border bg-surface p-2.5">
-            <div className="flex items-baseline justify-between px-1">
-              <h2 className="text-sm font-semibold">{col.label}</h2>
-              <span className="text-xs tabular-nums text-muted">
-                {grouped.get(col.status)?.length ?? 0}
-              </span>
-            </div>
-            <p className="px-1 text-xs text-muted">{col.hint}</p>
-            <div className="space-y-2">
-              {(grouped.get(col.status) ?? []).map((item) => (
-                <PipelineCard
-                  key={item.id}
-                  item={{
-                    id: item.id,
-                    title: item.title,
-                    type: item.type,
-                    status: item.status,
-                    sourceUrl: item.sourceUrl,
-                    whyNote: item.whyNote,
-                    targetDate: item.targetDate,
-                    progressPct: item.progressPct,
-                    hoursLogged: String(item.hoursLogged),
-                  }}
-                />
-              ))}
-              {(grouped.get(col.status) ?? []).length === 0 && (
-                <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted">
-                  {col.empty}
-                </p>
-              )}
-            </div>
-          </section>
-        ))}
-      </div>
+      <LearnSwitcher items={rows} initialLayout={initialLayout} />
 
       {detail && <LearnDetailSheet {...detail} />}
     </div>

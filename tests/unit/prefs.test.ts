@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { mergeViewPref, parseUserPrefs, userPrefsSchema, viewPrefSchema } from "@/lib/validation/prefs";
+import {
+  LEARN_VIEW_KEY,
+  mergeViewPref,
+  parseUserPrefs,
+  userPrefsSchema,
+  viewPrefSchema,
+} from "@/lib/validation/prefs";
 
 describe("viewPrefSchema", () => {
   it("accepts a partial patch", () => {
@@ -66,5 +72,11 @@ describe("mergeViewPref", () => {
     let prefs = mergeViewPref({}, "b", { layout: "list", sort: "due" });
     prefs = mergeViewPref(prefs, "b", { layout: "board" });
     expect(prefs.views?.b).toEqual({ layout: "board", sort: "due" });
+  });
+
+  it("the reserved learn key works the same as any board id (S4b, no schema change)", () => {
+    const result = mergeViewPref({}, LEARN_VIEW_KEY, { layout: "list" });
+    expect(result).toEqual({ views: { learn: { layout: "list" } } });
+    expect(userPrefsSchema.safeParse(result).success).toBe(true);
   });
 });
