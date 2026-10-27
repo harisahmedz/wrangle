@@ -3,6 +3,7 @@ import Link from "next/link";
 import { and, asc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  boards,
   cards,
   cardFocuses,
   dayReviews,
@@ -111,13 +112,16 @@ export default async function ShutdownPage() {
       .select({
         id: cards.id,
         title: cards.title,
+        projectId: projects.id,
         projectName: projects.name,
+        boardKind: boards.kind,
         dueAt: cards.dueAt,
         isAllDay: cards.isAllDay,
         focusedOn: cardFocuses.focusDate,
       })
       .from(cards)
       .innerJoin(projects, eq(cards.projectId, projects.id))
+      .innerJoin(boards, eq(boards.id, cards.boardId))
       .innerJoin(memberships, memberJoin(userId))
       .leftJoin(
         cardFocuses,
@@ -200,6 +204,8 @@ export default async function ShutdownPage() {
   } => ({
     id: r.id,
     title: r.title,
+    projectId: r.projectId,
+    boardKind: r.boardKind,
     projectName: r.projectName,
     dueAt: r.dueAt ? new Date(r.dueAt) : today.end,
     overdue: r.isAllDay
@@ -265,7 +271,11 @@ export default async function ShutdownPage() {
         </section>
       ) : (
         <>
-          <FocusPicker focused={focusedCards} candidates={candidates} />
+          <FocusPicker
+            focused={focusedCards}
+            candidates={candidates}
+            timeZone={timeZone}
+          />
 
           <section className="space-y-3">
             <h2 className="text-sm font-medium text-muted">
@@ -279,7 +289,7 @@ export default async function ShutdownPage() {
                   <p className="px-1 text-xs font-medium text-muted">
                     {project}
                   </p>
-                  <LeftoverList rows={rows} />
+                  <LeftoverList rows={rows} timeZone={timeZone} />
                 </div>
               ))
             )}

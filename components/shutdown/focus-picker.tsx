@@ -7,7 +7,9 @@ import {
 } from "@/lib/actions/shutdown";
 import { useToast } from "@/components/ui/toast";
 import type { ActionResult } from "@/lib/actions/types";
-import { CheckIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
+import { CheckIcon, CalendarIcon } from "@/components/icons";
+import { formatDueLabel, dueToneClass } from "@/components/tasks/due-label";
 
 export type FocusedCard = {
   id: string;
@@ -28,9 +30,11 @@ const MAX_FOCUS = 3;
 export function FocusPicker({
   focused,
   candidates,
+  timeZone,
 }: {
   focused: FocusedCard[];
   candidates: FocusCandidate[];
+  timeZone: string;
 }) {
   const pushToast = useToast();
   const [pending, startTransition] = useTransition();
@@ -98,43 +102,41 @@ export function FocusPicker({
               : "Tap a card to focus it."}
           </p>
           <ul className="space-y-1.5">
-            {candidates.map((card) => (
-              <li key={card.id}>
-                <button
-                  onClick={() => {
-                    if (full) {
-                      pushToast({ message: "Focus is full. Unfocus one to swap." });
-                      return;
-                    }
-                    run(setCardFocus, card.id, "Couldn't focus the card");
-                  }}
-                  disabled={pending}
-                  aria-disabled={full}
-                  aria-label={`Focus ${card.title}`}
-                  className="flex min-h-[44px] w-full items-center gap-2.5 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm transition-colors hover:bg-surface-2 disabled:opacity-50"
-                >
-                  <span
-                    aria-hidden
-                    className="h-5 w-5 shrink-0 rounded-full border border-border"
-                  />
-                  <span className="min-w-0 flex-1 truncate">{card.title}</span>
-                  <span
-                    className={
-                      card.overdue
-                        ? "shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-danger/15 text-danger"
-                        : "shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-surface-2 text-muted"
-                    }
+            {candidates.map((card) => {
+              const due = formatDueLabel(card.dueAt, card.overdue, timeZone);
+              return (
+                <li key={card.id}>
+                  <button
+                    onClick={() => {
+                      if (full) {
+                        pushToast({ message: "Focus is full. Unfocus one to swap." });
+                        return;
+                      }
+                      run(setCardFocus, card.id, "Couldn't focus the card");
+                    }}
+                    disabled={pending}
+                    aria-disabled={full}
+                    aria-label={`Focus ${card.title}`}
+                    className="flex min-h-[44px] w-full items-center gap-2.5 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm transition-colors hover:bg-surface-2 disabled:opacity-50"
                   >
-                    {card.overdue
-                      ? "Overdue"
-                      : card.dueAt.toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                  </span>
-                </button>
-              </li>
-            ))}
+                    <span
+                      aria-hidden
+                      className="h-5 w-5 shrink-0 rounded-full border border-border"
+                    />
+                    <span className="min-w-0 flex-1 truncate">{card.title}</span>
+                    <span
+                      className={cn(
+                        "flex shrink-0 items-center gap-1 text-xs",
+                        dueToneClass[due.tone],
+                      )}
+                    >
+                      <CalendarIcon className="h-3 w-3" />
+                      {due.label}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

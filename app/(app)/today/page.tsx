@@ -155,7 +155,7 @@ export default async function TodayPage({ searchParams }: Props) {
               groupByProject(dueTodayOrOverdue).map(([project, projectRows]) => (
                 <div key={project} className="space-y-1.5">
                   <p className="px-1 text-xs font-medium text-muted">{project}</p>
-                  <TodayList rows={projectRows} />
+                  <TodayList rows={projectRows} timeZone={timeZone} />
                 </div>
               ))
             )}
@@ -169,7 +169,7 @@ export default async function TodayPage({ searchParams }: Props) {
               {groupByProject(dueThisWeek).map(([project, projectRows]) => (
                 <div key={project} className="space-y-1.5">
                   <p className="px-1 text-xs font-medium text-muted">{project}</p>
-                  <TodayList rows={projectRows} />
+                  <TodayList rows={projectRows} timeZone={timeZone} />
                 </div>
               ))}
             </section>
