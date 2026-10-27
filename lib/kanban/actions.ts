@@ -16,6 +16,7 @@ import type { BoardKind } from "@/db/schema";
 import { requireMembership } from "@/lib/authz";
 import {
   cardIdSchema,
+  createCardForProjectSchema,
   createCardSchema,
   createColumnSchema,
   deleteColumnSchema,
@@ -23,6 +24,7 @@ import {
   updateCardSchema,
 } from "@/lib/validation/kanban";
 import { failure, type ActionResult } from "@/lib/actions/types";
+import { insertCard } from "@/lib/kanban/insert-card";
 
 async function boardProjectId(boardId: string): Promise<string | null> {
   const [row] = await db
@@ -206,6 +208,10 @@ export async function createCard(
     columnId: formData.get("columnId"),
     title: formData.get("title"),
     atTop: formData.get("atTop") === "true",
+    id: formData.get("id") || undefined,
+    position: formData.get("position") || undefined,
+    dueAt: formData.get("dueAt") ? String(formData.get("dueAt")) : undefined,
+    isAllDay: formData.has("isAllDay") ? formData.get("isAllDay") === "true" : undefined,
   });
   if (!parsed.success) return failure("Invalid card");
 
@@ -213,40 +219,87 @@ export async function createCard(
   if (!col) return failure("Column not found");
   const { userId } = await requireMembership(col.projectId, "member");
 
-  const card = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${`cards:${parsed.data.columnId}`}::text))`,
-    );
-    const [edge] = await tx
-      .select({ position: cards.position })
-      .from(cards)
-      .where(
-        and(eq(cards.columnId, parsed.data.columnId), isNull(cards.deletedAt)),
-      )
-      .orderBy(parsed.data.atTop ? asc(cards.position) : desc(cards.position))
-      .limit(1);
-    const position = parsed.data.atTop
-      ? generateKeyBetween(null, edge?.position ?? null)
-      : generateKeyBetween(edge?.position ?? null, null);
-    const [created] = await tx
-      .insert(cards)
-      .values({
-        columnId: parsed.data.columnId,
-        boardId: col.boardId,
-        projectId: col.projectId,
-        title: parsed.data.title,
-        position,
-        createdBy: userId,
-      })
-      .returning({ id: cards.id });
-    return { ...created, position };
+  const card = await insertCard({
+    columnId: parsed.data.columnId,
+    boardId: col.boardId,
+    projectId: col.projectId,
+    title: parsed.data.title,
+    userId,
+    id: parsed.data.id,
+    position: parsed.data.position,
+    atTop: parsed.data.atTop,
+    dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+    isAllDay: parsed.data.isAllDay,
   });
+  if (!card) return failure("Could not create card");
 
-  await logActivity(col.projectId, userId, "card", card.id, "created", {
+  await logActivity(col.projectId, userId, "card", card.cardId, "created", {
     title: parsed.data.title,
   });
   refresh();
-  return { ok: true, data: { cardId: card.id, position: card.position } };
+  return { ok: true, data: { cardId: card.cardId, position: card.position } };
+}
+
+/**
+ * Quick Add v2's "#project" target (V2 S5, docs/OFFLINE-OUTBOX.md §9.2.7):
+ * resolves `{projectId, boardKind}` to that board's first column, same
+ * resolution `quickAddCard` used to hardcode for My Space only.
+ */
+export async function createCardForProject(
+  formData: FormData,
+): Promise<ActionResult<{ cardId: string; position: string }>> {
+  const parsed = createCardForProjectSchema.safeParse({
+    projectId: formData.get("projectId"),
+    boardKind: formData.get("boardKind"),
+    title: formData.get("title"),
+    id: formData.get("id") || undefined,
+    position: formData.get("position") || undefined,
+    dueAt: formData.get("dueAt") ? String(formData.get("dueAt")) : undefined,
+    isAllDay: formData.has("isAllDay") ? formData.get("isAllDay") === "true" : undefined,
+  });
+  if (!parsed.success) return failure("Invalid card");
+
+  const { userId } = await requireMembership(parsed.data.projectId, "member");
+
+  const [board] = await db
+    .select({ id: boards.id })
+    .from(boards)
+    .where(
+      and(
+        eq(boards.projectId, parsed.data.projectId),
+        eq(boards.kind, parsed.data.boardKind),
+      ),
+    )
+    .limit(1);
+  if (!board) return failure("Board not found");
+
+  const [firstColumn] = await db
+    .select({ id: columns.id })
+    .from(columns)
+    .where(and(eq(columns.boardId, board.id), isNull(columns.deletedAt)))
+    .orderBy(asc(columns.position))
+    .limit(1);
+  if (!firstColumn) return failure("No columns to add into");
+
+  const card = await insertCard({
+    columnId: firstColumn.id,
+    boardId: board.id,
+    projectId: parsed.data.projectId,
+    title: parsed.data.title,
+    userId,
+    id: parsed.data.id,
+    position: parsed.data.position,
+    dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+    isAllDay: parsed.data.isAllDay,
+  });
+  if (!card) return failure("Could not create card");
+
+  await logActivity(parsed.data.projectId, userId, "card", card.cardId, "created", {
+    title: parsed.data.title,
+    via: "quick-add",
+  });
+  refresh();
+  return { ok: true, data: { cardId: card.cardId, position: card.position } };
 }
 
 export async function updateCard(formData: FormData): Promise<ActionResult> {

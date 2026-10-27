@@ -493,6 +493,7 @@ export function BoardView({
                 canManageColumns={canManageColumns}
                 reorderEnabled={reorderEnabled}
                 filtered={activeFilterCount > 0}
+                timeZone={timeZone}
               />
             ))}
           </SortableContext>

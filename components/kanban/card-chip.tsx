@@ -5,32 +5,23 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { CheckIcon, GripIcon, LinesIcon } from "@/components/icons";
 import { formatScore, scoreOf } from "@/lib/kanban/score";
+import { formatDueLabel } from "@/components/tasks/due-label";
 import type { BoardCardData } from "@/lib/kanban/types";
-
-export function formatDue(dueAt: string): string {
-  const d = new Date(dueAt);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const diffDays = Math.round(
-    (target.getTime() - today.getTime()) / 86_400_000,
-  );
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Tomorrow";
-  if (diffDays === -1) return "Yesterday";
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
 
 export function CardChip({
   card,
   onOpen,
   showScore = false,
   draggable = true,
+  timeZone,
 }: {
   card: BoardCardData;
   onOpen: (id: string) => void;
   showScore?: boolean;
   draggable?: boolean;
+  /** Board/List share one due-date formatter (V2 S5, `due-label.ts`'s
+   * `formatDueLabel`) so the two can't drift on Today/Tomorrow wording. */
+  timeZone: string;
 }) {
   const {
     attributes,
@@ -113,7 +104,7 @@ export function CardChip({
                     : "bg-surface text-muted",
                 )}
               >
-                {formatDue(card.dueAt)}
+                {formatDueLabel(new Date(card.dueAt), overdue, timeZone).label}
               </span>
             )}
             {done && <CheckIcon className="h-3.5 w-3.5 text-success" />}

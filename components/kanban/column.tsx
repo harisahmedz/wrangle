@@ -8,7 +8,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
-  createCard,
   deleteColumn,
   moveColumn,
   renameColumn,
@@ -16,6 +15,7 @@ import {
   updateColumnStyle,
 } from "@/lib/kanban/actions";
 import { CardChip } from "@/components/kanban/card-chip";
+import { InlineAdd } from "@/components/kanban/inline-add";
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -25,6 +25,8 @@ import {
 } from "@/components/icons";
 import { Modal } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { mutate } from "@/lib/mutations";
+import { uuidv7 } from "@/lib/uuid";
 import type {
   BoardCardData,
   BoardColumnData,
@@ -42,6 +44,7 @@ export function Column({
   canManageColumns,
   reorderEnabled,
   filtered,
+  timeZone,
 }: {
   column: BoardColumnData;
   cards: BoardCardData[];
@@ -52,9 +55,8 @@ export function Column({
   canManageColumns: boolean;
   reorderEnabled: boolean;
   filtered: boolean;
+  timeZone: string;
 }) {
-  const [adding, setAdding] = useState(false);
-  const [title, setTitle] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -85,16 +87,18 @@ export function Column({
   const overWip =
     column.wipLimit !== null && cards.length > column.wipLimit;
 
-  const submit = () => {
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    const fd = new FormData();
-    fd.set("columnId", column.id);
-    fd.set("title", trimmed);
-    startTransition(async () => {
-      await createCard(fd);
+  const addCard = async (cardTitle: string): Promise<boolean> => {
+    const res = await mutate({
+      kind: "card.create",
+      id: uuidv7(),
+      target: { columnId: column.id },
+      title: cardTitle,
     });
-    setTitle("");
+    if (!res.ok) {
+      pushToast({ message: res.error });
+      return false;
+    }
+    return true;
   };
 
   const doRename = (name: string) => {
@@ -341,17 +345,12 @@ export function Column({
               onOpen={onOpenCard}
               showScore={showScore}
               draggable={canEdit && reorderEnabled}
+              timeZone={timeZone}
             />
           ))}
-          {cards.length === 0 && !adding && (
+          {cards.length === 0 && (
             !filtered && canEdit ? (
-              <button
-                type="button"
-                onClick={() => setAdding(true)}
-                className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted transition-colors hover:border-muted/50 hover:text-text"
-              >
-                Add the first card
-              </button>
+              <InlineAdd onAdd={addCard} label="Add the first card" emptyVariant />
             ) : (
               <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted">
                 {filtered ? "No cards match" : "No cards"}
@@ -361,51 +360,11 @@ export function Column({
         </div>
       </SortableContext>
 
-      {canEdit && (adding ? (
+      {canEdit && (cards.length > 0 || filtered) && (
         <div className="mt-2">
-          <textarea
-            autoFocus
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-                setAdding(false);
-              }
-              if (e.key === "Escape") setAdding(false);
-            }}
-            placeholder="Card title…"
-            rows={2}
-            aria-label="New card title"
-            className="w-full resize-none rounded-lg border border-border bg-surface-2 p-2 text-sm"
-          />
-          <div className="mt-1 flex gap-2">
-            <button
-              onClick={() => {
-                submit();
-                setAdding(false);
-              }}
-              className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg"
-            >
-              Add
-            </button>
-            <button
-              onClick={() => setAdding(false)}
-              className="px-2 text-xs text-muted"
-            >
-              Cancel
-            </button>
-          </div>
+          <InlineAdd onAdd={addCard} />
         </div>
-      ) : (cards.length > 0 || filtered) && (
-        <button
-          onClick={() => setAdding(true)}
-          className="mt-2 w-full rounded-md px-2 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-text"
-        >
-          + Add card
-        </button>
-      ))}
+      )}
 
       <Modal
         open={deleting}

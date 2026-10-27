@@ -24,9 +24,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { generateKeyBetween } from "fractional-indexing";
 import type { BoardKind } from "@/db/schema";
 import { BoardTabs } from "@/components/kanban/board-tabs";
+import { InlineAdd } from "@/components/kanban/inline-add";
 import { TaskRow } from "@/components/tasks/task-row";
 import { formatDueLabel } from "@/components/tasks/due-label";
-import { GripIcon, PlusIcon } from "@/components/icons";
+import { GripIcon } from "@/components/icons";
 import { useToast } from "@/components/ui/toast";
 import { mutate } from "@/lib/mutations";
 import { uuidv7 } from "@/lib/uuid";
@@ -338,65 +339,5 @@ function SortableTaskRow({
         ) : undefined
       }
     />
-  );
-}
-
-function InlineAdd({ onAdd }: { onAdd: (title: string) => Promise<boolean> }) {
-  const [adding, setAdding] = useState(false);
-  const [title, setTitle] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async () => {
-    const trimmed = title.trim();
-    if (!trimmed || submitting) return;
-    setSubmitting(true);
-    const ok = await onAdd(trimmed);
-    setSubmitting(false);
-    // Only clear/collapse on success — a failed create keeps the typed
-    // title and stays open so the user can retry without retyping it.
-    if (ok) {
-      setTitle("");
-      setAdding(false);
-    }
-  };
-
-  if (!adding) {
-    return (
-      <button
-        type="button"
-        onClick={() => setAdding(true)}
-        className="flex min-h-11 w-full items-center gap-1.5 rounded-md px-1 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-text"
-      >
-        <PlusIcon className="h-4 w-4" /> Add task
-      </button>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 px-1 py-1">
-      <input
-        autoFocus
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") void submit();
-          if (e.key === "Escape") setAdding(false);
-        }}
-        onBlur={() => {
-          if (!title.trim()) setAdding(false);
-        }}
-        placeholder="Task title…"
-        aria-label="New task title"
-        className="h-11 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-3 text-sm"
-      />
-      <button
-        type="button"
-        onClick={() => void submit()}
-        disabled={submitting}
-        className="rounded-md bg-accent px-3 py-2 text-xs font-medium text-accent-fg disabled:opacity-50"
-      >
-        Add
-      </button>
-    </div>
   );
 }

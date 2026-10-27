@@ -279,7 +279,13 @@ function parseExpense(
   return { amountMinor, note, spentOn };
 }
 
-function parseTask(
+/**
+ * Extracts a due date from a free-text task segment, stripping the matched
+ * date phrase from the title. Exported (V2 S5) so Quick Add's live token
+ * chips (`lib/kanban/quick-add-parse.ts`) reuse the same date logic as the
+ * Dump instead of a second parser.
+ */
+export function parseTask(
   seg: string,
   now: Date,
   tz: string,

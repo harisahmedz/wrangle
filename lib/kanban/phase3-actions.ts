@@ -4,15 +4,8 @@ import { refresh } from "next/cache";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
-import {
-  activities,
-  boards,
-  cards,
-  columns,
-  memberships,
-  projects,
-} from "@/db/schema";
-import { requireMembership, requireUser } from "@/lib/authz";
+import { activities, boards, cards, columns } from "@/db/schema";
+import { requireMembership } from "@/lib/authz";
 import { cardIdSchema } from "@/lib/validation/kanban";
 import { failure, type ActionResult } from "@/lib/actions/types";
 
@@ -120,71 +113,4 @@ export async function promoteIdea(
       previousPosition: card.position,
     },
   };
-}
-
-export async function quickAddCard(
-  formData: FormData,
-): Promise<ActionResult<{ title: string }>> {
-  const userId = await requireUser();
-  const title = String(formData.get("title") ?? "").trim();
-  if (!title || title.length > 300) return failure("Give it a title (≤300 chars)");
-
-  const [personal] = await db
-    .select({ projectId: projects.id })
-    .from(memberships)
-    .innerJoin(projects, eq(memberships.projectId, projects.id))
-    .where(
-      and(
-        eq(memberships.userId, userId),
-        eq(projects.isPersonal, true),
-        isNull(projects.deletedAt),
-      ),
-    )
-    .limit(1);
-  if (!personal) return failure("My Space not found — try reloading");
-
-  const [todoBoard] = await db
-    .select({ id: boards.id })
-    .from(boards)
-    .where(
-      and(eq(boards.projectId, personal.projectId), eq(boards.kind, "todo")),
-    )
-    .limit(1);
-  if (!todoBoard) return failure("My Space has no To-Do board");
-
-  const [firstColumn] = await db
-    .select({ id: columns.id })
-    .from(columns)
-    .where(and(eq(columns.boardId, todoBoard.id), isNull(columns.deletedAt)))
-    .orderBy(asc(columns.position))
-    .limit(1);
-  if (!firstColumn) return failure("No columns to add into");
-
-  const [last] = await db
-    .select({ position: cards.position })
-    .from(cards)
-    .where(and(eq(cards.columnId, firstColumn.id), isNull(cards.deletedAt)))
-    .orderBy(desc(cards.position))
-    .limit(1);
-
-  await db.insert(cards).values({
-    columnId: firstColumn.id,
-    boardId: todoBoard.id,
-    projectId: personal.projectId,
-    title,
-    position: generateKeyBetween(last?.position ?? null, null),
-    createdBy: userId,
-  });
-
-  await db.insert(activities).values({
-    projectId: personal.projectId,
-    actorId: userId,
-    entityType: "card",
-    entityId: personal.projectId,
-    verb: "created",
-    meta: { via: "quick-add", title },
-  });
-
-  refresh();
-  return { ok: true, data: { title } };
 }

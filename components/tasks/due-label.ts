@@ -12,9 +12,11 @@ export const dueToneClass: Record<DueTone, string> = {
 
 /**
  * Formats a due date for the TaskRow meta line as "Today"/"Tomorrow"/
- * "Yesterday" (matching the board card chips' `formatDue`, `card-chip.tsx`)
- * or a short month/day date otherwise. `overdue` is computed upstream
- * (timezone-aware, see lib/dates.ts) and only decides the tone.
+ * "Yesterday" or a short month/day date otherwise. The one due-date
+ * formatter for the whole app (V2 S5 folded the board's `CardChip` onto
+ * this instead of keeping its own `formatDue`, so Board and List can't
+ * drift). `overdue` is computed upstream (timezone-aware, see lib/dates.ts)
+ * and only decides the tone.
  *
  * `timeZone` is required (the caller's `users.timezone`, defaulting to
  * "UTC" upstream) so the label always reflects the user's local day

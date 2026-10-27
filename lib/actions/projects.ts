@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
 import { memberships, projects } from "@/db/schema";
@@ -17,6 +17,38 @@ import {
 import { failure, type ActionResult } from "@/lib/actions/types";
 
 const MAX_PROJECTS_PER_USER = 50;
+
+/**
+ * Quick Add v2's "#project" matcher (V2 S5) — the global sheet has no
+ * server-rendered project list of its own (it's mounted once in the shell,
+ * not per-page), so it fetches this lazily on open, same pattern as the
+ * Dump's `listExpenseCategoriesForDump`/`listLearningTopicsForDump`.
+ * Viewer-role projects are excluded: `createCard`/`createCardForProject`
+ * both require "member"+, so offering them here would just 404 on submit.
+ */
+export async function listProjectsForQuickAdd(): Promise<
+  ActionResult<{ id: string; name: string; isPersonal: boolean }[]>
+> {
+  const userId = await requireUser();
+  const rows = await db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      isPersonal: projects.isPersonal,
+    })
+    .from(memberships)
+    .innerJoin(projects, eq(memberships.projectId, projects.id))
+    .where(
+      and(
+        eq(memberships.userId, userId),
+        isNull(projects.deletedAt),
+        isNull(projects.archivedAt),
+        ne(memberships.role, "viewer"),
+      ),
+    )
+    .orderBy(asc(memberships.position));
+  return { ok: true, data: rows };
+}
 
 export async function createProject(
   formData: FormData,

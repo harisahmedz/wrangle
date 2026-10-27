@@ -33,7 +33,11 @@ async function waitForSavedLayout(
     .toBe(layout);
 }
 
-test("View menu: List choice persists per board across a reload", async ({ page, demoSession }) => {
+test("View menu: List choice persists per board across a reload", async ({ page, demoSession }, testInfo) => {
+  // Both Playwright projects would run this in parallel against the same demo
+  // user's users.prefs row (one's reset clobbers the other's poll), and the
+  // viewport is forced to desktop below anyway, so run it once.
+  test.skip(testInfo.project.name !== "chromium", "shared demo prefs row; viewport is set explicitly");
   // Three reloads + DB polls; the Pixel 7 project runs close to the 30s default.
   test.setTimeout(60_000);
   test.skip(!hasDatabase, "DATABASE_URL not set");
