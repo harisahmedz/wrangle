@@ -29,6 +29,12 @@
   --dur-fast: 120ms;
   --dur-normal: 200ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Window Controls Overlay (V2 S7): the extra top offset content needs when
+   * the installed desktop app draws its own min/max/close buttons over the
+   * page. Stays 0 in a normal tab/window — only overridden inside the
+   * `(display-mode: window-controls-overlay)` media query below. */
+  --wco-offset: 0px;
 }
 
 html.light {
@@ -130,6 +136,77 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* `*`/`::before`/`::after` above don't match the View Transition
+   * pseudo-element tree, so it needs its own opt-out. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * View transitions (ROADMAP-V2 S7). React's <ViewTransition> component (the
+ * path Next 16.2's `experimental.viewTransition` flag is meant to pair with)
+ * ships only in React's canary channel — confirmed absent from this repo's
+ * pinned react@19.2.4 (no export in node_modules/react, and the type only
+ * exists in @types/react/canary.d.ts, not the main types). Turning the flag
+ * on here would do nothing useful without that component, so this uses the
+ * documented fallback instead: the native browser View Transitions API
+ * directly, no experimental flag required.
+ * - `@view-transition` opts into the browser's *cross-document* transitions
+ *   (PWA shortcut/share-target launches, hard reloads, the SW offline-page
+ *   swap) — a free crossfade on the default `root` pseudo-element, no JS.
+ * - The Board<->List toggle (same-document, a plain React state swap) calls
+ *   `document.startViewTransition` itself — see lib/view-transition.ts and
+ *   its use in components/kanban/board-switcher.tsx.
+ * Both share this one duration/easing rule, on the existing motion tokens.
+ */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--dur-normal);
+  animation-timing-function: var(--ease-out);
+}
+
+/*
+ * Window Controls Overlay (ROADMAP-V2 S7). When the installed desktop PWA
+ * runs with `display_override: window-controls-overlay`, the OS stops
+ * reserving a native titlebar and instead floats its min/max/close buttons
+ * over the page; `env(titlebar-area-*)` describes the remaining draggable
+ * rectangle. Entirely gated behind this media query, so both rules are a
+ * true no-op in a normal browser tab or a non-WCO installed window.
+ */
+/* Hidden outside WCO. Must come before the media query below so the
+ * `display: block` there wins (same specificity, later rule wins). */
+.wco-drag-strip {
+  display: none;
+}
+
+@media (display-mode: window-controls-overlay) {
+  :root {
+    --wco-offset: env(titlebar-area-height, 2.25rem);
+  }
+
+  /* Thin, exact-fit drag handle — never wider/taller than the real OS
+   * titlebar rectangle, so it never sits over interactive page content
+   * (both the top bar and the sidebar push their content below it via
+   * `--wco-offset`). */
+  .wco-drag-strip {
+    display: block;
+    position: fixed;
+    top: env(titlebar-area-y, 0px);
+    left: env(titlebar-area-x, 0px);
+    width: env(titlebar-area-width, 100%);
+    height: env(titlebar-area-height, 2.25rem);
+    -webkit-app-region: drag;
+    app-region: drag;
+    z-index: 60;
   }
 }
 

@@ -8,7 +8,10 @@ export default function manifest(): MetadataRoute.Manifest {
       "What to do, what you're thinking about, what you're learning, what you're spending.",
     id: "/today",
     start_url: "/today",
+    scope: "/",
     display: "standalone",
+    display_override: ["window-controls-overlay", "standalone"],
+    launch_handler: { client_mode: "navigate-existing" },
     background_color: "#0b0e14",
     theme_color: "#0b0e14",
     icons: [

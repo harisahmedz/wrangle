@@ -12,7 +12,10 @@ import { Hotkeys } from "@/components/app/hotkeys";
 import { ToastProvider } from "@/components/ui/toast";
 import { SwSessionScope } from "@/components/pwa/sw-session-scope";
 import { PullToRefresh } from "@/components/pwa/pull-to-refresh";
+import { AppBadge } from "@/components/pwa/app-badge";
 import { SIDEBAR_COLLAPSED_KEY } from "@/lib/sidebar";
+import { todayWindow } from "@/lib/dates";
+import { countDueOrOverdueCards } from "@/lib/kanban/due-cards";
 import { db } from "@/db";
 import { memberships, projects } from "@/db/schema";
 import { and, asc, eq, isNull } from "drizzle-orm";
@@ -46,6 +49,15 @@ export default async function AppLayout({
     )
     .orderBy(asc(memberships.position));
 
+  // App badge count (V2 S7): overdue + due today, matching Today's first
+  // section, as a single COUNT. Layouts don't re-render on client
+  // navigation; they do on reload and on a server action's `refresh()`
+  // (e.g. completing a card), which is when the badge updates.
+  const dueBadgeCount = await countDueOrOverdueCards(
+    session.user.id,
+    todayWindow(session.user.timezone || "UTC"),
+  );
+
   return (
     <ToastProvider>
       {/* No-flash: apply the saved collapse preference to <html> before the
@@ -56,6 +68,9 @@ export default async function AppLayout({
           __html: `try{document.documentElement.classList.toggle('sidebar-collapsed', localStorage.getItem('${SIDEBAR_COLLAPSED_KEY}')==='1')}catch(e){}`,
         }}
       />
+      {/* Window Controls Overlay drag strip (V2 S7) — display:none outside
+          `(display-mode: window-controls-overlay)`, see app/globals.css. */}
+      <div className="wco-drag-strip" />
       <TopBar
         name={session.user.name}
         image={session.user.image}
@@ -83,6 +98,7 @@ export default async function AppLayout({
       <Hotkeys />
       <PullToRefresh />
       <SwSessionScope userId={session.user.id} expires={session.expires} />
+      <AppBadge count={dueBadgeCount} />
     </ToastProvider>
   );
 }

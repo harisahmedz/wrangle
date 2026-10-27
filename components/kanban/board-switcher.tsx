@@ -9,6 +9,7 @@ import { ListView } from "@/components/kanban/list-view";
 import { ViewMenu } from "@/components/kanban/view-menu";
 import { useToast } from "@/components/ui/toast";
 import { setViewPref } from "@/lib/actions/settings";
+import { withViewTransition } from "@/lib/view-transition";
 import type { BoardCardData, BoardColumnData } from "@/lib/kanban/types";
 import type { GroupBy, SortMode, ViewLayout, ViewPref } from "@/lib/validation/prefs";
 
@@ -93,9 +94,14 @@ export function BoardSwitcher({
       showCompleted={showCompleted}
       showListOptions={layout !== "board"}
       onLayoutChange={(next) => {
-        setLayout(next);
+        // Persist first so the save never depends on the transition below
+        // (a visual nicety) succeeding.
         persist({ layout: next });
         clearViewOverride();
+        // Subtle cross-fade between Board/List (V2 S7) — same-document state
+        // swap, so the native API is called directly rather than through
+        // Next's router.
+        withViewTransition(() => setLayout(next));
       }}
       onGroupByChange={(next) => {
         setGroupBy(next);

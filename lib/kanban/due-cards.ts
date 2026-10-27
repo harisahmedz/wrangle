@@ -104,3 +104,34 @@ export async function loadDueCards(
     };
   });
 }
+
+/**
+ * Cheap count of open (not completed/deleted) cards due today or earlier,
+ * across every project `userId` is a member of — the same overdue+due-today
+ * window `loadDueCards` uses for Today's teaser, as a single `COUNT(*)`
+ * instead of hydrating full rows. Powers the app badge (V2 S7); see
+ * app/(app)/layout.tsx.
+ */
+export async function countDueOrOverdueCards(
+  userId: string,
+  today: DayWindow,
+): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(cards)
+    .innerJoin(projects, eq(cards.projectId, projects.id))
+    .innerJoin(
+      memberships,
+      and(eq(memberships.projectId, projects.id), eq(memberships.userId, userId)),
+    )
+    .where(
+      and(
+        isNull(cards.deletedAt),
+        isNull(cards.completedAt),
+        isNull(projects.deletedAt),
+        isNull(projects.archivedAt),
+        lt(cards.dueAt, today.end),
+      ),
+    );
+  return row?.count ?? 0;
+}

@@ -197,7 +197,10 @@ export function Sidebar({
       <aside
         id={SIDEBAR_ID}
         style={{
-          paddingTop: "calc(0.75rem + env(safe-area-inset-top))",
+          // `--wco-offset` is 0 outside Window Controls Overlay mode (V2 S7,
+          // see app/globals.css) so the header row below isn't drawn under
+          // the installed desktop app's own min/max/close buttons.
+          paddingTop: "calc(0.75rem + env(safe-area-inset-top) + var(--wco-offset))",
           paddingLeft: "calc(0.75rem + env(safe-area-inset-left))",
           paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))",
         }}
@@ -230,7 +233,7 @@ export function Sidebar({
         aria-expanded={!collapsed}
         aria-controls={SIDEBAR_ID}
         style={{
-          top: "calc(env(safe-area-inset-top) + 0.5rem)",
+          top: "calc(env(safe-area-inset-top) + var(--wco-offset) + 0.5rem)",
           left: "calc(env(safe-area-inset-left) + 0.5rem)",
         }}
         className="fixed z-30 hidden h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted hover:bg-surface-2 hover:text-text [html.sidebar-collapsed_&]:lg:flex"

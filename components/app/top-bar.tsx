@@ -13,7 +13,9 @@ export function TopBar({
 }) {
   return (
     <header
-      style={{ paddingTop: "env(safe-area-inset-top)" }}
+      // `--wco-offset` is 0 outside Window Controls Overlay mode (V2 S7, see
+      // app/globals.css), so this is identical to the old fixed padding there.
+      style={{ paddingTop: "calc(env(safe-area-inset-top) + var(--wco-offset))" }}
       className="sticky top-0 z-30 flex h-auto min-h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b border-border bg-bg/80 px-4 backdrop-blur md:px-6 lg:hidden"
     >
       <div className="flex items-center gap-1">
