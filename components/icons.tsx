@@ -189,10 +189,28 @@ export function SlidersIcon(props: IconProps) {
   );
 }
 
+export function ShutdownIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3v7" />
+      <path d="M6.5 6.5a7 7 0 1 0 11 0" />
+    </Svg>
+  );
+}
+
 export function CalendarIcon(props: IconProps) {
   return (
     <Svg {...props}>
       <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </Svg>
+  );
+}
+
+export function WeeklyIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="18" height="15" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
     </Svg>
   );

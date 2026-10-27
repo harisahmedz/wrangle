@@ -34,6 +34,8 @@ async function waitForSavedLayout(
 }
 
 test("View menu: List choice persists per board across a reload", async ({ page, demoSession }) => {
+  // Three reloads + DB polls; the Pixel 7 project runs close to the 30s default.
+  test.setTimeout(60_000);
   test.skip(!hasDatabase, "DATABASE_URL not set");
   test.skip(!demoSession.projectId, "demo@wrangle.local has no personal project to test against");
 
@@ -60,20 +62,20 @@ test("View menu: List choice persists per board across a reload", async ({ page,
     });
 
     await test.step("View -> List switches immediately, then persists", async () => {
-      await page.getByRole("button", { name: "View" }).first().click();
+      await page.locator("main").getByRole("button", { name: "View" }).first().click();
       await page.getByRole("button", { name: "list", exact: true }).click();
-      await expect(page.getByText("Add task").first()).toBeVisible();
+      await expect(page.locator("main").getByText("Add task").first()).toBeVisible();
       await waitForSavedLayout(pool, demoSession.userId, boardId, "list");
     });
 
     await test.step("the choice persisted (round-tripped through users.prefs)", async () => {
       await page.reload();
       await expect(page.getByRole("tablist", { name: "Board switcher" })).toBeVisible();
-      await expect(page.getByText("Add task").first()).toBeVisible();
+      await expect(page.locator("main").getByText("Add task").first()).toBeVisible();
     });
 
     await test.step("switching back to Board persists too", async () => {
-      await page.getByRole("button", { name: "View" }).first().click();
+      await page.locator("main").getByRole("button", { name: "View" }).first().click();
       await page.getByRole("button", { name: "board", exact: true }).click();
       await waitForSavedLayout(pool, demoSession.userId, boardId, "board");
 

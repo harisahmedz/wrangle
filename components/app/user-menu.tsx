@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SignOutIcon } from "@/components/icons";
 import { signOutAction } from "@/lib/actions/auth";
+import { cn } from "@/lib/utils";
 
 function GearIcon({ className }: { className?: string }) {
   return (
@@ -46,9 +47,13 @@ function WrappedIcon({ className }: { className?: string }) {
 export function UserMenu({
   name,
   image,
+  align = "right",
+  showName = false,
 }: {
   name?: string | null;
   image?: string | null;
+  align?: "left" | "right";
+  showName?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const initial = name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
@@ -74,14 +79,27 @@ export function UserMenu({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-2 text-sm font-semibold"
-      >
-        {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt="" className="h-full w-full object-cover" />
-        ) : (
-          initial
+        className={cn(
+          "flex items-center gap-2 rounded-md text-sm font-semibold",
+          showName
+            ? "min-w-0 px-1.5 py-1.5 hover:bg-surface-2"
+            : "h-11 w-11 justify-center",
         )}
+      >
+        <span
+          className={cn(
+            "flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-2",
+            showName ? "h-9 w-9" : "h-full w-full",
+          )}
+        >
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initial
+          )}
+        </span>
+        {showName && <span className="min-w-0 truncate text-text">{name ?? "Account"}</span>}
       </button>
       {open && (
         <>
@@ -92,7 +110,9 @@ export function UserMenu({
           />
           <div
             role="menu"
-            className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg"
+            className={`absolute z-50 mt-2 w-48 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg ${
+              align === "left" ? "left-0" : "right-0"
+            }`}
           >
             <div className="truncate px-4 py-2 text-xs text-muted">{name}</div>
             <Link

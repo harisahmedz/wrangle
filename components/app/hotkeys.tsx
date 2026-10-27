@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { toggleSidebarCollapsed } from "@/lib/sidebar";
 
 const ROUTES: Record<string, string> = {
   t: "/today",
@@ -46,6 +47,12 @@ export function Hotkeys() {
         return;
       }
 
+      if (e.key === "[") {
+        e.preventDefault();
+        toggleSidebarCollapsed();
+        return;
+      }
+
       const route = ROUTES[e.key.toLowerCase()];
       if (route) router.push(route);
     };
@@ -64,6 +71,7 @@ export function Hotkeys() {
       <span><kbd>W</kbd> week</span>
       <span><kbd>N</kbd> new</span>
       <span><kbd>/</kbd> search</span>
+      <span><kbd>[</kbd> sidebar</span>
     </div>
   );
 }
