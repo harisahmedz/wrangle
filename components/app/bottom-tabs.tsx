@@ -19,7 +19,7 @@ const tabs = [
     href: "/today",
     label: "Today",
     icon: TodayIcon,
-    matches: ["/today", "/shutdown", "/weekly", "/wrapped"],
+    matches: ["/today", "/upcoming", "/shutdown", "/weekly", "/wrapped"],
   },
   {
     href: "/boards",

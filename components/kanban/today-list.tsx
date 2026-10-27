@@ -2,44 +2,31 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { toggleCardComplete } from "@/lib/kanban/actions";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonStyles } from "@/components/ui/button";
-import { TaskRow } from "@/components/tasks/task-row";
-import { formatDueLabel } from "@/components/tasks/due-label";
+import { DueCardRow } from "@/components/tasks/due-card-row";
+import type { DueCardRow as DueCardRowData } from "@/lib/kanban/due-cards";
 
-export type TodayRow = {
-  id: string;
-  title: string;
-  projectId: string;
-  projectName: string;
-  boardKind: "todo" | "ideas" | "work";
-  dueAt: Date;
-  overdue: boolean;
-};
+export type TodayRow = DueCardRowData;
 
-function Row({ card, timeZone }: { card: TodayRow; timeZone: string }) {
-  const [, startTransition] = useTransition();
+function Row({
+  card,
+  timeZone,
+  showProject,
+}: {
+  card: TodayRow;
+  timeZone: string;
+  showProject?: boolean;
+}) {
   const router = useRouter();
-
   return (
-    <TaskRow
-      title={card.title}
-      href={`/p/${card.projectId}/b/${card.boardKind}?card=${card.id}`}
-      completed={false}
-      onToggle={() => {
-        const fd = new FormData();
-        fd.set("cardId", card.id);
-        // TODO(S8): toggleCardComplete flips server state; switch to a
-        // `completed` SET once the action accepts it (OFFLINE-OUTBOX §9.2).
-        startTransition(async () => {
-          await toggleCardComplete(fd);
-        });
-      }}
-      due={formatDueLabel(card.dueAt, card.overdue, timeZone)}
-      // Today groups rows under a project header already — the tag would
-      // be redundant here.
+    <DueCardRow
+      card={card}
+      timeZone={timeZone}
+      // The grouped "Due today & overdue" sections pass nothing here (a
+      // project header already does the job); the "Next up" teaser passes
+      // `showProject` since it mixes projects without a grouping header.
+      showProject={showProject}
       onOpen={() => router.refresh()}
     />
   );
@@ -48,15 +35,17 @@ function Row({ card, timeZone }: { card: TodayRow; timeZone: string }) {
 export function TodayList({
   rows,
   timeZone,
+  showProject,
 }: {
   rows: TodayRow[];
   timeZone: string;
+  showProject?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (
     <ul>
       {rows.map((c) => (
-        <Row key={c.id} card={c} timeZone={timeZone} />
+        <Row key={c.id} card={c} timeZone={timeZone} showProject={showProject} />
       ))}
     </ul>
   );

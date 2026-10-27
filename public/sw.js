@@ -7,6 +7,7 @@ const SCOPE_KEY = "/__wrangle_cache_scope__";
 
 const PRIVATE_PREFIXES = [
   "/today",
+  "/upcoming",
   "/shutdown",
   "/weekly",
   "/wrapped",

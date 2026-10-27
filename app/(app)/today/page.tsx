@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, asc, eq, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { boards, cards, memberships, projects, users } from "@/db/schema";
+import { cards, memberships, projects, users } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
-import { todayWindow, upcomingWindow } from "@/lib/dates";
+import { dayWindowForDateKey, localDateKey, shiftDateKey, todayWindow } from "@/lib/dates";
+import { loadDueCards } from "@/lib/kanban/due-cards";
 import {
   EmptyToday,
   TodayList,
@@ -28,63 +29,26 @@ export default async function TodayPage({ searchParams }: Props) {
     [sp.text, sp.link].filter(Boolean).join(" ").slice(0, 280) || null;
 
   const [user] = await db
-    // Raw sql isn't mapped through a column type, so the driver returns a string.
-    .select({ timezone: users.timezone, now: sql<string>`now()` })
+    .select({ timezone: users.timezone })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   const timeZone = user?.timezone || "UTC";
-  const now = user?.now ? new Date(user.now) : new Date(0);
 
   const today = todayWindow(timeZone);
-  const upcoming = upcomingWindow(timeZone);
-  const weekEnd = new Date(upcoming.start.getTime() + 7 * 86_400_000);
+  // "Next up"/the Upcoming hand-off only needs a generous look-ahead, not a
+  // precise boundary — 8 local days from today (today + 7 more), computed
+  // via the DST-correct day-key helpers rather than naive +ms math.
+  const weekEndKey = shiftDateKey(localDateKey(today.start, timeZone), 8);
+  const weekEnd = dayWindowForDateKey(weekEndKey, timeZone).start;
 
-  const rows = await db
-    .select({
-      id: cards.id,
-      title: cards.title,
-      dueAt: cards.dueAt,
-      projectId: projects.id,
-      projectName: projects.name,
-      boardKind: boards.kind,
-      isAllDay: cards.isAllDay,
-    })
-    .from(cards)
-    .innerJoin(projects, eq(cards.projectId, projects.id))
-    .innerJoin(boards, eq(cards.boardId, boards.id))
-    .innerJoin(
-      memberships,
-      and(eq(memberships.projectId, projects.id), eq(memberships.userId, userId)),
-    )
-    .where(
-      and(
-        isNull(cards.deletedAt),
-        isNull(cards.completedAt),
-        isNull(projects.deletedAt),
-        isNull(projects.archivedAt),
-        lt(cards.dueAt, weekEnd),
-      ),
-    )
-    .orderBy(asc(cards.dueAt));
+  const rows = await loadDueCards(userId, timeZone, today, { end: weekEnd });
 
   const dueTodayOrOverdue: TodayRow[] = [];
   const dueThisWeek: TodayRow[] = [];
 
-  for (const r of rows) {
-    const due = new Date(r.dueAt!);
-    const row: TodayRow = {
-      id: r.id,
-      title: r.title,
-      projectId: r.projectId,
-      projectName: r.projectName,
-      boardKind: r.boardKind,
-      dueAt: due,
-      overdue: r.isAllDay
-        ? due.getTime() < today.start.getTime()
-        : due.getTime() < now.getTime(),
-    };
-    if (r.dueAt!.getTime() < today.end.getTime()) {
+  for (const row of rows) {
+    if (row.dueAt.getTime() < today.end.getTime()) {
       dueTodayOrOverdue.push(row);
     } else {
       dueThisWeek.push(row);
@@ -161,17 +125,21 @@ export default async function TodayPage({ searchParams }: Props) {
             )}
           </section>
 
-          {dueThisWeek.length > 0 && (
+          {(dueTodayOrOverdue.length > 0 || dueThisWeek.length > 0) && (
             <section className="space-y-3">
-              <h2 className="text-sm font-medium text-muted">
-                Next 7 days ({dueThisWeek.length})
-              </h2>
-              {groupByProject(dueThisWeek).map(([project, projectRows]) => (
-                <div key={project} className="space-y-1.5">
-                  <p className="px-1 text-xs font-medium text-muted">{project}</p>
-                  <TodayList rows={projectRows} timeZone={timeZone} />
-                </div>
-              ))}
+              {dueThisWeek.length > 0 && (
+                <>
+                  <h2 className="text-sm font-medium text-muted">Next up</h2>
+                  <TodayList rows={dueThisWeek.slice(0, 3)} timeZone={timeZone} showProject />
+                </>
+              )}
+              <Link
+                href="/upcoming"
+                className="flex items-center gap-1 px-1 text-xs font-medium text-accent hover:text-accent-strong"
+              >
+                See upcoming
+                <ChevronRightIcon className="h-3.5 w-3.5" />
+              </Link>
             </section>
           )}
         </>

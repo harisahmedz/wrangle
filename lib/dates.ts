@@ -13,6 +13,29 @@ export function localDateParts(date: Date, timeZone: string): Parts {
   return { y, m, d };
 }
 
+/** The user's local calendar day for an instant, as "YYYY-MM-DD". The single
+ * source for this — `lib/shutdown/stats.ts` re-exports it rather than
+ * redefining it, so does `lib/kanban/upcoming.ts`. */
+export function localDateKey(date: Date, timeZone: string): string {
+  const { y, m, d } = localDateParts(date, timeZone);
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function dateKeyMs(key: string): number {
+  const [y, m, d] = key.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+function keyOfMs(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/** Shifts a "YYYY-MM-DD" day key by whole calendar days. Pure calendar
+ * arithmetic on an already-resolved local day — no timezone involved. */
+export function shiftDateKey(key: string, offsetDays: number): string {
+  return keyOfMs(dateKeyMs(key) + offsetDays * DAY_MS);
+}
+
 type DateTimeParts = {
   y: number;
   m: number;
@@ -86,4 +109,35 @@ export function todayWindow(timeZone: string): DayWindow {
 
 export function upcomingWindow(timeZone: string): DayWindow {
   return localDayWindow(new Date(), timeZone, 1);
+}
+
+/**
+ * The local-day window for a specific calendar date (not relative to
+ * "now") — used by Upcoming (V2 S6) to turn a `?from=YYYY-MM-DD` day key
+ * into a DST-correct UTC instant. `end` is the start of the *next*
+ * calendar date (via `fromWall` again), not `start + 24h` — on a DST
+ * transition day the wall-clock day is 23 or 25 hours long, so a fixed
+ * +24h offset lands on the wrong side of the transition.
+ */
+export function dayWindowForDate(
+  y: number,
+  m: number,
+  d: number,
+  timeZone: string,
+): DayWindow {
+  const startMs = fromWall(y, m, d, timeZone);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  const endMs = fromWall(
+    next.getUTCFullYear(),
+    next.getUTCMonth() + 1,
+    next.getUTCDate(),
+    timeZone,
+  );
+  return { start: new Date(startMs), end: new Date(endMs) };
+}
+
+/** `dayWindowForDate` from a "YYYY-MM-DD" key instead of separate y/m/d. */
+export function dayWindowForDateKey(key: string, timeZone: string): DayWindow {
+  const [y, m, d] = key.split("-").map(Number);
+  return dayWindowForDate(y, m, d, timeZone);
 }

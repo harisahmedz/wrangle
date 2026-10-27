@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 const PROTECTED_PREFIXES = [
   "/today",
+  "/upcoming",
   "/shutdown",
   "/weekly",
   "/wrapped",
