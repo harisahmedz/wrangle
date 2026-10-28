@@ -118,6 +118,7 @@ export default async function ShutdownPage() {
         dueAt: cards.dueAt,
         isAllDay: cards.isAllDay,
         focusedOn: cardFocuses.focusDate,
+        role: memberships.role,
       })
       .from(cards)
       .innerJoin(projects, eq(cards.projectId, projects.id))
@@ -212,6 +213,7 @@ export default async function ShutdownPage() {
       ? new Date(r.dueAt ?? today.end).getTime() < today.start.getTime()
       : new Date(r.dueAt ?? today.end).getTime() < now.getTime(),
     focused: r.focusedOn === todayKey,
+    role: r.role,
   });
 
   const leftovers = leftoverRows.map(toRow);

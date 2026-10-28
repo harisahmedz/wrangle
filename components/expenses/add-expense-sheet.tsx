@@ -12,6 +12,9 @@ import {
 } from "@/lib/actions/expenses";
 import type { CategoryChip } from "@/components/expenses/types";
 import { ACCENT_HEX } from "@/lib/palette";
+import { mutate } from "@/lib/mutations";
+import { useOutbox } from "@/lib/outbox/client";
+import { uuidv7 } from "@/lib/uuid";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
 
@@ -68,6 +71,8 @@ export function ExpenseSheet({
   const [receiptRemoved, setReceiptRemoved] = useState(false);
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+  // Receipt upload needs the network (Q7): hide the attach control offline.
+  const { offline } = useOutbox();
 
   const storedReceipt =
     editing && editing.receiptUrl && !receiptRemoved
@@ -177,6 +182,31 @@ export function ExpenseSheet({
 
   const save = () => {
     if (!minorValue || !categoryId || !spentOn) return;
+    if (!editing && !receipt) {
+      // No receipt → queued `expense.create` (OFFLINE-OUTBOX §1, Q7). With a
+      // receipt the Cloudinary upload already happened online, so the
+      // existing `addExpense` action below is still the path.
+      startTransition(async () => {
+        const res = await mutate(
+          {
+            kind: "expense.create",
+            id: uuidv7(),
+            categoryId,
+            amountMinor: minorValue,
+            spentOn,
+            note: note || undefined,
+            paymentMethod: paymentMethod || undefined,
+          },
+          `Add expense ${(minorValue / 100).toFixed(2)}`,
+        );
+        if (!res.ok) {
+          pushToast({ message: res.error });
+          return;
+        }
+        close();
+      });
+      return;
+    }
     const fd = new FormData();
     fd.set("amountMinor", String(minorValue));
     fd.set("categoryId", categoryId);
@@ -378,6 +408,8 @@ export function ExpenseSheet({
               </button>
             </div>
           </div>
+        ) : offline ? (
+          <p className="text-center text-xs text-muted">Receipts need a connection — add one later.</p>
         ) : (
           <button
             onClick={() => fileRef.current?.click()}

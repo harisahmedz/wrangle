@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   DndContext,
   KeyboardSensor,
@@ -30,6 +30,8 @@ import { formatDueLabel } from "@/components/tasks/due-label";
 import { GripIcon } from "@/components/icons";
 import { useToast } from "@/components/ui/toast";
 import { mutate } from "@/lib/mutations";
+import { useOutbox } from "@/lib/outbox/client";
+import { overlayCards, syncStateOf } from "@/lib/outbox/overlay";
 import { uuidv7 } from "@/lib/uuid";
 import { passesFilters } from "@/lib/kanban/filters";
 import { buildListGroups, reorderEnabledFor } from "@/lib/kanban/list-groups";
@@ -64,18 +66,14 @@ export function ListView({
   sort,
   showCompleted,
 }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const pushToast = useToast();
-  const [cards, setCards] = useState(serverCards);
-  const [syncedCards, setSyncedCards] = useState(serverCards);
-  const [pendingComplete, setPendingComplete] = useState<Set<string>>(new Set());
-  const [, startTransition] = useTransition();
-
-  if (syncedCards !== serverCards) {
-    setSyncedCards(serverCards);
-    setCards(serverCards);
-  }
+  // The outbox overlay *is* the optimistic row state (OFFLINE-OUTBOX §2.3).
+  const { entries: outboxEntries } = useOutbox();
+  const cards = useMemo(
+    () => overlayCards(serverCards, columns, outboxEntries, { projectId, boardKind }),
+    [serverCards, columns, outboxEntries, projectId, boardKind],
+  );
 
   const spRecord = useMemo<BoardSearchRecord>(() => {
     const rec: BoardSearchRecord = {};
@@ -123,34 +121,30 @@ export function ListView({
   };
 
   const toggleComplete = (card: BoardCardData) => {
-    if (!canEdit || pendingComplete.has(card.id)) return;
-
+    if (!canEdit) return;
     const completed = card.completedAt === null;
-    const completedAt = completed ? new Date().toISOString() : null;
-    setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, completedAt } : c)));
-    setPendingComplete((prev) => new Set(prev).add(card.id));
-
-    startTransition(() => {
-      mutate({ kind: "card.complete", cardId: card.id, completed })
-        .then((res) => {
-          if (!res.ok) {
-            pushToast({ message: res.error });
-            router.refresh();
-          }
-        })
-        .finally(() => {
-          setPendingComplete((prev) => {
-            const next = new Set(prev);
-            next.delete(card.id);
-            return next;
-          });
-        });
+    void mutate(
+      { kind: "card.complete", cardId: card.id, completed },
+      `${completed ? "Complete" : "Reopen"} “${card.title}”`,
+    ).then((res) => {
+      if (!res.ok) pushToast({ message: res.error });
     });
   };
 
   const addCard = async (columnId: string, title: string): Promise<boolean> => {
     if (!canEdit) return false;
-    const res = await mutate({ kind: "card.create", id: uuidv7(), target: { columnId }, title });
+    // Client-side position (OFFLINE-OUTBOX §2.2) so cards added offline keep
+    // their order; the server nudges it on a collision (§6).
+    const last = cards
+      .filter((c) => c.columnId === columnId)
+      .reduce<string | null>((max, c) => (max === null || c.position > max ? c.position : max), null);
+    const res = await mutate({
+      kind: "card.create",
+      id: uuidv7(),
+      target: { columnId },
+      title,
+      position: generateKeyBetween(last, null),
+    });
     if (!res.ok) {
       pushToast({ message: res.error });
       return false;
@@ -195,32 +189,19 @@ export function ListView({
     const after = finalList[insertAt + 1]?.position ?? null;
     const newPosition = generateKeyBetween(before, after);
 
-    // Set, not toggle (mirrors moveCard's own auto-complete rule, actions.ts):
-    // dropping into a Done column completes the card; dropping out reopens it.
-    const targetColumn = columns.find((c) => c.id === targetColumnId);
-    const completedAt = targetColumn?.isDone
-      ? (activeCard.completedAt ?? new Date().toISOString())
-      : null;
-
-    setCards((prev) =>
-      prev.map((c) =>
-        c.id === activeCard.id
-          ? { ...c, columnId: targetColumnId, position: newPosition, completedAt }
-          : c,
-      ),
-    );
-    startTransition(() => {
-      void mutate({
+    // Dropping into a Done column completes the card (and out of one reopens
+    // it) — `overlayCards` mirrors the server's `isDone` rule, so no local
+    // completedAt bookkeeping is needed here.
+    void mutate(
+      {
         kind: "card.move",
         cardId: activeCard.id,
         toColumnId: targetColumnId,
         position: newPosition,
-      }).then((res) => {
-        if (!res.ok) {
-          pushToast({ message: res.error });
-          router.refresh();
-        }
-      });
+      },
+      `Move “${activeCard.title}”`,
+    ).then((res) => {
+      if (!res.ok) pushToast({ message: res.error });
     });
   };
 
@@ -261,6 +242,7 @@ export function ListView({
                       canEdit={canEdit}
                       reorderEnabled={reorderEnabled}
                       onToggle={() => toggleComplete(card)}
+                      sync={syncStateOf(card.id, outboxEntries) ?? undefined}
                     />
                   ))}
                 </GroupDropZone>
@@ -296,6 +278,7 @@ function SortableTaskRow({
   canEdit,
   reorderEnabled,
   onToggle,
+  sync,
 }: {
   card: BoardCardData;
   href: string;
@@ -303,6 +286,7 @@ function SortableTaskRow({
   canEdit: boolean;
   reorderEnabled: boolean;
   onToggle: () => void;
+  sync?: "pending" | "failed";
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id, disabled: !reorderEnabled });
@@ -324,6 +308,7 @@ function SortableTaskRow({
       completed={completed}
       onToggle={canEdit ? onToggle : undefined}
       priority={card.priority}
+      sync={sync}
       due={due}
       dragHandle={
         reorderEnabled ? (

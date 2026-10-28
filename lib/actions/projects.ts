@@ -23,8 +23,9 @@ const MAX_PROJECTS_PER_USER = 50;
  * server-rendered project list of its own (it's mounted once in the shell,
  * not per-page), so it fetches this lazily on open, same pattern as the
  * Dump's `listExpenseCategoriesForDump`/`listLearningTopicsForDump`.
- * Viewer-role projects are excluded: `createCard`/`createCardForProject`
- * both require "member"+, so offering them here would just 404 on submit.
+ * Viewer-role projects are excluded: the queued `card.create` (S8,
+ * lib/outbox/apply.ts) requires "member"+, so offering them here would just
+ * produce a failed outbox entry on submit.
  */
 export async function listProjectsForQuickAdd(): Promise<
   ActionResult<{ id: string; name: string; isPersonal: boolean }[]>

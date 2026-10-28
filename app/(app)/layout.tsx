@@ -11,6 +11,7 @@ import { BottomTabs } from "@/components/app/bottom-tabs";
 import { Hotkeys } from "@/components/app/hotkeys";
 import { ToastProvider } from "@/components/ui/toast";
 import { SwSessionScope } from "@/components/pwa/sw-session-scope";
+import { OutboxProvider } from "@/lib/outbox/client";
 import { PullToRefresh } from "@/components/pwa/pull-to-refresh";
 import { AppBadge } from "@/components/pwa/app-badge";
 import { SIDEBAR_COLLAPSED_KEY } from "@/lib/sidebar";
@@ -60,6 +61,10 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
+    {/* The offline outbox (V2 S8, docs/OFFLINE-OUTBOX.md): one queue per
+        signed-in user, the offline/sync banner and the review sheet. Inside
+        ToastProvider because it toasts drops/failures. */}
+    <OutboxProvider userId={session.user.id}>
       {/* No-flash: apply the saved collapse preference to <html> before the
           pinned sidebar below paints (same technique as the theme script in
           app/layout.tsx). UI-only preference, defaults to open. */}
@@ -99,6 +104,7 @@ export default async function AppLayout({
       <PullToRefresh />
       <SwSessionScope userId={session.user.id} expires={session.expires} />
       <AppBadge count={dueBadgeCount} />
+    </OutboxProvider>
     </ToastProvider>
   );
 }

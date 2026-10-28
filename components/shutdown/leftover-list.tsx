@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react";
 import {
-  completeCardNow,
   letGoOfCard,
   postponeCardToTomorrow,
 } from "@/lib/actions/shutdown";
 import { useToast } from "@/components/ui/toast";
 import type { ActionResult } from "@/lib/actions/types";
+import type { ProjectRole } from "@/db/schema";
+import { mutate } from "@/lib/mutations";
 import { cn } from "@/lib/utils";
 import { TaskRow } from "@/components/tasks/task-row";
 import { formatDueLabel } from "@/components/tasks/due-label";
@@ -20,6 +21,10 @@ export type LeftoverRow = {
   projectName: string;
   dueAt: Date;
   overdue: boolean;
+  /** The user's role on the card's project: a `viewer` can't complete it
+   * (the queued `card.complete` needs "member"+), so the checkbox and the
+   * Done button are withheld rather than queuing an entry that will fail. */
+  role: ProjectRole;
 };
 
 function Leftover({ row, timeZone }: { row: LeftoverRow; timeZone: string }) {
@@ -44,6 +49,26 @@ function Leftover({ row, timeZone }: { row: LeftoverRow; timeZone: string }) {
     });
   };
 
+  // "Done" is the one queued verb here (OFFLINE-OUTBOX §1: `card.complete`);
+  // Tomorrow/Let go stay online-only Server Actions (Q11).
+  const complete = () => {
+    setGone(true);
+    startTransition(async () => {
+      const res = await mutate(
+        { kind: "card.complete", cardId: row.id, completed: true },
+        `Complete “${row.title}”`,
+      );
+      if (!res.ok) {
+        setGone(false);
+        pushToast({ message: res.error });
+        return;
+      }
+      pushToast({ message: "Done. Nice." });
+    });
+  };
+
+  const canComplete = row.role !== "viewer";
+
   if (gone) return null;
 
   return (
@@ -53,17 +78,15 @@ function Leftover({ row, timeZone }: { row: LeftoverRow; timeZone: string }) {
       completed={false}
       // Shutdown resolves leftovers with Tomorrow/Done/Let go, not a plain
       // checkbox toggle — the checkbox mirrors "Done" for a quick complete.
-      onToggle={() => {
-        setGone(true);
-        run(completeCardNow, "Done. Nice.");
-      }}
+      onToggle={canComplete ? complete : undefined}
       due={formatDueLabel(row.dueAt, row.overdue, timeZone)}
       // Shutdown groups rows under a project header already — the tag
       // would be redundant here.
       trailing={
         <div
           className={cn(
-            "grid grid-cols-3 gap-2 transition-opacity",
+            "grid gap-2 transition-opacity",
+            canComplete ? "grid-cols-3" : "grid-cols-2",
             pending && "opacity-50",
           )}
         >
@@ -78,17 +101,14 @@ function Leftover({ row, timeZone }: { row: LeftoverRow; timeZone: string }) {
           >
             Tomorrow
           </button>
-          <button
-            onClick={() => {
-              setGone(true);
-              run(completeCardNow, "Done. Nice.");
-            }}
+          {canComplete && <button
+            onClick={complete}
             disabled={pending}
             aria-label={`Complete ${row.title}`}
             className="min-h-11 rounded-md border border-success/40 bg-success/10 px-2 py-2 text-xs font-medium text-success transition-colors hover:bg-success/20 disabled:opacity-50"
           >
             Done
-          </button>
+          </button>}
           <button
             onClick={() => {
               setGone(true);

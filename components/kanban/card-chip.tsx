@@ -8,6 +8,8 @@ import { formatScore, scoreOf } from "@/lib/kanban/score";
 import { formatDueLabel } from "@/components/tasks/due-label";
 import { PRIORITY_ACCENT_CLASS } from "@/lib/kanban/priority";
 import type { BoardCardData } from "@/lib/kanban/types";
+import { OUTBOX_REVIEW_EVENT, useOutbox } from "@/lib/outbox/client";
+import { syncStateOf } from "@/lib/outbox/overlay";
 
 export function CardChip({
   card,
@@ -39,6 +41,10 @@ export function CardChip({
   });
 
   const done = card.completedAt !== null;
+  // docs/OFFLINE-OUTBOX.md §7: dashed dot = queued on this device, warning
+  // ring = the server rejected it (click opens the review sheet).
+  const { entries: outboxEntries } = useOutbox();
+  const sync = syncStateOf(card.id, outboxEntries);
   // eslint-disable-next-line react-hooks/purity -- freshness per render is intended for due badges
   const overdue = !done && card.dueAt !== null && new Date(card.dueAt).getTime() < Date.now();
   const score = scoreOf(card.impact, card.effort);
@@ -120,6 +126,24 @@ export function CardChip({
           </div>
         )}
       </button>
+      {sync === "pending" && (
+        <span
+          aria-label="Sync pending"
+          data-sync="pending"
+          className="mr-2 mt-3.5 h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted"
+        />
+      )}
+      {sync === "failed" && (
+        <button
+          type="button"
+          aria-label="Sync failed — review"
+          data-sync="failed"
+          onClick={() => window.dispatchEvent(new CustomEvent(OUTBOX_REVIEW_EVENT))}
+          className="flex h-11 w-6 shrink-0 items-center justify-center self-start"
+        >
+          <span className="h-2.5 w-2.5 rounded-full border-2 border-warning" />
+        </button>
+      )}
       {draggable && (
         <button
           ref={setActivatorNodeRef}

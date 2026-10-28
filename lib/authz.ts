@@ -29,14 +29,17 @@ export async function requireUser(): Promise<string> {
   return userId;
 }
 
-export async function requireMembership(
+/**
+ * The user's role on a live (not soft-deleted) project, or null. The
+ * non-redirecting half of `requireMembership` — the outbox apply layer
+ * (`lib/outbox/apply.ts`) needs a plain answer per entry, since a
+ * `notFound()`/`redirect()` inside `POST /api/outbox` would abort the whole
+ * batch instead of failing one entry.
+ */
+export async function membershipRole(
+  userId: string,
   projectId: string,
-  minRole: ProjectRole = "viewer",
-): Promise<MembershipContext> {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) redirect("/signin");
-
+): Promise<ProjectRole | null> {
   const rows = await db
     .select({ role: memberships.role })
     .from(memberships)
@@ -49,9 +52,19 @@ export async function requireMembership(
       ),
     )
     .limit(1);
+  return rows[0]?.role ?? null;
+}
 
-  const row = rows[0];
-  if (!row || !hasMinRole(row.role, minRole)) notFound();
+export async function requireMembership(
+  projectId: string,
+  minRole: ProjectRole = "viewer",
+): Promise<MembershipContext> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) redirect("/signin");
 
-  return { userId, projectId, role: row.role };
+  const role = await membershipRole(userId, projectId);
+  if (!role || !hasMinRole(role, minRole)) notFound();
+
+  return { userId, projectId, role };
 }

@@ -1,27 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ExpenseSheet } from "@/components/expenses/add-expense-sheet";
 import { formatMinor } from "@/lib/money";
+import { useOutbox } from "@/lib/outbox/client";
+import { overlayExpenses, syncStateOf } from "@/lib/outbox/overlay";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { CategoryChip, ExpenseRow } from "@/components/expenses/types";
 
 export function ExpenseList({
-  rows,
+  rows: serverRows,
   categories,
   cloudinaryReady,
   defaultSpentOn,
   currency,
+  month,
 }: {
   rows: ExpenseRow[];
   categories: CategoryChip[];
   cloudinaryReady: boolean;
   defaultSpentOn: string;
   currency: string;
+  /** `YYYY-MM` on screen — queued expenses for other months aren't overlaid. */
+  month: string;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<ExpenseRow | null>(null);
+  // Queued `expense.create` rows (OFFLINE-OUTBOX §2.3). Totals/charts above
+  // stay server-side until the post-drain refresh.
+  const { entries: outboxEntries } = useOutbox();
+  const rows = useMemo(
+    () => overlayExpenses(serverRows, outboxEntries, categories, currency, month),
+    [serverRows, outboxEntries, categories, currency, month],
+  );
 
   const grouped = rows.reduce<Record<string, ExpenseRow[]>>((acc, r) => {
     (acc[r.spentOn] ??= []).push(r);
@@ -67,11 +79,18 @@ export function ExpenseList({
                 })}
               </p>
               <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
-                {dayRows.map((r) => (
+                {dayRows.map((r) => {
+                  // A queued `expense.create` hasn't reached the server yet:
+                  // edit/delete would hit online actions for a row that
+                  // doesn't exist there, so hold editing until it applies.
+                  const sync = syncStateOf(r.id, outboxEntries);
+                  return (
                   <li key={r.id} className="flex items-stretch">
                     <button
                       onClick={() => openEdit(r)}
-                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-surface-2"
+                      disabled={sync !== null}
+                      title={sync === "failed" ? "This expense couldn't sync — see Review" : sync ? "Syncing…" : undefined}
+                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-surface-2 disabled:cursor-default disabled:hover:bg-transparent"
                     >
                       <span
                         aria-hidden
@@ -98,6 +117,16 @@ export function ExpenseList({
                       <span className="shrink-0 tabular-nums text-sm font-medium">
                         {formatMinor(r.amountMinor, r.currency)}
                       </span>
+                      {sync === "pending" && (
+                        <span
+                          aria-label="Sync pending"
+                          data-sync="pending"
+                          className="h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted"
+                        />
+                      )}
+                      {sync === "failed" && (
+                        <span aria-label="Sync failed" data-sync="failed" className="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-warning" />
+                      )}
                     </button>
                     {r.receiptUrl && (
                       <a
@@ -111,7 +140,8 @@ export function ExpenseList({
                       </a>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           ))}

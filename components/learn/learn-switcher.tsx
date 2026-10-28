@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useOutbox } from "@/lib/outbox/client";
+import { overlayLearning } from "@/lib/outbox/overlay";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ViewMenu } from "@/components/kanban/view-menu";
 import { LearnBoard } from "@/components/learn/learn-board";
@@ -22,8 +24,11 @@ type Props = {
  * and no `?view=` override) renders both renderers so `md:` CSS picks Board
  * on tablet/desktop and List on phone with no layout flash.
  */
-export function LearnSwitcher({ items, initialLayout }: Props) {
+export function LearnSwitcher({ items: serverItems, initialLayout }: Props) {
   const router = useRouter();
+  // Queued status changes overlaid once here for both renderers (OFFLINE-OUTBOX §2.3).
+  const { entries: outboxEntries } = useOutbox();
+  const items = useMemo(() => overlayLearning(serverItems, outboxEntries), [serverItems, outboxEntries]);
   const searchParams = useSearchParams();
   const pushToast = useToast();
   const [layout, setLayout] = useState<ViewLayout | null>(initialLayout);

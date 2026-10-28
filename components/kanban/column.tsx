@@ -26,7 +26,9 @@ import {
 import { Modal } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { mutate } from "@/lib/mutations";
+import { useOutbox } from "@/lib/outbox/client";
 import { uuidv7 } from "@/lib/uuid";
+import { generateKeyBetween } from "fractional-indexing";
 import type {
   BoardCardData,
   BoardColumnData,
@@ -64,6 +66,8 @@ export function Column({
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const pushToast = useToast();
+  // Column admin (rename/style/move/delete) is online-only (OFFLINE-OUTBOX §1).
+  const { offline } = useOutbox();
 
   const {
     setNodeRef,
@@ -88,11 +92,15 @@ export function Column({
     column.wipLimit !== null && cards.length > column.wipLimit;
 
   const addCard = async (cardTitle: string): Promise<boolean> => {
+    // Client-side position (OFFLINE-OUTBOX §2.2) so cards added offline keep
+    // their order; the server nudges it on a collision (§6).
+    const last = cards[cards.length - 1]?.position ?? null;
     const res = await mutate({
       kind: "card.create",
       id: uuidv7(),
       target: { columnId: column.id },
       title: cardTitle,
+      position: generateKeyBetween(last, null),
     });
     if (!res.ok) {
       pushToast({ message: res.error });
@@ -258,6 +266,8 @@ export function Column({
             onClick={() => setMenuOpen((o) => !o)}
             aria-label={`Column menu for ${column.name}`}
             aria-expanded={menuOpen}
+            disabled={offline}
+            title={offline ? "Needs a connection" : undefined}
             className="flex h-11 w-11 items-center justify-center rounded text-muted transition-opacity sm:h-auto sm:w-auto sm:px-1.5 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
           >
             <MoreIcon className="h-4 w-4" />
@@ -416,7 +426,7 @@ export function Column({
   );
 }
 
-export function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
+export function AddColumn({ onAdd, disabled }: { onAdd: (name: string) => void; disabled?: boolean }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
 
@@ -424,6 +434,8 @@ export function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
     return (
       <button
         onClick={() => setAdding(true)}
+        disabled={disabled}
+        title={disabled ? "Needs a connection" : undefined}
         className="h-min w-[240px] shrink-0 rounded-xl border border-dashed border-border px-3 py-3 text-left text-sm text-muted transition-colors hover:text-text"
       >
         + Add column

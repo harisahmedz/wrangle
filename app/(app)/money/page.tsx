@@ -4,7 +4,7 @@ import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { expenseCategories, expenses, users } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
-import { ensureCategories } from "@/lib/actions/expenses";
+import { ensureCategories } from "@/lib/expenses/ensure-categories";
 import {
   formatMinor,
   monthBounds,
@@ -261,6 +261,7 @@ export default async function MoneyPage({ searchParams }: Props) {
         cloudinaryReady={isCloudinaryConfigured()}
         defaultSpentOn={localToday}
         currency={currency}
+        month={month}
       />
 
       {biggest.length >= 2 && (

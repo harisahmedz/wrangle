@@ -2,17 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+// The offline pill moved to the outbox provider (lib/outbox/client.tsx, V2
+// S8), which is the one source of truth for `offline` inside the app shell.
 export function SwRegister() {
-  const [offline, setOffline] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
 
   useEffect(() => {
-    setTimeout(() => setOffline(!navigator.onLine), 0);
-    const goOnline = () => setOffline(false);
-    const goOffline = () => setOffline(true);
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
-
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       navigator.serviceWorker
         .register("/sw.js")
@@ -32,11 +27,6 @@ export function SwRegister() {
         })
         .catch(() => {});
     }
-
-    return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
-    };
   }, []);
 
   const applyUpdate = async () => {
@@ -47,16 +37,6 @@ export function SwRegister() {
 
   return (
     <>
-      {offline && (
-        <div
-          role="status"
-          className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+3.5rem)] z-[90] flex justify-center px-4"
-        >
-          <p className="rounded-full border border-border bg-surface px-4 py-1.5 text-xs shadow-lg">
-            ⚡ Offline — showing your saved pages
-          </p>
-        </div>
-      )}
       {updateReady && (
         <div
           role="status"

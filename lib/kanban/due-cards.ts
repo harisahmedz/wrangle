@@ -17,10 +17,10 @@ export type DueCardRow = {
    * once its instant has passed. Not the same as "belongs in Upcoming's
    * Overdue group" (that's day-key math the caller does against `today`). */
   overdue: boolean;
-  /** The user's role on this card's project. `toggleCardComplete` requires
-   * "member"+, so a `viewer` row's checkbox must stay non-interactive
-   * (TaskRow's `onToggle` left undefined) instead of hitting the action's
-   * `notFound()`. */
+  /** The user's role on this card's project. The queued `card.complete`
+   * (S8) requires "member"+, so a `viewer` row's checkbox must stay
+   * non-interactive (TaskRow's `onToggle` left undefined) instead of
+   * producing a failed outbox entry. */
   role: ProjectRole;
   /** ROADMAP-V2 S9: 1|2|3|null only (see lib/kanban/priority.ts). */
   priority: 1 | 2 | 3 | null;

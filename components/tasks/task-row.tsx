@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { CheckIcon, CalendarIcon } from "@/components/icons";
 import { dueToneClass, type DueMeta } from "@/components/tasks/due-label";
 import { PRIORITY_RING_CLASS, type CardPriority } from "@/lib/kanban/priority";
+import { OUTBOX_REVIEW_EVENT } from "@/lib/outbox/client";
 
 export type TaskRowProps = {
   title: string;
@@ -150,15 +151,23 @@ export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(function TaskRow(
           </Link>
         )}
 
-        {sync && (
+        {sync === "pending" && (
           <span
-            aria-label={sync === "pending" ? "Sync pending" : "Sync failed"}
-            className={cn(
-              "mt-1 h-2.5 w-2.5 shrink-0 self-start rounded-full",
-              sync === "pending" && "border border-dashed border-muted",
-              sync === "failed" && "border-2 border-warning",
-            )}
+            aria-label="Sync pending"
+            data-sync="pending"
+            className="mt-1 h-2.5 w-2.5 shrink-0 self-start rounded-full border border-dashed border-muted"
           />
+        )}
+        {sync === "failed" && (
+          <button
+            type="button"
+            aria-label="Sync failed — review"
+            data-sync="failed"
+            onClick={() => window.dispatchEvent(new CustomEvent(OUTBOX_REVIEW_EVENT))}
+            className="-my-3 flex h-11 w-6 shrink-0 items-center justify-center self-start"
+          >
+            <span className="h-2.5 w-2.5 rounded-full border-2 border-warning" />
+          </button>
         )}
 
         {dragHandle}

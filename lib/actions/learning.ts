@@ -31,7 +31,6 @@ import {
   resourceIdSchema,
   sessionIdSchema,
   setManualProgressSchema,
-  setStatusSchema,
   updateItemSchema,
 } from "@/lib/validation/learning";
 import { failure, type ActionResult } from "@/lib/actions/types";
@@ -191,35 +190,6 @@ export async function updateLearningItem(
       sourceUrl: parsed.data.sourceUrl || null,
       whyNote: parsed.data.whyNote || null,
       targetDate: parsed.data.targetDate || null,
-      completedAt:
-        parsed.data.status === "learned"
-          ? (item.completedAt ?? new Date())
-          : null,
-      position,
-    })
-    .where(eq(learningItems.id, item.id));
-
-  refresh();
-  return { ok: true };
-}
-
-export async function setLearningStatus(
-  formData: FormData,
-): Promise<ActionResult> {
-  const parsed = setStatusSchema.safeParse({
-    itemId: formData.get("itemId"),
-    status: formData.get("status"),
-  });
-  if (!parsed.success) return failure("Invalid status");
-
-  const item = await ownItem(parsed.data.itemId);
-  if (!item) return failure("Not found");
-  const position = await positionForStatus(item, parsed.data.status);
-
-  await db
-    .update(learningItems)
-    .set({
-      status: parsed.data.status,
       completedAt:
         parsed.data.status === "learned"
           ? (item.completedAt ?? new Date())

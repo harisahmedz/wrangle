@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import {
+  useMemo,
   useRef,
   useState,
   useOptimistic,
@@ -21,8 +22,10 @@ import {
   setCardAssignees,
   setCardLabels,
   signUpload,
-  toggleChecklistItem,
 } from "@/lib/kanban/detail-actions";
+import { mutate } from "@/lib/mutations";
+import { useOutbox } from "@/lib/outbox/client";
+import { overlayChecklist } from "@/lib/outbox/overlay";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { CheckIcon, CloseIcon } from "@/components/icons";
@@ -48,7 +51,6 @@ export type AttachmentRow = {
   canDelete: boolean;
 };
 
-const TOAST_TICK_FAILED = "Couldn't tick that — retry?";
 const TOAST_LABELS_FAILED = "Couldn't save labels — retry?";
 const TOAST_ASSIGNEES_FAILED = "Couldn't save assignees — retry?";
 const TOAST_COMMENT_FAILED = "Couldn't post the comment — retry?";
@@ -83,15 +85,12 @@ export function ChecklistSection({
   items: ChecklistRow[];
   readOnly?: boolean;
 }) {
-  const router = useRouter();
   const pushToast = useToast();
-  const guard = usePendingGuard();
   const [text, setText] = useState("");
-  const [optimisticItems, toggleOptimistic] = useOptimistic(
-    items,
-    (current: ChecklistRow[], itemId: string) =>
-      current.map((i) => (i.id === itemId ? { ...i, isDone: !i.isDone } : i)),
-  );
+  // Ticks go through the outbox (`checklist.set`, a SET not a flip — docs/
+  // OFFLINE-OUTBOX.md §1); the overlay replaces the old useOptimistic flip.
+  const { entries: outboxEntries } = useOutbox();
+  const optimisticItems = useMemo(() => overlayChecklist(items, outboxEntries), [items, outboxEntries]);
   const [, startTransition] = useTransition();
 
   const doneCount = optimisticItems.filter((i) => i.isDone).length;
@@ -141,20 +140,11 @@ export function ChecklistSection({
             <button
               onClick={() => {
                 if (readOnly) return;
-                if (!guard.begin(item.id)) return;
-                startTransition(async () => {
-                  toggleOptimistic(item.id);
-                  const fd = new FormData();
-                  fd.set("itemId", item.id);
-                  try {
-                    const res = await toggleChecklistItem(fd);
-                    if (!res.ok) {
-                      pushToast({ message: TOAST_TICK_FAILED });
-                      router.refresh();
-                    }
-                  } finally {
-                    guard.end(item.id);
-                  }
+                void mutate(
+                  { kind: "checklist.set", itemId: item.id, cardId, isDone: !item.isDone },
+                  `${item.isDone ? "Untick" : "Tick"} “${item.text}”`,
+                ).then((res) => {
+                  if (!res.ok) pushToast({ message: res.error });
                 });
               }}
               aria-pressed={item.isDone}

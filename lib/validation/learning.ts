@@ -27,11 +27,6 @@ export const updateItemSchema = z.object({
   targetDate: isoDate.or(z.literal("")),
 });
 
-export const setStatusSchema = z.object({
-  itemId: z.string().uuid(),
-  status: z.enum(["want", "learning", "learned"]),
-});
-
 export const addSessionSchema = z.object({
   itemId: z.string().uuid(),
   happenedOn: isoDate,

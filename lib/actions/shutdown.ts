@@ -197,39 +197,6 @@ export async function postponeCardToTomorrow(
   return { ok: true };
 }
 
-export async function completeCardNow(
-  formData: FormData,
-): Promise<ActionResult> {
-  const parsed = shutdownCardSchema.safeParse({ cardId: formData.get("cardId") });
-  if (!parsed.success) return failure("Invalid card");
-
-  const card = await cardContext(parsed.data.cardId);
-  if (!card) return failure("Card not found");
-  const { userId } = await requireMembership(card.projectId, "member");
-
-  if (card.completedAt === null) {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(cards)
-        .set({ completedAt: new Date(), completedBy: userId })
-        .where(eq(cards.id, parsed.data.cardId));
-      await tx
-        .delete(cardFocuses)
-        .where(eq(cardFocuses.cardId, parsed.data.cardId));
-    });
-
-    await logCardActivity(
-      card.projectId,
-      userId,
-      parsed.data.cardId,
-      "completed",
-    );
-  }
-
-  refresh();
-  return { ok: true };
-}
-
 export async function letGoOfCard(formData: FormData): Promise<ActionResult> {
   const parsed = shutdownCardSchema.safeParse({ cardId: formData.get("cardId") });
   if (!parsed.success) return failure("Invalid card");

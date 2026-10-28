@@ -23,9 +23,11 @@ import { BoardTabs } from "@/components/kanban/board-tabs";
 import { AddColumn, Column } from "@/components/kanban/column";
 import {
   createColumn,
-  moveCard,
   reorderColumn,
 } from "@/lib/kanban/actions";
+import { mutate } from "@/lib/mutations";
+import { useOutbox } from "@/lib/outbox/client";
+import { overlayCards } from "@/lib/outbox/overlay";
 import { reorderById } from "@/lib/order";
 import { useToast } from "@/components/ui/toast";
 import type { BoardKind } from "@/db/schema";
@@ -200,10 +202,9 @@ export function BoardView({
   const router = useRouter();
   const searchParams = useSearchParams();
   const pushToast = useToast();
+  const { entries: outboxEntries, offline } = useOutbox();
   const [columns, setColumns] = useState(serverColumns);
-  const [cards, setCards] = useState(serverCards);
   const [syncedColumns, setSyncedColumns] = useState(serverColumns);
-  const [syncedCards, setSyncedCards] = useState(serverCards);
   const [sortByScore, setSortByScore] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -211,10 +212,13 @@ export function BoardView({
     setSyncedColumns(serverColumns);
     setColumns(serverColumns);
   }
-  if (syncedCards !== serverCards) {
-    setSyncedCards(serverCards);
-    setCards(serverCards);
-  }
+
+  // The outbox overlay *is* the optimistic card state (OFFLINE-OUTBOX §2.3):
+  // queued creates/moves/completes show immediately and survive reloads.
+  const cards = useMemo(
+    () => overlayCards(serverCards, columns, outboxEntries, { projectId, boardKind }),
+    [serverCards, columns, outboxEntries, projectId, boardKind],
+  );
 
   const spRecord = useMemo<BoardSearchRecord>(() => {
     const rec: BoardSearchRecord = {};
@@ -315,21 +319,12 @@ export function BoardView({
     });
   };
 
-  const persistMove = (
-    cardId: string,
-    toColumnId: string,
-    position: string,
-  ) => {
-    const fd = new FormData();
-    fd.set("cardId", cardId);
-    fd.set("toColumnId", toColumnId);
-    fd.set("position", position);
-    startTransition(async () => {
-      const res = await moveCard(fd);
-      if (!res.ok) {
-        pushToast({ message: res.error });
-        router.refresh();
-      }
+  const persistMove = (card: BoardCardData, toColumnId: string, position: string) => {
+    void mutate(
+      { kind: "card.move", cardId: card.id, toColumnId, position },
+      `Move “${card.title}”`,
+    ).then((res) => {
+      if (!res.ok) pushToast({ message: res.error });
     });
   };
 
@@ -400,14 +395,7 @@ export function BoardView({
     const after = finalList[insertAt + 1]?.position ?? null;
     const newPosition = generateKeyBetween(before, after);
 
-    setCards((prev) =>
-      prev.map((c) =>
-        c.id === activeCard.id
-          ? { ...c, columnId: targetColumnId, position: newPosition }
-          : c,
-      ),
-    );
-    persistMove(activeCard.id, targetColumnId, newPosition);
+    persistMove(activeCard, targetColumnId, newPosition);
   };
 
   return (
@@ -497,7 +485,7 @@ export function BoardView({
               />
             ))}
           </SortableContext>
-          {canManageColumns && <AddColumn onAdd={addColumn} />}
+          {canManageColumns && <AddColumn onAdd={addColumn} disabled={offline} />}
         </div>
       </DndContext>
     </div>

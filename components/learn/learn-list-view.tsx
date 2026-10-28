@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { TaskRow } from "@/components/tasks/task-row";
 import { useToast } from "@/components/ui/toast";
 import { mutate } from "@/lib/mutations";
+import { useOutbox } from "@/lib/outbox/client";
+import { syncStateOf } from "@/lib/outbox/overlay";
 import { prevStatus } from "@/lib/learning/logic";
 import { buildLearnListGroups, learnRowMeta } from "@/lib/learning/list-groups";
 import type { LearnItemRow } from "@/components/learn/types";
@@ -27,6 +29,7 @@ export function LearnListView({ items, viewMenu }: { items: LearnItemRow[]; view
   const searchParams = useSearchParams();
   const pushToast = useToast();
   const [, startTransition] = useTransition();
+  const { entries: outboxEntries } = useOutbox();
 
   const groups = buildLearnListGroups(items);
 
@@ -41,7 +44,7 @@ export function LearnListView({ items, viewMenu }: { items: LearnItemRow[]; view
     const status = wasLearned ? (prevStatus(item.status) ?? "learning") : "learned";
 
     startTransition(() => {
-      mutate({ kind: "learning.setStatus", itemId: item.id, status }).then((res) => {
+      mutate({ kind: "learning.setStatus", itemId: item.id, status }, `Mark “${item.title}” as ${status}`).then((res) => {
         if (!res.ok) pushToast({ message: res.error });
         else if (!wasLearned) pushToast({ message: `🎉 Learned: ${item.title}` });
       });
@@ -72,6 +75,7 @@ export function LearnListView({ items, viewMenu }: { items: LearnItemRow[]; view
                     completed={item.status === "learned"}
                     onToggle={() => toggle(item)}
                     meta={learnRowMeta(item)}
+                    sync={syncStateOf(item.id, outboxEntries) ?? undefined}
                   />
                 ))}
               </ul>

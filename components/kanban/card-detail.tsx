@@ -5,13 +5,13 @@ import { useState, useTransition } from "react";
 import {
   archiveCard,
   duplicateCard,
-  moveCard,
   moveCardToBoard,
   restoreCard,
   setCardCover,
-  toggleCardComplete,
-  updateCard,
 } from "@/lib/kanban/actions";
+import { mutate } from "@/lib/mutations";
+import { useOutbox } from "@/lib/outbox/client";
+import { cardPatchOf, completionOf } from "@/lib/outbox/overlay";
 import { promoteIdea, updateCardScore } from "@/lib/kanban/phase3-actions";
 import { scoreOf, formatScore } from "@/lib/kanban/score";
 import { COVER_SWATCHES } from "@/lib/palette";
@@ -112,27 +112,42 @@ export function CardDetail({
     });
   };
 
-  const [title, setTitle] = useState(card.title);
-  const [description, setDescription] = useState(card.description ?? "");
-  const [allDay, setAllDay] = useState(card.isAllDay);
+  // The sheet's baseline is the server card with this card's queued
+  // `card.update` patches folded in (OFFLINE-OUTBOX §2.3): an edit saved
+  // offline is what the user sees on reopen, the dirty check compares
+  // against it, and the next patch diffs against it — otherwise reopening
+  // after an offline rename would show the old title and "Save & close"
+  // would queue the same change twice.
+  const { entries: outboxEntries } = useOutbox();
+  const queued = cardPatchOf(card.id, outboxEntries);
+  const base = {
+    title: queued.title ?? card.title,
+    description: queued.description !== undefined ? queued.description : card.description,
+    dueAt: queued.dueAt !== undefined ? (queued.dueAt ? new Date(queued.dueAt) : null) : card.dueAt,
+    isAllDay: queued.isAllDay ?? card.isAllDay,
+    priority: queued.priority !== undefined ? queued.priority : card.priority,
+  };
+
+  const [title, setTitle] = useState(base.title);
+  const [description, setDescription] = useState(base.description ?? "");
+  const [allDay, setAllDay] = useState(base.isAllDay);
   const [dueInput, setDueInput] = useState(() =>
-    toLocalInput(card.dueAt, card.isAllDay),
+    toLocalInput(base.dueAt, base.isAllDay),
   );
-  const [priority, setPriority] = useState<CardPriority | null>(card.priority);
+  const [priority, setPriority] = useState<CardPriority | null>(base.priority);
   const [pendingSave, startSaveTransition] = useTransition();
-  const [pendingToggle, startToggleTransition] = useTransition();
   const [, startRemoveTransition] = useTransition();
   const [, startTransition] = useTransition();
 
-  const done = card.completedAt !== null;
+  const done = completionOf(card.id, outboxEntries) ?? card.completedAt !== null;
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const dirty =
     canEdit &&
-    (title !== card.title ||
-      description !== (card.description ?? "") ||
-      allDay !== card.isAllDay ||
-      dueInput !== toLocalInput(card.dueAt, card.isAllDay) ||
-      priority !== card.priority);
+    (title !== base.title ||
+      description !== (base.description ?? "") ||
+      allDay !== base.isAllDay ||
+      dueInput !== toLocalInput(base.dueAt, base.isAllDay) ||
+      priority !== base.priority);
   const requestClose = () => {
     if (dirty) setConfirmDiscard(true);
     else close();
@@ -156,15 +171,19 @@ export function CardDetail({
       }
       dueIso = d.toISOString();
     }
-    const fd = new FormData();
-    fd.set("cardId", card.id);
-    fd.set("title", title.trim());
-    fd.set("description", description);
-    fd.set("isAllDay", String(allDay));
-    fd.set("dueAt", dueIso);
-    fd.set("priority", priority === null ? "" : String(priority));
+    // §5.2 patch-wins-per-field: send only what changed against the baseline.
+    const baseDue = base.dueAt ? new Date(base.dueAt).toISOString() : null;
+    const patch: Extract<Parameters<typeof mutate>[0], { kind: "card.update" }>["patch"] = {};
+    if (title.trim() !== base.title) patch.title = title.trim();
+    if (description !== (base.description ?? "")) patch.description = description || null;
+    if ((dueIso || null) !== baseDue) patch.dueAt = dueIso || null;
+    if (allDay !== base.isAllDay) patch.isAllDay = allDay;
+    if (priority !== base.priority) patch.priority = priority;
     startSaveTransition(async () => {
-      const res = await updateCard(fd);
+      const res =
+        Object.keys(patch).length === 0
+          ? { ok: true as const }
+          : await mutate({ kind: "card.update", cardId: card.id, patch }, `Edit “${title.trim()}”`);
       if (!res.ok) pushToast({ message: res.error });
       else if (thenClose) close();
       else pushToast({ message: "Saved" });
@@ -172,11 +191,10 @@ export function CardDetail({
   };
 
   const toggleComplete = () => {
-    const fd = new FormData();
-    fd.set("cardId", card.id);
-    startToggleTransition(async () => {
-      await toggleCardComplete(fd);
-    });
+    void mutate(
+      { kind: "card.complete", cardId: card.id, completed: !done },
+      `${done ? "Reopen" : "Complete"} “${card.title}”`,
+    );
   };
 
   const remove = () => {
@@ -217,11 +235,15 @@ export function CardDetail({
         message: "Promoted to To-Do → Backlog",
         actionLabel: "Undo",
         onAction: () => {
-          const undoFd = new FormData();
-          undoFd.set("cardId", card.id);
-          undoFd.set("toColumnId", res.data.previousColumnId);
-          undoFd.set("position", res.data.previousPosition);
-          void moveCard(undoFd);
+          void mutate(
+            {
+              kind: "card.move",
+              cardId: card.id,
+              toColumnId: res.data.previousColumnId,
+              position: res.data.previousPosition,
+            },
+            `Move “${card.title}” back`,
+          );
         },
       });
     });
@@ -294,7 +316,6 @@ export function CardDetail({
         <div className="flex items-start justify-between gap-3">
           {canEdit ? <button
             onClick={toggleComplete}
-            disabled={pendingToggle}
             aria-pressed={done}
             aria-label={done ? "Mark as not done" : "Mark as done"}
             className="-mx-2.5 -mb-2.5 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center"

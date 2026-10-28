@@ -89,8 +89,8 @@ export function QuickAddSheet({
 
   // The current project when Quick Add is opened from a board (`/p/<id>/…`),
   // but only if it's one `listProjectsForQuickAdd` actually returned (it
-  // excludes viewer-role and archived projects, which `createCardForProject`
-  // would reject anyway) — My Space otherwise. Pathname-derived rather than
+  // excludes viewer-role and archived projects, which the queued
+  // `card.create` would reject anyway) — My Space otherwise. Pathname-derived rather than
   // threaded through props because this sheet is mounted once, globally, in
   // bottom-tabs.tsx.
   const pathProjectId = PROJECT_PATH_RE.exec(pathname ?? "")?.[1] ?? null;

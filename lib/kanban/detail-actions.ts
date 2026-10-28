@@ -87,33 +87,6 @@ export async function addChecklistItem(formData: FormData): Promise<ActionResult
   return { ok: true };
 }
 
-export async function toggleChecklistItem(formData: FormData): Promise<ActionResult> {
-  const parsed = checklistItemSchema.safeParse({
-    itemId: formData.get("itemId"),
-  });
-  if (!parsed.success) return failure("Invalid item");
-
-  const [item] = await db
-    .select()
-    .from(checklistItems)
-    .where(
-      and(
-        eq(checklistItems.id, parsed.data.itemId),
-        isNull(checklistItems.deletedAt),
-      ),
-    )
-    .limit(1);
-  if (!item) return failure("Item not found");
-  if (!(await requireCard(item.cardId))) return failure("Card not found");
-
-  await db
-    .update(checklistItems)
-    .set({ isDone: !item.isDone })
-    .where(eq(checklistItems.id, parsed.data.itemId));
-  touch();
-  return { ok: true };
-}
-
 export async function deleteChecklistItem(formData: FormData): Promise<ActionResult> {
   const parsed = checklistItemSchema.safeParse({
     itemId: formData.get("itemId"),

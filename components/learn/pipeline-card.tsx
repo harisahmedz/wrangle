@@ -1,8 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setLearningStatus } from "@/lib/actions/learning";
+import { mutate } from "@/lib/mutations";
 import { nextStatus, prevStatus } from "@/lib/learning/logic";
 import { formatTargetDate } from "@/lib/learning/list-groups";
 import { useToast } from "@/components/ui/toast";
@@ -32,18 +31,17 @@ const TYPE_EMOJI: Record<string, string> = {
 const STATUS_LABEL = { want: "Want", learning: "Learning", learned: "Learned" } as const;
 
 export function PipelineCard({ item }: { item: LearnItemRow }) {
-  const [, startTransition] = useTransition();
   const pushToast = useToast();
   const router = useRouter();
   const advanceTo = nextStatus(item.status);
   const backTo = prevStatus(item.status);
 
   const move = (status: "want" | "learning" | "learned", celebrate?: boolean) => {
-    const fd = new FormData();
-    fd.set("itemId", item.id);
-    fd.set("status", status);
-    startTransition(async () => {
-      await setLearningStatus(fd);
+    void mutate(
+      { kind: "learning.setStatus", itemId: item.id, status },
+      `Mark “${item.title}” as ${status}`,
+    ).then((res) => {
+      if (!res.ok) pushToast({ message: res.error });
     });
     if (celebrate) pushToast({ message: `🎉 Learned: ${item.title}` });
   };

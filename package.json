@@ -43,6 +43,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "fake-indexeddb": "^6.2.6",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"
