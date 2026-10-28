@@ -26,6 +26,17 @@ function sortCards(cards: BoardCardData[], sort: SortMode): BoardCardData[] {
       if (a.dueAt === b.dueAt) return 0;
       return a.dueAt < b.dueAt ? -1 : 1;
     });
+  } else if (sort === "priority") {
+    // P1 first, nulls (no priority / P4) last, manual position as the
+    // tie-break within the same priority (ROADMAP-V2 S9).
+    copy.sort((a, b) => {
+      if (a.priority === b.priority) {
+        return a.position < b.position ? -1 : a.position > b.position ? 1 : 0;
+      }
+      if (a.priority === null) return 1;
+      if (b.priority === null) return -1;
+      return a.priority - b.priority;
+    });
   } else {
     copy.sort((a, b) => (a.position < b.position ? -1 : a.position > b.position ? 1 : 0));
   }

@@ -25,9 +25,32 @@ export type QuickAddParse = {
   projectToken: string | null;
   /** True when a "#token" was typed but matched no project. */
   projectUnknown: boolean;
+  /** "p1".."p4" as typed (V2 S9/B85) — 4 means "no priority", same as
+   * null; both display with a neutral chip and normalize to null on
+   * submit (lib/kanban/priority.ts). Null when no token was typed. */
+  priority: 1 | 2 | 3 | 4 | null;
+  /** Title with only the priority phrase removed, date/"#project" text
+   * left intact — what the priority chip's × sets the input back to. */
+  priorityStrippedTitle: string;
 };
 
 const PROJECT_TOKEN_RE = /#([^\s#]+)/;
+// Only a standalone "p1".."p4" word: start-of-string or preceded by
+// whitespace, followed by whitespace or end-of-string. A plain `\b` word
+// boundary (the original implementation) also matches right after `#` or
+// `/` — both non-word characters — so it false-matched inside a
+// "#p2-backlog" project token or a "/p1/settings" URL. Lookbehind/lookahead
+// keep the match itself to just "pN" (no leading/trailing whitespace
+// consumed), same as before.
+const PRIORITY_TOKEN_RE = /(?<=^|\s)p([1-4])(?=\s|$)/i;
+
+function findPriorityMatch(
+  text: string,
+): { priority: 1 | 2 | 3 | 4; index: number; length: number } | null {
+  const m = PRIORITY_TOKEN_RE.exec(text);
+  if (!m) return null;
+  return { priority: Number(m[1]) as 1 | 2 | 3 | 4, index: m.index, length: m[0].length };
+}
 
 function stripToken(text: string, index: number, length: number): string {
   const cut = `${text.slice(0, index)} ${text.slice(index + length)}`;
@@ -120,24 +143,45 @@ export function parseQuickAddTitle(
       project: null,
       projectToken: null,
       projectUnknown: false,
+      priority: null,
+      priorityStrippedTitle: "",
     };
   }
 
   const task = parseTask(raw, now, opts.tz);
   const dateStrippedTitle = task.title;
 
-  const match = PROJECT_TOKEN_RE.exec(dateStrippedTitle);
+  // Priority token (V2 S9/B85): matched against the raw input, not
+  // `dateStrippedTitle` — so its chip's × only undoes the priority
+  // phrase, leaving any date/#project text exactly as typed, mirroring
+  // how `dateStrippedTitle` only undoes the date phrase.
+  const rawPriorityMatch = findPriorityMatch(raw);
+  const priority = rawPriorityMatch?.priority ?? null;
+  const priorityStrippedTitle = rawPriorityMatch
+    ? stripToken(raw, rawPriorityMatch.index, rawPriorityMatch.length)
+    : raw;
+
+  // Building the submitted title: strip the priority token from the
+  // date-stripped text (re-matched there, since removing the date phrase
+  // shifts indices), then the "#project" token from what's left.
+  let working = dateStrippedTitle;
+  const workingPriorityMatch = findPriorityMatch(working);
+  if (workingPriorityMatch) {
+    working = stripToken(working, workingPriorityMatch.index, workingPriorityMatch.length);
+  }
+
+  const match = PROJECT_TOKEN_RE.exec(working);
   let project: QuickAddProjectOption | null = null;
   let projectToken: string | null = null;
   let projectUnknown = false;
-  let cleanTitle = dateStrippedTitle;
+  let cleanTitle = working;
 
   if (match) {
     projectToken = match[1];
     project = matchProject(projectToken, opts.projects);
     if (project) {
-      const spanLength = matchedSpanLength(dateStrippedTitle, match.index, projectToken.length, project);
-      cleanTitle = stripToken(dateStrippedTitle, match.index, spanLength);
+      const spanLength = matchedSpanLength(working, match.index, projectToken.length, project);
+      cleanTitle = stripToken(working, match.index, spanLength);
     } else {
       projectUnknown = true;
     }
@@ -156,5 +200,7 @@ export function parseQuickAddTitle(
     project,
     projectToken,
     projectUnknown,
+    priority,
+    priorityStrippedTitle,
   };
 }

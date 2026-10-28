@@ -17,6 +17,13 @@
   --success: #34d399;
   --warning: #fbbf24;
 
+  /* Card priority ring colors (ROADMAP-V2 S9/B85, D3): P1 red, P2 orange,
+   * P3 blue; P4 has none (see lib/kanban/priority.ts). P1 reuses the
+   * danger hue, same value as --danger above. */
+  --priority-1: #f87171;
+  --priority-2: #fb923c;
+  --priority-3: #60a5fa;
+
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
@@ -52,6 +59,13 @@ html.light {
   --success: #047857;
   --warning: #b45309;
 
+  /* Card priority rings, light theme (S2 contrast-checked below): P1 reuses
+   * --danger (4.83:1 on white). P2 #ea580c 3.56:1, P3 #2563eb 5.16:1 — both
+   * ≥3:1 WCAG non-text contrast on white. */
+  --priority-1: #dc2626;
+  --priority-2: #ea580c;
+  --priority-3: #2563eb;
+
   --shadow-sm: 0 1px 2px rgb(15 20 30 / 0.04);
   --shadow-md: 0 8px 24px rgb(15 20 30 / 0.07);
   --shadow-lg: 0 20px 48px rgb(15 20 30 / 0.1);
@@ -71,6 +85,9 @@ html.light {
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-sidebar: var(--sidebar);
+  --color-priority-1: var(--priority-1);
+  --color-priority-2: var(--priority-2);
+  --color-priority-3: var(--priority-3);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
@@ -88,8 +105,22 @@ html.light {
   --shadow-lg: var(--shadow-lg);
 }
 
-* {
-  border-color: var(--border);
+/*
+ * Wrapped in Tailwind's own `base` layer (S9 fix): unlayered CSS always
+ * wins the cascade over anything in `@layer utilities` regardless of
+ * specificity, so a bare `* { border-color: ... }` here silently beat
+ * every colored border utility (`border-danger`, `border-l-priority-1`,
+ * etc.) app-wide — they kept computing to `--border` instead of their
+ * own color. Moving this into `@layer base` (before `utilities` in the
+ * `@layer theme, base, components, utilities;` order `@import
+ * "tailwindcss"` declares) restores the intended default-that-a-utility-
+ * can-override behavior without changing the value for any element that
+ * never overrides it.
+ */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
 }
 
 html {

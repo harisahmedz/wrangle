@@ -323,6 +323,7 @@ function SortableTaskRow({
       href={href}
       completed={completed}
       onToggle={canEdit ? onToggle : undefined}
+      priority={card.priority}
       due={due}
       dragHandle={
         reorderEnabled ? (

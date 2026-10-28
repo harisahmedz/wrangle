@@ -264,6 +264,11 @@ export const cards = pgTable(
     }),
     impact: smallint("impact"),
     effort: smallint("effort"),
+    // ROADMAP-V2 S9/B85 (D3): 1|2|3|null only — P4 ("no priority") is NULL,
+    // never the literal 4. CHECK (added in drizzle/0008) allows 1–4 for
+    // forward compatibility, but see lib/kanban/priority.ts for the
+    // normalize-on-write/read rule this app actually follows.
+    priority: smallint("priority"),
     coverColor: text("cover_color"),
     focusedOn: date("focused_on"),
     createdBy: uuid("created_by").references(() => users.id, {

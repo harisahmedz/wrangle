@@ -96,6 +96,7 @@ export function ViewMenu({
                 >
                   <option value="manual">Manual</option>
                   <option value="due">Due date</option>
+                  <option value="priority">Priority</option>
                 </select>
               </label>
 

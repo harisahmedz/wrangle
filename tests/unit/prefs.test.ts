@@ -22,6 +22,10 @@ describe("viewPrefSchema", () => {
     expect(viewPrefSchema.safeParse({ sort: "alphabetical" }).success).toBe(false);
   });
 
+  it("accepts sort: priority (V2 S9/B85)", () => {
+    expect(viewPrefSchema.safeParse({ sort: "priority" }).success).toBe(true);
+  });
+
   it("rejects the wrong type for showCompleted", () => {
     expect(viewPrefSchema.safeParse({ showCompleted: "yes" }).success).toBe(false);
   });

@@ -19,6 +19,7 @@ function card(partial: Partial<BoardCardData> & { id: string; columnId: string }
     assigneeIds: [],
     impact: null,
     effort: null,
+    priority: null,
     ...partial,
   };
 }
@@ -125,10 +126,31 @@ describe("buildListGroups — sort: due", () => {
   });
 });
 
+describe("buildListGroups — sort: priority (V2 S9)", () => {
+  it("orders P1 first, nulls (no priority) last, manual position as the tie-break", () => {
+    const cards = [
+      card({ id: "none", columnId: "todo", priority: null, position: "a0" }),
+      card({ id: "p3", columnId: "todo", priority: 3, position: "a1" }),
+      card({ id: "p1-later", columnId: "todo", priority: 1, position: "a3" }),
+      card({ id: "p1-earlier", columnId: "todo", priority: 1, position: "a2" }),
+      card({ id: "p2", columnId: "todo", priority: 2, position: "a4" }),
+    ];
+    const groups = buildListGroups(cards, columns, "column", "priority", "UTC");
+    expect(groups[0].cards.map((c) => c.id)).toEqual([
+      "p1-earlier",
+      "p1-later",
+      "p2",
+      "p3",
+      "none",
+    ]);
+  });
+});
+
 describe("reorderEnabledFor", () => {
   it("is only enabled for column grouping + manual sort", () => {
     expect(reorderEnabledFor("column", "manual")).toBe(true);
     expect(reorderEnabledFor("column", "due")).toBe(false);
+    expect(reorderEnabledFor("column", "priority")).toBe(false);
     expect(reorderEnabledFor("due", "manual")).toBe(false);
     expect(reorderEnabledFor("none", "manual")).toBe(false);
   });

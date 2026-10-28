@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { boards, cards, memberships, projects, users } from "@/db/schema";
 import type { BoardKind, ProjectRole } from "@/db/schema";
 import type { DayWindow } from "@/lib/dates";
+import { normalizePriority } from "@/lib/kanban/priority";
 
 export type DueCardRow = {
   id: string;
@@ -21,6 +22,8 @@ export type DueCardRow = {
    * (TaskRow's `onToggle` left undefined) instead of hitting the action's
    * `notFound()`. */
   role: ProjectRole;
+  /** ROADMAP-V2 S9: 1|2|3|null only (see lib/kanban/priority.ts). */
+  priority: 1 | 2 | 3 | null;
 };
 
 export type DueCardsWindow = {
@@ -68,6 +71,7 @@ export async function loadDueCards(
       boardKind: boards.kind,
       isAllDay: cards.isAllDay,
       role: memberships.role,
+      priority: cards.priority,
     })
     .from(cards)
     .innerJoin(projects, eq(cards.projectId, projects.id))
@@ -101,6 +105,7 @@ export async function loadDueCards(
         ? due.getTime() < today.start.getTime()
         : due.getTime() < now.getTime(),
       role: r.role,
+      priority: normalizePriority(r.priority),
     };
   });
 }

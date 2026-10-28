@@ -2737,6 +2737,12 @@
           "notNull": true,
           "default": "'USD'"
         },
+        "prefs": {
+          "name": "prefs",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "onboarded_at": {
           "name": "onboarded_at",
           "type": "timestamp with time zone",

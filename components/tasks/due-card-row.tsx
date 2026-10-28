@@ -46,6 +46,7 @@ export function DueCardRow({
             }
           : undefined
       }
+      priority={card.priority}
       due={formatDueLabel(card.dueAt, card.overdue, timeZone)}
       project={
         showProject

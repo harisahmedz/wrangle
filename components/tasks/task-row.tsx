@@ -5,6 +5,7 @@ import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CheckIcon, CalendarIcon } from "@/components/icons";
 import { dueToneClass, type DueMeta } from "@/components/tasks/due-label";
+import { PRIORITY_RING_CLASS, type CardPriority } from "@/lib/kanban/priority";
 
 export type TaskRowProps = {
   title: string;
@@ -14,6 +15,9 @@ export type TaskRowProps = {
    * Omit for a non-interactive row (e.g. a `viewer`-role card) — renders a
    * plain, non-button circle instead of a checkbox. */
   onToggle?: () => void;
+  /** ROADMAP-V2 S9: tints the unchecked circle's ring (P1 red/P2 orange/
+   * P3 blue); omit or null for no priority (P4). Ignored once `completed`. */
+  priority?: CardPriority | null;
   due?: DueMeta;
   /** Freeform meta line for rows with no literal due date (e.g. Learn's
    * type/progress%/target-date summary, V2 S4b). Ignored when `due` is set —
@@ -43,6 +47,7 @@ export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(function TaskRow(
     href,
     completed,
     onToggle,
+    priority,
     due,
     meta,
     project,
@@ -56,15 +61,20 @@ export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(function TaskRow(
   },
   ref,
 ) {
+  const ringClass = !completed && priority ? PRIORITY_RING_CLASS[priority] : null;
+
   const checkboxGlyph = (
     <span
       className={cn(
-        "flex h-5 w-5 items-center justify-center rounded-full border transition-colors",
+        "flex h-5 w-5 items-center justify-center rounded-full transition-colors",
+        ringClass ? "border-2" : "border",
         completed
           ? "border-success bg-success text-accent-fg"
-          : onToggle
-            ? "border-border text-muted group-hover/done:border-success group-hover/done:bg-success group-hover/done:text-accent-fg"
-            : "border-border text-muted",
+          : ringClass
+            ? cn(ringClass, "text-muted", onToggle && "group-hover/done:border-success group-hover/done:bg-success group-hover/done:text-accent-fg")
+            : onToggle
+              ? "border-border text-muted group-hover/done:border-success group-hover/done:bg-success group-hover/done:text-accent-fg"
+              : "border-border text-muted",
       )}
     >
       <CheckIcon

@@ -14,11 +14,19 @@ export type Mutation =
       position?: string;
       dueAt?: string | null;
       isAllDay?: boolean;
+      /** ROADMAP-V2 S9: 1|2|3|null — already normalized by the caller (P4 is null). */
+      priority?: 1 | 2 | 3 | null;
     }
   | {
       kind: "card.update";
       cardId: string;
-      patch: { title?: string; description?: string | null; dueAt?: string | null; isAllDay?: boolean };
+      patch: {
+        title?: string;
+        description?: string | null;
+        dueAt?: string | null;
+        isAllDay?: boolean;
+        priority?: 1 | 2 | 3 | null;
+      };
     }
   | { kind: "card.complete"; cardId: string; completed: boolean }
   | { kind: "card.move"; cardId: string; toColumnId: string; position: string }

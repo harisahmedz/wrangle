@@ -25,6 +25,7 @@ import {
 } from "@/lib/validation/kanban";
 import { failure, type ActionResult } from "@/lib/actions/types";
 import { insertCard } from "@/lib/kanban/insert-card";
+import { normalizePriority } from "@/lib/kanban/priority";
 
 async function boardProjectId(boardId: string): Promise<string | null> {
   const [row] = await db
@@ -212,6 +213,11 @@ export async function createCard(
     position: formData.get("position") || undefined,
     dueAt: formData.get("dueAt") ? String(formData.get("dueAt")) : undefined,
     isAllDay: formData.has("isAllDay") ? formData.get("isAllDay") === "true" : undefined,
+    priority: formData.has("priority")
+      ? formData.get("priority") === ""
+        ? null
+        : Number(formData.get("priority"))
+      : undefined,
   });
   if (!parsed.success) return failure("Invalid card");
 
@@ -230,6 +236,7 @@ export async function createCard(
     atTop: parsed.data.atTop,
     dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
     isAllDay: parsed.data.isAllDay,
+    priority: parsed.data.priority,
   });
   if (!card) return failure("Could not create card");
 
@@ -256,6 +263,11 @@ export async function createCardForProject(
     position: formData.get("position") || undefined,
     dueAt: formData.get("dueAt") ? String(formData.get("dueAt")) : undefined,
     isAllDay: formData.has("isAllDay") ? formData.get("isAllDay") === "true" : undefined,
+    priority: formData.has("priority")
+      ? formData.get("priority") === ""
+        ? null
+        : Number(formData.get("priority"))
+      : undefined,
   });
   if (!parsed.success) return failure("Invalid card");
 
@@ -291,6 +303,7 @@ export async function createCardForProject(
     position: parsed.data.position,
     dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
     isAllDay: parsed.data.isAllDay,
+    priority: parsed.data.priority,
   });
   if (!card) return failure("Could not create card");
 
@@ -309,6 +322,7 @@ export async function updateCard(formData: FormData): Promise<ActionResult> {
     description: formData.get("description") ?? "",
     dueAt: formData.get("dueAt") ? String(formData.get("dueAt")) : null,
     isAllDay: formData.get("isAllDay") === "true",
+    priority: formData.get("priority") ? Number(formData.get("priority")) : null,
   });
   if (!parsed.success) return failure("Invalid card details");
 
@@ -323,6 +337,7 @@ export async function updateCard(formData: FormData): Promise<ActionResult> {
       description: parsed.data.description || null,
       dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
       isAllDay: parsed.data.isAllDay,
+      priority: normalizePriority(parsed.data.priority),
     })
     .where(eq(cards.id, parsed.data.cardId));
 
@@ -532,6 +547,7 @@ export async function duplicateCard(
       isAllDay: source.isAllDay,
       impact: source.impact,
       effort: source.effort,
+      priority: source.priority,
       coverColor: source.coverColor,
       createdBy: userId,
     })

@@ -1,6 +1,17 @@
 import { z } from "zod";
 import { boardKind } from "@/db/schema";
 
+// ROADMAP-V2 S9/B85: the wire type is still 1|2|3|4 (whatever Quick Add
+// parsed or the detail picker sent) — `lib/kanban/priority.ts`'s
+// `normalizePriority` folds a typed/picked 4 down to null at the point of
+// writing, so the DB only ever holds 1|2|3|null.
+const priorityInputSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+]);
+
 export const createColumnSchema = z.object({
   boardId: z.string().uuid(),
   name: z.string().trim().min(1).max(60),
@@ -27,6 +38,7 @@ export const createCardSchema = z.object({
   position: z.string().trim().min(1).max(100).optional(),
   dueAt: z.string().datetime({ offset: true }).nullable().optional(),
   isAllDay: z.boolean().optional(),
+  priority: priorityInputSchema.nullable().optional(),
 });
 
 const boardKindSchema = z.enum(boardKind.enumValues);
@@ -45,6 +57,7 @@ export const createCardForProjectSchema = z.object({
   position: z.string().trim().min(1).max(100).optional(),
   dueAt: z.string().datetime({ offset: true }).nullable().optional(),
   isAllDay: z.boolean().optional(),
+  priority: priorityInputSchema.nullable().optional(),
 });
 
 export const updateCardSchema = z.object({
@@ -53,6 +66,7 @@ export const updateCardSchema = z.object({
   description: z.string().max(10_000),
   dueAt: z.string().datetime({ offset: true }).nullable(),
   isAllDay: z.boolean(),
+  priority: priorityInputSchema.nullable(),
 });
 
 export const moveCardSchema = z.object({

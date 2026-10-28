@@ -57,6 +57,13 @@
       "when": 1793108454620,
       "tag": "0007_user_prefs",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793175966882,
+      "tag": "0008_card_priority",
+      "breakpoints": true
     }
   ]
 }

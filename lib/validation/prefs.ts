@@ -7,7 +7,7 @@ import { z } from "zod";
  */
 export const VIEW_LAYOUTS = ["board", "list"] as const;
 export const GROUP_BY_VALUES = ["column", "due", "none"] as const;
-export const SORT_VALUES = ["manual", "due"] as const;
+export const SORT_VALUES = ["manual", "due", "priority"] as const;
 
 /**
  * Reserved `views` key for the personal Learn pipeline/list switch (V2 S4b,

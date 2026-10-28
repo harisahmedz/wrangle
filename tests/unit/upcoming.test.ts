@@ -19,6 +19,7 @@ function row(id: string, dueAt: string): DueCardRow {
     dueAt: new Date(dueAt),
     overdue: false,
     role: "member",
+    priority: null,
   };
 }
 

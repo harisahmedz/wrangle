@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { CloseIcon } from "@/components/icons";
+import { PRIORITY_CHIP_CLASS } from "@/lib/kanban/priority";
+import { cn } from "@/lib/utils";
 
 const PROJECT_PATH_RE = /^\/p\/([^/]+)/;
 
@@ -108,6 +110,8 @@ export function QuickAddSheet({
         project: null,
         projectToken: null,
         projectUnknown: false,
+        priority: null,
+        priorityStrippedTitle: title,
       };
     }
     return parseQuickAddTitle(title, { tz, projects });
@@ -143,6 +147,7 @@ export function QuickAddSheet({
   };
 
   const clearDate = () => setTitle(parsed.dateStrippedTitle);
+  const clearPriority = () => setTitle(parsed.priorityStrippedTitle);
 
   const submit = () => {
     const trimmed = parsed.cleanTitle;
@@ -155,6 +160,8 @@ export function QuickAddSheet({
         title: trimmed,
         dueAt: parsed.dueAt ? parsed.dueAt.toISOString() : null,
         isAllDay: parsed.isAllDay,
+        // "p4" means "no priority", same as not typing a token at all.
+        priority: parsed.priority === 4 ? null : parsed.priority,
       });
       if (!res.ok) {
         setError(res.error);
@@ -187,7 +194,7 @@ export function QuickAddSheet({
         maxLength={300}
       />
 
-      {(parsed.dueLabel || parsed.projectUnknown) && (
+      {(parsed.dueLabel || parsed.priority || parsed.projectUnknown) && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {parsed.dueLabel && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 py-1 pl-3 pr-1.5 text-xs font-medium text-accent-strong">
@@ -197,6 +204,24 @@ export function QuickAddSheet({
                 onClick={clearDate}
                 aria-label="Remove date"
                 className="rounded-full p-0.5 text-accent-strong/70 hover:bg-accent/20 hover:text-accent-strong"
+              >
+                <CloseIcon className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {parsed.priority && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full py-1 pl-3 pr-1.5 text-xs font-medium",
+                PRIORITY_CHIP_CLASS[parsed.priority],
+              )}
+            >
+              P{parsed.priority}
+              <button
+                type="button"
+                onClick={clearPriority}
+                aria-label="Remove priority"
+                className="rounded-full p-0.5 hover:bg-black/10"
               >
                 <CloseIcon className="h-3 w-3" />
               </button>

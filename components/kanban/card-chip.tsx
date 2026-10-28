@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { CheckIcon, GripIcon, LinesIcon } from "@/components/icons";
 import { formatScore, scoreOf } from "@/lib/kanban/score";
 import { formatDueLabel } from "@/components/tasks/due-label";
+import { PRIORITY_ACCENT_CLASS } from "@/lib/kanban/priority";
 import type { BoardCardData } from "@/lib/kanban/types";
 
 export function CardChip({
@@ -51,7 +52,15 @@ export function CardChip({
         borderTop: card.coverColor ? `3px solid ${card.coverColor}` : undefined,
       }}
       className={cn(
-        "flex overflow-hidden rounded-lg border border-border bg-surface-2 text-sm shadow-sm transition-colors hover:border-muted/50",
+        // Left border color is set by exactly one of the two branches
+        // below, never both: `border-border` (the general shorthand) and
+        // `border-l-priority-N` (per-side) are sibling color utilities in
+        // the same `@layer utilities` layer with no tailwind-merge to
+        // resolve a tie, so the three unaccented sides get their own
+        // `border-{side}-border` classes instead of relying on the
+        // all-sides shorthand once a priority accent is in play.
+        "flex overflow-hidden rounded-lg border border-t-border border-r-border border-b-border bg-surface-2 text-sm shadow-sm transition-colors hover:border-muted/50",
+        !done && card.priority ? PRIORITY_ACCENT_CLASS[card.priority] : "border-l-border",
         isDragging && "opacity-40",
         done && "opacity-60",
       )}

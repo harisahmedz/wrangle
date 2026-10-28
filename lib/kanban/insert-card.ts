@@ -7,6 +7,7 @@ import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
 import { cards } from "@/db/schema";
+import { normalizePriority } from "@/lib/kanban/priority";
 
 export type InsertCardArgs = {
   columnId: string;
@@ -19,6 +20,9 @@ export type InsertCardArgs = {
   atTop?: boolean;
   dueAt?: Date | null;
   isAllDay?: boolean;
+  /** ROADMAP-V2 S9: wire value is 1|2|3|4|null; normalized to 1|2|3|null
+   * before the insert (see lib/kanban/priority.ts). */
+  priority?: 1 | 2 | 3 | 4 | null;
 };
 
 /**
@@ -45,6 +49,7 @@ export async function insertCard(
       position,
       dueAt: args.dueAt ?? null,
       isAllDay: args.isAllDay ?? false,
+      priority: normalizePriority(args.priority ?? null),
       createdBy: args.userId,
     };
     if (args.id) v.id = args.id;

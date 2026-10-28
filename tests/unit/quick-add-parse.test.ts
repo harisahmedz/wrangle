@@ -158,6 +158,97 @@ describe("parseQuickAddTitle — removing the date chip strips its text", () => 
   });
 });
 
+describe("parseQuickAddTitle — priority (V2 S9/B85)", () => {
+  it("parses p1–p4, case-insensitively, as a whole word, and strips it", () => {
+    for (const [token, expected] of [
+      ["p1", 1],
+      ["P2", 2],
+      ["p3", 3],
+      ["p4", 4],
+    ] as const) {
+      const result = parseQuickAddTitle(`Fix bug ${token}`, {
+        now: NOW,
+        tz: "UTC",
+        projects: [],
+      });
+      expect(result.priority).toBe(expected);
+      expect(result.cleanTitle).toBe("Fix bug");
+    }
+  });
+
+  it("does not match a word that merely contains p1..p4", () => {
+    const result = parseQuickAddTitle("Finish step1 of the plan", {
+      now: NOW,
+      tz: "UTC",
+      projects: [],
+    });
+    expect(result.priority).toBeNull();
+    expect(result.cleanTitle).toBe("Finish step1 of the plan");
+  });
+
+  it("does not match inside a #project token (a bare \\b word boundary would false-match here)", () => {
+    const result = parseQuickAddTitle("Email #p2-backlog", {
+      now: NOW,
+      tz: "UTC",
+      projects: [],
+    });
+    expect(result.priority).toBeNull();
+    // No project in the fixture list matches "p2-backlog" either, so the
+    // token (and its unknown-project hint) survive untouched.
+    expect(result.cleanTitle).toBe("Email #p2-backlog");
+    expect(result.projectUnknown).toBe(true);
+  });
+
+  it("does not match inside a URL path segment", () => {
+    const result = parseQuickAddTitle("Fix /p1/settings", {
+      now: NOW,
+      tz: "UTC",
+      projects: [],
+    });
+    expect(result.priority).toBeNull();
+    expect(result.cleanTitle).toBe("Fix /p1/settings");
+  });
+
+  it("has no priority chip when no token is present", () => {
+    const result = parseQuickAddTitle("Water the plants", {
+      now: NOW,
+      tz: "UTC",
+      projects: [],
+    });
+    expect(result.priority).toBeNull();
+  });
+
+  it("strips priority, date and #project tokens all together", () => {
+    const result = parseQuickAddTitle("Pay rent tomorrow 5pm p1 #side", {
+      now: NOW,
+      tz: "UTC",
+      projects: PROJECTS,
+    });
+    expect(result.priority).toBe(1);
+    expect(result.dueAt?.toISOString()).toBe("2026-10-28T17:00:00.000Z");
+    expect(result.project?.id).toBe("p-side");
+    expect(result.cleanTitle).toBe("Pay rent");
+  });
+
+  it("removing the priority chip strips only the priority phrase, leaving date/#project typed as-is", () => {
+    const first = parseQuickAddTitle("Pay rent tomorrow 5pm p1 #side", {
+      now: NOW,
+      tz: "UTC",
+      projects: PROJECTS,
+    });
+    expect(first.priorityStrippedTitle).toBe("Pay rent tomorrow 5pm #side");
+
+    const afterRemoving = parseQuickAddTitle(first.priorityStrippedTitle, {
+      now: NOW,
+      tz: "UTC",
+      projects: PROJECTS,
+    });
+    expect(afterRemoving.priority).toBeNull();
+    expect(afterRemoving.dueAt?.toISOString()).toBe("2026-10-28T17:00:00.000Z");
+    expect(afterRemoving.project?.id).toBe("p-side");
+  });
+});
+
 describe("formatQuickAddDueLabel", () => {
   it("appends 24h time for a timed due date", () => {
     const label = formatQuickAddDueLabel(

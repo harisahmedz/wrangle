@@ -15,11 +15,12 @@ import {
 import { promoteIdea, updateCardScore } from "@/lib/kanban/phase3-actions";
 import { scoreOf, formatScore } from "@/lib/kanban/score";
 import { COVER_SWATCHES } from "@/lib/palette";
+import { PRIORITY_BUTTON_CLASS, PRIORITY_VALUES, type CardPriority } from "@/lib/kanban/priority";
 import { Button } from "@/components/ui/button";
 import { CheckIcon, CloseIcon } from "@/components/icons";
-import { Input } from "@/components/ui/input";
 import { Modal, Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 import {
   AssigneesSection,
   AttachmentsSection,
@@ -43,6 +44,8 @@ type CardDetailData = {
   completedAt: Date | null;
   impact: number | null;
   effort: number | null;
+  /** ROADMAP-V2 S9: 1|2|3|null only (P4 is null — see lib/kanban/priority.ts). */
+  priority: CardPriority | null;
   coverColor: string | null;
   createdAt: string;
   updatedAt: string;
@@ -115,6 +118,7 @@ export function CardDetail({
   const [dueInput, setDueInput] = useState(() =>
     toLocalInput(card.dueAt, card.isAllDay),
   );
+  const [priority, setPriority] = useState<CardPriority | null>(card.priority);
   const [pendingSave, startSaveTransition] = useTransition();
   const [pendingToggle, startToggleTransition] = useTransition();
   const [, startRemoveTransition] = useTransition();
@@ -127,7 +131,8 @@ export function CardDetail({
     (title !== card.title ||
       description !== (card.description ?? "") ||
       allDay !== card.isAllDay ||
-      dueInput !== toLocalInput(card.dueAt, card.isAllDay));
+      dueInput !== toLocalInput(card.dueAt, card.isAllDay) ||
+      priority !== card.priority);
   const requestClose = () => {
     if (dirty) setConfirmDiscard(true);
     else close();
@@ -157,6 +162,7 @@ export function CardDetail({
     fd.set("description", description);
     fd.set("isAllDay", String(allDay));
     fd.set("dueAt", dueIso);
+    fd.set("priority", priority === null ? "" : String(priority));
     startSaveTransition(async () => {
       const res = await updateCard(fd);
       if (!res.ok) pushToast({ message: res.error });
@@ -314,12 +320,19 @@ export function CardDetail({
           </button>
         </div>
 
-        <Input
+        {/* Not the shared `Input` (components/ui/input.tsx): its base
+            classes (`border border-border`, `focus:border-accent`) would
+            sit in the same `@layer utilities` as a `border-transparent`
+            override with no tailwind-merge to resolve the tie — a plain,
+            self-contained `<input>` with `border-0` (no border-color
+            utility at all) is the only way to make "no border, ever" here
+            unambiguous. */}
+        <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           aria-label="Card title"
           disabled={!canEdit}
-          className="h-auto border-transparent bg-transparent px-0 text-lg font-semibold focus:border-transparent"
+          className="h-auto w-full border-0 bg-transparent px-0 text-lg font-semibold text-text disabled:opacity-50"
         />
 
         <div className="space-y-1">
@@ -365,6 +378,34 @@ export function CardDetail({
               />
               All-day
             </label>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Priority</p>
+          <div className="flex gap-2" role="group" aria-label="Priority">
+            {([...PRIORITY_VALUES, 4] as const).map((p) => {
+              const selected = p === 4 ? priority === null : priority === p;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPriority(p === 4 ? null : p)}
+                  disabled={!canEdit}
+                  aria-pressed={selected}
+                  className={cn(
+                    "flex h-11 min-w-11 items-center justify-center rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60",
+                    selected
+                      ? p === 4
+                        ? "border-accent bg-accent/10 text-accent-strong"
+                        : PRIORITY_BUTTON_CLASS[p]
+                      : "border-border text-muted hover:text-text",
+                  )}
+                >
+                  P{p}
+                </button>
+              );
+            })}
           </div>
         </div>
 

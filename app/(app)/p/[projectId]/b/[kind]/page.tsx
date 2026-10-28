@@ -27,6 +27,7 @@ import { MoreIcon } from "@/components/icons";
 import { CardDetail } from "@/components/kanban/card-detail";
 import { resolveInitialLayout } from "@/lib/kanban/view-resolve";
 import { parseUserPrefs } from "@/lib/validation/prefs";
+import { normalizePriority } from "@/lib/kanban/priority";
 
 type Props = {
   params: Promise<{ projectId: string; kind: string }>;
@@ -84,6 +85,7 @@ export default async function BoardPage({ params, searchParams }: Props) {
       coverColor: cardsTable.coverColor,
       impact: cardsTable.impact,
       effort: cardsTable.effort,
+      priority: cardsTable.priority,
     })
     .from(cardsTable)
     .where(
@@ -228,6 +230,7 @@ export default async function BoardPage({ params, searchParams }: Props) {
             assigneeIds: assigneeIdsByCard.get(c.id) ?? [],
             impact: c.impact,
             effort: c.effort,
+            priority: normalizePriority(c.priority),
           }))}
         />
       </Suspense>
@@ -359,6 +362,7 @@ async function CardDetailView({
         completedAt: row.completedAt,
         impact: row.impact,
         effort: row.effort,
+        priority: normalizePriority(row.priority),
         coverColor: row.coverColor,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),

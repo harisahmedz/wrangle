@@ -12,6 +12,8 @@ export type BoardCardData = {
   assigneeIds: string[];
   impact: number | null;
   effort: number | null;
+  /** ROADMAP-V2 S9: 1|2|3|null only (P4 is null — see lib/kanban/priority.ts). */
+  priority: 1 | 2 | 3 | null;
 };
 
 export type BoardColumnData = {

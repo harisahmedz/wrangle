@@ -31,6 +31,7 @@ export async function mutate(m: Mutation): Promise<MutationResult> {
         // append path; the schema field stays for S8 to wire up.
         if (m.dueAt) fd.set("dueAt", m.dueAt);
         if (m.isAllDay !== undefined) fd.set("isAllDay", String(m.isAllDay));
+        if (m.priority !== undefined) fd.set("priority", m.priority === null ? "" : String(m.priority));
         if ("columnId" in m.target) {
           fd.set("columnId", m.target.columnId);
           return await createCard(fd);
