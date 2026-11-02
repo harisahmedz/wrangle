@@ -46,3 +46,7 @@ next-env.d.ts
 
 # design-review screenshots (.claude/tools/screens.mjs output)
 /.claude/tools/screens
+
+# free-model tooling (machine-local)
+/.claude/tools/free-models.json
+/.claude/tools/reviews
