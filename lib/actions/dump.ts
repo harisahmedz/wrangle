@@ -97,6 +97,7 @@ export async function saveDump(
       and(
         eq(memberships.userId, userId),
         eq(projects.isPersonal, true),
+        eq(projects.ownerId, userId),
         isNull(projects.deletedAt),
       ),
     )
