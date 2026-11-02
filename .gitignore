@@ -50,3 +50,6 @@ next-env.d.ts
 # free-model tooling (machine-local)
 /.claude/tools/free-models.json
 /.claude/tools/reviews
+
+# perf baseline output (.claude/tools/perf.mjs)
+/.claude/tools/perf
