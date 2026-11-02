@@ -24,7 +24,7 @@ import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { cardHistory, describeEntry } from "@/lib/kanban/activity";
 import { BoardSwitcher } from "@/components/kanban/board-switcher";
 import { MoreIcon } from "@/components/icons";
-import { CardDetail } from "@/components/kanban/card-detail";
+import { CardDetail } from "@/components/kanban/card-detail-lazy";
 import { resolveInitialLayout } from "@/lib/kanban/view-resolve";
 import { parseUserPrefs } from "@/lib/validation/prefs";
 import { normalizePriority } from "@/lib/kanban/priority";

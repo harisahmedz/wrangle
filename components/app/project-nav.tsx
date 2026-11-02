@@ -2,24 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
-import {
-  DndContext,
-  PointerSensor,
-  TouchSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import type { SortableBits } from "@/components/app/project-nav-dnd";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { moveProject, reorderProject } from "@/lib/actions/projects";
+import { onIdle } from "@/lib/client/idle";
 import { reorderById } from "@/lib/order";
 import { cn } from "@/lib/utils";
 import { ChevronRightIcon, GripIcon } from "@/components/icons";
@@ -35,25 +22,38 @@ export type SidebarProject = {
   position: string;
 };
 
+// dnd-kit loads on idle, or on the first press of a grip, and then replaces
+// the plain rows (V3 S8b). A drag pressed before it arrives needs a second
+// press; the up/down buttons work throughout.
+type DndModule = typeof import("@/components/app/project-nav-dnd");
+let dndModule: DndModule | null = null;
+let dndPromise: Promise<DndModule> | null = null;
+const loadDnd = () =>
+  (dndPromise ??= import("@/components/app/project-nav-dnd").then((m) => (dndModule = m)));
+
+function useLazyDnd() {
+  const [mod, setMod] = useState<DndModule | null>(() => dndModule);
+  const load = useCallback(() => {
+    void loadDnd().then(setMod);
+  }, []);
+  useEffect(() => (mod ? undefined : onIdle(load)), [mod, load]);
+  return { mod, load };
+}
+
 function ProjectRow({
   project,
   active,
   onNavigate,
+  sortable,
+  onGripPointerDown,
 }: {
   project: SidebarProject;
   active: boolean;
   onNavigate?: () => void;
+  sortable?: SortableBits;
+  onGripPointerDown?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: project.id });
 
   const move = (direction: "up" | "down") => {
     const fd = new FormData();
@@ -66,15 +66,12 @@ function ProjectRow({
 
   return (
     <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
+      ref={sortable?.setNodeRef}
+      style={sortable?.style}
       className={cn(
         "group relative flex items-center rounded-md",
         active ? "bg-surface-2" : "hover:bg-surface-2",
-        isDragging && "opacity-40",
+        sortable?.isDragging && "opacity-40",
       )}
     >
       <Link
@@ -115,9 +112,9 @@ function ProjectRow({
           §7.7. */}
       <div className="pointer-events-none absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md bg-surface-2 pl-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100">
         <button
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
+          ref={sortable?.setActivatorNodeRef}
+          onPointerDown={sortable ? undefined : onGripPointerDown}
+          {...sortable?.handleProps}
           aria-label={`Reorder ${project.name}`}
           title="Drag to reorder"
           className="flex h-6 w-6 shrink-0 cursor-grab touch-none select-none items-center justify-center text-muted hover:text-text active:cursor-grabbing"
@@ -152,17 +149,10 @@ function ProjectList({
   pathname: string;
   onNavigate?: () => void;
 }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 180, tolerance: 8 },
-    }),
-  );
+  const { mod, load } = useLazyDnd();
 
-  const onDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const result = reorderById(projects, String(active.id), String(over.id));
+  const onMove = (activeId: string, overId: string) => {
+    const result = reorderById(projects, activeId, overId);
     if (!result) return;
     const fd = new FormData();
     fd.set("projectId", result.id);
@@ -170,29 +160,27 @@ function ProjectList({
     void reorderProject(fd);
   };
 
+  const row = (p: SidebarProject, sortable?: SortableBits) => (
+    <ProjectRow
+      key={p.id}
+      project={p}
+      active={
+        pathname === `/p/${p.id}` || pathname.startsWith(`/p/${p.id}/`)
+      }
+      onNavigate={onNavigate}
+      sortable={sortable}
+      onGripPointerDown={load}
+    />
+  );
+
+  if (!mod) return <>{projects.map((p) => row(p))}</>;
+  const byId = new Map(projects.map((p) => [p.id, p]));
   return (
-    <DndContext
-      id="sidebar-projects"
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={onDragEnd}
-    >
-      <SortableContext
-        items={projects.map((p) => p.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        {projects.map((p) => (
-          <ProjectRow
-            key={p.id}
-            project={p}
-            active={
-              pathname === `/p/${p.id}` || pathname.startsWith(`/p/${p.id}/`)
-            }
-            onNavigate={onNavigate}
-          />
-        ))}
-      </SortableContext>
-    </DndContext>
+    <mod.SortableProjectList
+      ids={projects.map((p) => p.id)}
+      onMove={onMove}
+      renderRow={(id, bits) => row(byId.get(id)!, bits)}
+    />
   );
 }
 

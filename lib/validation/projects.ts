@@ -1,13 +1,9 @@
 import { z } from "zod";
-import { PROJECT_COLORS } from "@/lib/palette";
+import { PROJECT_COLORS, PROJECT_EMOJIS } from "@/lib/palette";
 
-export const PROJECT_EMOJIS = [
-  "🏠", "💼", "🎯", "📚", "🛠️", "🌱", "🔥", "⚡",
-  "🧠", "💡", "🎨", "🏃", "🍳", "✈️", "🎵", "💰",
-  "📈", "🧹", "❤️", "🐾", "🏡", "📝", "🔬", "🎬",
-] as const;
-
-export { PROJECT_COLORS };
+// Re-exported for server callers. Client components import them from
+// @/lib/palette so zod stays out of the client bundle.
+export { PROJECT_COLORS, PROJECT_EMOJIS };
 
 const emojiSchema = z.enum(PROJECT_EMOJIS);
 const colorSchema = z.enum(PROJECT_COLORS);

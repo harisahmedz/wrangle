@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { updateProfile } from "@/lib/actions/settings";
-import { TIMEZONES } from "@/lib/validation/settings";
+import { TIMEZONES } from "@/lib/timezones";
 import { Button } from "@/components/ui/button";
 
 function detectedTimeZone(): string {

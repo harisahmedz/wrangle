@@ -1,8 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import {
   BoardsIcon,
   LearnIcon,
@@ -10,9 +11,56 @@ import {
   PlusIcon,
   TodayIcon,
 } from "@/components/icons";
-import { DumpSheet } from "@/components/dump/dump-sheet";
-import { QuickAddSheet } from "@/components/kanban/quick-add";
+import { onIdle } from "@/lib/client/idle";
 import { cn } from "@/lib/utils";
+
+// Quick Add and the Dump (with chrono-node and the Dump parser) load on their
+// first open event instead of with the shell (V3 S8b), and are warmed on idle
+// so they still open offline. The event that triggered the load, or the last
+// one fired while the chunk was loading, is replayed by `withReplay` once the
+// sheet has registered its own listener (child effects run first).
+type Take = () => CustomEvent | null;
+
+function withReplay<P extends object>(Sheet: ComponentType<P>) {
+  return function Replayed({ take, ...props }: P & { take: Take }) {
+    useEffect(() => {
+      const e = take();
+      if (e) window.dispatchEvent(new CustomEvent(e.type, { detail: e.detail }));
+    }, [take]);
+    return <Sheet {...(props as P)} />;
+  };
+}
+
+const importQuickAdd = () => import("@/components/kanban/quick-add");
+const importDump = () => import("@/components/dump/dump-sheet");
+const QuickAddSheet = dynamic(() => importQuickAdd().then((m) => withReplay(m.QuickAddSheet)), {
+  ssr: false,
+});
+const DumpSheet = dynamic(() => importDump().then((m) => withReplay(m.DumpSheet)), {
+  ssr: false,
+});
+
+/** Mounts a lazy sheet on its first `event` and hands that event to it. */
+function useLazySheet(event: string, mountNow: boolean) {
+  const [mounted, setMounted] = useState(mountNow);
+  const ref = useRef({ live: false, pending: null as CustomEvent | null });
+  useEffect(() => {
+    const onEvent = (e: Event) => {
+      if (ref.current.live) return;
+      ref.current.pending = e as CustomEvent;
+      setMounted(true);
+    };
+    window.addEventListener(event, onEvent);
+    return () => window.removeEventListener(event, onEvent);
+  }, [event]);
+  const take = useCallback<Take>(() => {
+    ref.current.live = true;
+    const e = ref.current.pending;
+    ref.current.pending = null;
+    return e;
+  }, []);
+  return { mounted, take };
+}
 
 const tabs = [
   {
@@ -42,6 +90,17 @@ export function BottomTabs({
   // Shutdown has its own full-width primary action; the FAB would sit on top of it.
   const hideQuickAdd = pathname.startsWith("/shutdown");
   const holdRef = useRef({ timer: null as number | null, fired: false, x: 0, y: 0 });
+  const quick = useLazySheet("wrangle-quickadd", quickAutoOpen);
+  const dump = useLazySheet("wrangle-dump", false);
+
+  useEffect(
+    () =>
+      onIdle(() => {
+        void importQuickAdd();
+        void importDump();
+      }),
+    [],
+  );
 
   const cancelHold = () => {
     const hold = holdRef.current;
@@ -91,13 +150,16 @@ export function BottomTabs({
       </button>
       )}
 
-      <QuickAddSheet
-        key={quickPrefill ?? ""}
-        defaultOpen={quickAutoOpen}
-        initialTitle={quickPrefill}
-      />
+      {quick.mounted && (
+        <QuickAddSheet
+          key={quickPrefill ?? ""}
+          defaultOpen={quickAutoOpen}
+          initialTitle={quickPrefill}
+          take={quick.take}
+        />
+      )}
 
-      <DumpSheet />
+      {dump.mounted && <DumpSheet take={dump.take} />}
 
       <nav
         aria-label="Primary"

@@ -25,6 +25,12 @@ export const ACCENT_HEX: PaletteColor = "#8b5cf6";
 
 export const PROJECT_COLORS: readonly PaletteColor[] = PALETTE;
 
+export const PROJECT_EMOJIS = [
+  "🏠", "💼", "🎯", "📚", "🛠️", "🌱", "🔥", "⚡",
+  "🧠", "💡", "🎨", "🏃", "🍳", "✈️", "🎵", "💰",
+  "📈", "🧹", "❤️", "🐾", "🏡", "📝", "🔬", "🎬",
+] as const;
+
 export const LABEL_COLORS: readonly PaletteColor[] = PALETTE;
 
 export const CATEGORY_COLORS: readonly PaletteColor[] = [

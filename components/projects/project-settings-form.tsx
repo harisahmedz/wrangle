@@ -2,10 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateProject } from "@/lib/actions/projects";
-import {
-  PROJECT_COLORS,
-  PROJECT_EMOJIS,
-} from "@/lib/validation/projects";
+import { PROJECT_COLORS, PROJECT_EMOJIS } from "@/lib/palette";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";

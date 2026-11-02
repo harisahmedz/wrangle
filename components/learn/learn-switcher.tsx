@@ -10,7 +10,8 @@ import { LearnListView } from "@/components/learn/learn-list-view";
 import type { LearnItemRow } from "@/components/learn/types";
 import { useToast } from "@/components/ui/toast";
 import { setViewPref } from "@/lib/actions/settings";
-import { LEARN_VIEW_KEY, type ViewLayout, type ViewPref } from "@/lib/validation/prefs";
+import type { ViewLayout, ViewPref } from "@/lib/validation/prefs";
+import { LEARN_VIEW_KEY } from "@/lib/view-keys";
 
 type Props = {
   items: LearnItemRow[];

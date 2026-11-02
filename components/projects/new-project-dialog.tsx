@@ -3,10 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/lib/actions/projects";
-import {
-  PROJECT_COLORS,
-  PROJECT_EMOJIS,
-} from "@/lib/validation/projects";
+import { PROJECT_COLORS, PROJECT_EMOJIS } from "@/lib/palette";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/dialog";
