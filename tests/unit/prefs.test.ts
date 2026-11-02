@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  aiPrefSchema,
   LEARN_VIEW_KEY,
   mergeViewPref,
   parseUserPrefs,
@@ -46,6 +47,19 @@ describe("parseUserPrefs", () => {
     const raw = { views: { "board-1": { layout: "list", groupBy: "due" } } };
     expect(parseUserPrefs(raw)).toEqual(raw);
     expect(userPrefsSchema.safeParse(raw).success).toBe(true);
+  });
+
+  it("accepts ai.mode (V3 S0) next to views, and rejects unknown modes", () => {
+    const raw = { views: {}, ai: { mode: "on-device-then-openrouter" } };
+    expect(parseUserPrefs(raw)).toEqual(raw);
+    expect(parseUserPrefs({ ai: { mode: "on-device" } }).ai?.mode).toBe("on-device");
+    expect(aiPrefSchema.safeParse({ mode: "off" }).success).toBe(true);
+    expect(aiPrefSchema.safeParse({ mode: "cloud" }).success).toBe(false);
+    expect(parseUserPrefs({ ai: { mode: "cloud" } })).toEqual({});
+  });
+
+  it("never carries an OpenRouter key: unknown ai fields are stripped", () => {
+    expect(parseUserPrefs({ ai: { mode: "off", key: "sk-or-v1-x" } })).toEqual({ ai: { mode: "off" } });
   });
 });
 

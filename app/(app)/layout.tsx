@@ -12,6 +12,7 @@ import { Hotkeys } from "@/components/app/hotkeys";
 import { ToastProvider } from "@/components/ui/toast";
 import { SwSessionScope } from "@/components/pwa/sw-session-scope";
 import { OutboxProvider } from "@/lib/outbox/client";
+import { AiModeProvider } from "@/lib/ai/mode";
 import { PullToRefresh } from "@/components/pwa/pull-to-refresh";
 import { AppBadge } from "@/components/pwa/app-badge";
 import { SIDEBAR_COLLAPSED_KEY } from "@/lib/sidebar";
@@ -65,6 +66,9 @@ export default async function AppLayout({
         signed-in user, the offline/sync banner and the review sheet. Inside
         ToastProvider because it toasts drops/failures. */}
     <OutboxProvider userId={session.user.id}>
+    {/* The user's AI mode (V3 S0, `users.prefs.ai.mode`) for `runTask` and
+        `useAiAvailable`; the providers themselves load lazily (docs/AI.md). */}
+    <AiModeProvider mode={session.user.aiMode}>
       {/* No-flash: apply the saved collapse preference to <html> before the
           pinned sidebar below paints (same technique as the theme script in
           app/layout.tsx). UI-only preference, defaults to open. */}
@@ -104,6 +108,7 @@ export default async function AppLayout({
       <PullToRefresh />
       <SwSessionScope userId={session.user.id} expires={session.expires} />
       <AppBadge count={dueBadgeCount} />
+    </AiModeProvider>
     </OutboxProvider>
     </ToastProvider>
   );

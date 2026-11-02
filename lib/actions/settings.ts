@@ -18,7 +18,7 @@ import type { Theme } from "@/db/schema";
 import { requireMembership, requireUser } from "@/lib/authz";
 import { destroyAsset, isCloudinaryConfigured } from "@/lib/cloudinary";
 import { updateProfileSchema } from "@/lib/validation/settings";
-import { LEARN_VIEW_KEY, viewPrefSchema } from "@/lib/validation/prefs";
+import { aiPrefSchema, LEARN_VIEW_KEY, viewPrefSchema } from "@/lib/validation/prefs";
 import { failure, type ActionResult } from "@/lib/actions/types";
 
 export async function updateProfile(formData: FormData): Promise<ActionResult> {
@@ -36,6 +36,33 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   if (!updates.theme && !updates.timezone) return { ok: true };
 
   await db.update(users).set(updates).where(eq(users.id, userId));
+
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Settings → AI mode (ROADMAP-V3 S0): `off` | `on-device` |
+ * `on-device-then-openrouter`, stored in `users.prefs.ai.mode` so it syncs
+ * across devices. Only the mode: the OpenRouter key never reaches the server.
+ * Same atomic jsonb merge as `setViewPref` below; `refresh()` because the
+ * app layout re-reads the mode for `AiModeProvider`.
+ */
+export async function setAiMode(formData: FormData): Promise<ActionResult> {
+  const userId = await requireUser();
+
+  const parsed = aiPrefSchema.safeParse({ mode: formData.get("mode") });
+  if (!parsed.success) return failure("Invalid AI mode");
+
+  await db
+    .update(users)
+    .set({
+      prefs: sql`coalesce(${users.prefs}, '{}'::jsonb) || jsonb_build_object(
+        'ai',
+        coalesce(${users.prefs}->'ai', '{}'::jsonb) || ${JSON.stringify(parsed.data)}::jsonb
+      )`,
+    })
+    .where(eq(users.id, userId));
 
   refresh();
   return { ok: true };

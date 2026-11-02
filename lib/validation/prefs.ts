@@ -1,9 +1,11 @@
 import { z } from "zod";
+import { AI_MODES } from "@/lib/ai/types";
 
 /**
- * users.prefs shape (ROADMAP-V2 D1, F1): `{ views: { [boardId]: ViewPref } }`.
- * The key is a plain string so S4b can add `views.learn` without a schema
- * change — only the board page validates/resolves board-id keys today.
+ * users.prefs shape (ROADMAP-V2 D1, F1): `{ views: { [boardId]: ViewPref } }`,
+ * plus `ai: { mode }` (ROADMAP-V3 S0). The views key is a plain string so S4b
+ * could add `views.learn` without a schema change — only the board page
+ * validates/resolves board-id keys today.
  */
 export const VIEW_LAYOUTS = ["board", "list"] as const;
 export const GROUP_BY_VALUES = ["column", "due", "none"] as const;
@@ -30,8 +32,19 @@ export const viewPrefSchema = z.object({
 });
 export type ViewPref = z.infer<typeof viewPrefSchema>;
 
+/**
+ * Settings → AI (ROADMAP-V3 §4, S0). Only the on/off choice syncs; the
+ * OpenRouter key itself is device-only (`lib/ai/key-store.ts`) and must never
+ * appear here.
+ */
+export const aiPrefSchema = z.object({
+  mode: z.enum(AI_MODES),
+});
+export type AiPref = z.infer<typeof aiPrefSchema>;
+
 export const userPrefsSchema = z.object({
   views: z.record(z.string(), viewPrefSchema).optional(),
+  ai: aiPrefSchema.optional(),
 });
 export type UserPrefs = z.infer<typeof userPrefsSchema>;
 

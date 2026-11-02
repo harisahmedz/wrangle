@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import { seedProjectBoards } from "@/lib/kanban/seed";
 import { hasVerifiedOAuthEmail } from "@/lib/auth-email";
+import { parseUserPrefs } from "@/lib/validation/prefs";
 
 const DEFAULT_CATEGORIES: Array<{ name: string; emoji: string; color: string }> = [
   { name: "Food", emoji: "🍔", color: "#f59e0b" },
@@ -100,6 +101,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         emailVerified: user.emailVerified,
         timezone: user.timezone,
         theme: user.theme,
+        aiMode: parseUserPrefs(user.prefs).ai?.mode ?? "off",
       };
       return session;
     },

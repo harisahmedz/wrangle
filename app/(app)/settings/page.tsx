@@ -5,8 +5,10 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import { PageHeader } from "@/components/ui/page-header";
+import { parseUserPrefs } from "@/lib/validation/prefs";
 import { AppearanceForm } from "@/components/settings/appearance-form";
 import { TimezoneForm } from "@/components/settings/timezone-form";
+import { AiPanel } from "@/components/settings/ai-panel";
 import { DataAndAccount } from "@/components/settings/data-account";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -22,6 +24,7 @@ export default async function SettingsPage() {
       theme: users.theme,
       timezone: users.timezone,
       currency: users.currency,
+      prefs: users.prefs,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -30,6 +33,7 @@ export default async function SettingsPage() {
   if (!user) notFound();
 
   const initial = user.name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
+  const aiMode = parseUserPrefs(user.prefs).ai?.mode ?? "off";
 
   return (
     <div className="space-y-8">
@@ -56,6 +60,13 @@ export default async function SettingsPage() {
           <p className="mt-0.5 text-xs text-muted">
             Your single account currency is used throughout Money.
           </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 font-semibold">AI</h2>
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <AiPanel mode={aiMode} />
         </div>
       </section>
 
