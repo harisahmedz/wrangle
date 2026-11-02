@@ -3,7 +3,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
-import { redeemInviteForUser } from "@/lib/actions/invites";
+import { redeemInviteForUser } from "@/lib/sharing/redeem";
 import { hashToken } from "@/lib/sharing/tokens";
 import { hitRateLimit } from "@/lib/sharing/ratelimit";
 import { ProviderButton } from "@/components/auth/provider-button";

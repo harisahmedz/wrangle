@@ -1,9 +1,9 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { and, asc, eq, gte, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lt, ne } from "drizzle-orm";
 import { db } from "@/db";
-import { activities, cards, memberships, users } from "@/db/schema";
+import { activities, cards, memberships, projects, users } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import { localDayWindow } from "@/lib/dates";
 import { weekWindow } from "@/lib/weekly/stats";
@@ -43,11 +43,14 @@ export async function rescheduleOverdueToNextWeek(): Promise<
       and(
         eq(memberships.projectId, cards.projectId),
         eq(memberships.userId, userId),
+        ne(memberships.role, "viewer"),
       ),
     )
+    .innerJoin(projects, eq(projects.id, cards.projectId))
     .where(
       and(
         isNull(cards.deletedAt),
+        isNull(projects.deletedAt),
         isNull(cards.completedAt),
         gte(cards.dueAt, win.start),
         lt(cards.dueAt, now),
