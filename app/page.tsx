@@ -4,9 +4,9 @@ import { auth } from "@/auth";
 import { buttonStyles } from "@/components/ui/button";
 import { Modules } from "@/components/marketing/modules";
 import { Eyebrow, Heading, Section } from "@/components/marketing/section";
-import { Frame, PhoneFrame, Shot } from "@/components/marketing/shot";
+import { Frame, PhoneFrame, Shot, type ShotName } from "@/components/marketing/shot";
 
-const LOOP = [
+const LOOP: { name: string; body: string; shot?: ShotName }[] = [
   {
     name: "Dump",
     body: "Type whatever is on your mind. Wrangle suggests tasks, ideas, expenses and things to learn; you fix them in a tray before anything is saved.",
@@ -14,14 +14,17 @@ const LOOP = [
   {
     name: "Shutdown",
     body: "Close out the day: tick what got done, move what did not, and walk away with tomorrow already sorted.",
+    shot: "shutdown",
   },
   {
     name: "Weekly",
     body: "See what slipped, what shipped, what you learned and what you spent, then reschedule the leftovers in one tap.",
+    shot: "weekly",
   },
   {
     name: "Wrapped",
     body: "After enough active days you get a story-style recap of your month that you can share. No streaks to protect.",
+    shot: "wrapped",
   },
 ];
 
@@ -124,10 +127,15 @@ export default async function LandingPage() {
           </div>
           <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {LOOP.map((s, i) => (
-              <li key={s.name} className="rounded-xl border border-border bg-surface p-5">
+              <li key={s.name} className="flex flex-col rounded-xl border border-border bg-surface p-5">
                 <span className="text-sm font-semibold text-accent-strong">0{i + 1}</span>
                 <h3 className="mt-1 text-xl font-semibold">{s.name}</h3>
                 <p className="mt-2 text-muted">{s.body}</p>
+                {s.shot && (
+                  <div className="mt-5 overflow-hidden rounded-lg border border-border">
+                    <Shot name={s.shot} alt={`${s.name} on a phone`} sizes="(min-width: 1024px) 260px, (min-width: 640px) 45vw, 90vw" />
+                  </div>
+                )}
               </li>
             ))}
           </ol>

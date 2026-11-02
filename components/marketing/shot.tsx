@@ -7,9 +7,12 @@ const SHOTS = {
   "hero-phone": [420, 933],
   "tasks-board": [1100, 617],
   "tasks-list": [560, 870],
-  ideas: [1100, 234],
+  ideas: [1100, 486],
   learn: [1100, 412],
   money: [1100, 552],
+  shutdown: [420, 652],
+  weekly: [420, 652],
+  wrapped: [420, 652],
 } as const;
 
 export type ShotName = keyof typeof SHOTS;
