@@ -14,6 +14,25 @@ export default function GlobalError({
     console.error(error);
   }, [error]);
 
+  // This page replaces the root layout and its no-flash theme script. Under
+  // the enforced CSP (proxy.ts) an inline script needs the request nonce,
+  // which a client component can't read, so apply the theme on mount; a brief
+  // flash on an error page is acceptable.
+  useEffect(() => {
+    try {
+      let stored: string | null = null;
+      try {
+        stored = localStorage.getItem("wrangle-theme");
+      } catch {}
+      document.documentElement.classList.toggle(
+        "light",
+        stored === "light" ||
+          (stored !== "dark" &&
+            window.matchMedia("(prefers-color-scheme: light)").matches),
+      );
+    } catch {}
+  }, []);
+
   const reload = () => {
     reset();
     window.location.reload();
@@ -21,13 +40,6 @@ export default function GlobalError({
 
   return (
     <html lang="en" suppressHydrationWarning className="h-full antialiased">
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{var d=document.documentElement,m=window.matchMedia('(prefers-color-scheme: light)'),t=null;try{t=localStorage.getItem('wrangle-theme')}catch(e){}d.classList.toggle('light',t==='light'||(t!=='dark'&&m.matches))}catch(e){}`,
-          }}
-        />
-      </head>
       <body className="flex min-h-dvh items-center justify-center px-6">
         <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 text-center shadow-lg">
           <span className="text-4xl" aria-hidden>

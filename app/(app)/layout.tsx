@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { TopBar } from "@/components/app/top-bar";
@@ -29,6 +30,8 @@ export default async function AppLayout({
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/signin");
+  // CSP nonce from proxy.ts, for the boot script below (see app/layout.tsx).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   const myProjects: SidebarProject[] = await db
     .select({
@@ -73,6 +76,7 @@ export default async function AppLayout({
           pinned sidebar below paints (same technique as the theme script in
           app/layout.tsx). UI-only preference, defaults to open. */}
       <script
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: `try{document.documentElement.classList.toggle('sidebar-collapsed', localStorage.getItem('${SIDEBAR_COLLAPSED_KEY}')==='1')}catch(e){}`,
         }}

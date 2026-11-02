@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { SwRegister } from "@/components/pwa/sw-register";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import "./globals.css";
@@ -34,11 +35,17 @@ export const viewport: Viewport = {
 
 const themeInitScript = `try{var d=document.documentElement,m=window.matchMedia('(prefers-color-scheme: light)'),t=null;try{t=localStorage.getItem('wrangle-theme')}catch(e){}d.classList.toggle('light',t==='light'||(t!=='dark'&&m.matches));if(m.addEventListener)m.addEventListener('change',function(e){var s=null;try{s=localStorage.getItem('wrangle-theme')}catch(err){}if(s!=='light'&&s!=='dark')d.classList.toggle('light',e.matches)})}catch(e){}`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // The CSP nonce minted in proxy.ts: the enforced script-src runs no inline
+  // script without it. Reading headers() also makes every route dynamic,
+  // which a per-request nonce needs (a prerendered page would carry a stale
+  // one).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html
       lang="en"
@@ -46,7 +53,10 @@ export default function RootLayout({
       className="h-full antialiased"
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
       </head>
       <body className="min-h-dvh flex flex-col">
         {children}
