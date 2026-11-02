@@ -9,7 +9,14 @@ export const metadata: Metadata = {
     template: "%s · Wrangle",
   },
   description:
-    "What to do, what you're thinking about, what you're learning, what you're spending.",
+    "Wrangle it all. Tasks, ideas, learning and money in one free, installable app that works offline.",
+  openGraph: {
+    title: "Wrangle it all.",
+    description:
+      "Tasks, ideas, learning and money in one free, installable app that works offline.",
+    siteName: "Wrangle",
+    type: "website",
+  },
   applicationName: "Wrangle",
   appleWebApp: {
     capable: true,
