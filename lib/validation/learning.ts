@@ -50,7 +50,7 @@ export const setManualProgressSchema = z.object({
 
 export const addResourceSchema = z.object({
   itemId: z.string().uuid(),
-  url: z.string().trim().url().max(500),
+  url: z.string().trim().max(500).pipe(z.url({ protocol: /^https?$/ })),
   title: z.string().trim().max(120).optional(),
 });
 

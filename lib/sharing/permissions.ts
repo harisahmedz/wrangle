@@ -29,7 +29,9 @@ export function canChangeRole(
   target: ProjectRole,
   next: ProjectRole,
 ): boolean {
-  if (next === "owner") return false;
+  // Ownership only moves through transferOwnership; an owner demoting
+  // themselves would leave the project with no owner.
+  if (next === "owner" || target === "owner") return false;
   if (next === "admin") return actor === "owner";
   if (actor === "owner") return true;
   return (

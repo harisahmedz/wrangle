@@ -32,6 +32,13 @@ describe("sharing permissions matrix", () => {
     expect(canChangeRole("member", "viewer", "member")).toBe(false);
   });
 
+  it("an owner can't change their own role (self-demotion)", () => {
+    for (const next of ["admin", "member", "viewer"] as const) {
+      expect(canChangeRole("owner", "owner", next)).toBe(false);
+    }
+    expect(canChangeRole("admin", "owner", "viewer")).toBe(false);
+  });
+
   it("removal needs strictly higher rank than target; owner untouchable", () => {
     expect(canRemoveMember("owner", "admin")).toBe(true);
     expect(canRemoveMember("owner", "owner")).toBe(false);

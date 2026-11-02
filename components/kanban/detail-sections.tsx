@@ -598,6 +598,7 @@ export function AttachmentsSection({
       form.set("signature", signRes.data.signature);
       form.set("public_id", signRes.data.publicId);
       form.set("folder", signRes.data.folder);
+      form.set("allowed_formats", signRes.data.allowedFormats);
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${signRes.data.cloudName}/auto/upload`,

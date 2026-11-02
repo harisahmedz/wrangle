@@ -59,15 +59,15 @@ export async function redeemInviteForUser(
         ),
       )
       .limit(1);
-    if (existingRedemption && invite.usedCount >= invite.maxUses) {
-      return { state: "used-up" };
-    }
+    // A redemption row without a membership means this user already joined
+    // through this invite and was removed or left; `removeMember` also
+    // writes rows for every other invite of the project. Either way the old
+    // link is spent for them: they need a fresh invite.
+    if (existingRedemption) return { state: "revoked" };
 
-    if (!existingRedemption) {
-      await tx
-        .insert(inviteRedemptions)
-        .values({ inviteId: invite.id, userId });
-    }
+    await tx
+      .insert(inviteRedemptions)
+      .values({ inviteId: invite.id, userId });
 
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`projects:${userId}`}))`);
     const [lastMembership] = await tx

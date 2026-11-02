@@ -1,4 +1,4 @@
-import { eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -115,6 +115,14 @@ async function loadExport(userId: string) {
     ]);
 
   const ownedProjectIds = ownedProjectRows.map((project) => project.id);
+  // Rows the user authored in other people's projects are exported only
+  // while they are still a member there: after removal, the project's
+  // current content (and other members' comments) is no longer theirs.
+  const memberProjectIds = membershipRows.map((m) => m.projectId);
+  const memberCardIds = db
+    .select({ id: cards.id })
+    .from(cards)
+    .where(inArray(cards.projectId, memberProjectIds));
   const boardRows = ownedProjectIds.length
     ? await db.select().from(boards).where(inArray(boards.projectId, ownedProjectIds))
     : [];
@@ -122,13 +130,18 @@ async function loadExport(userId: string) {
   const columnRows = boardIds.length
     ? await db.select().from(columns).where(inArray(columns.boardId, boardIds))
     : [];
+  const ownCards = and(eq(cards.createdBy, userId), inArray(cards.projectId, memberProjectIds));
+  const ownComments = and(eq(comments.authorId, userId), inArray(comments.cardId, memberCardIds));
+  const ownAttachments = and(eq(attachments.uploadedBy, userId), inArray(attachments.cardId, memberCardIds));
+  const ownActivities = and(eq(activities.actorId, userId), inArray(activities.projectId, memberProjectIds));
+  const ownInvites = and(eq(invites.createdBy, userId), inArray(invites.projectId, memberProjectIds));
   const cardRows = await db
     .select()
     .from(cards)
     .where(
       ownedProjectIds.length
-        ? or(inArray(cards.projectId, ownedProjectIds), eq(cards.createdBy, userId))
-        : eq(cards.createdBy, userId),
+        ? or(inArray(cards.projectId, ownedProjectIds), ownCards)
+        : ownCards,
     );
   const cardIds = cardRows.map((card) => card.id);
   const learningIds = learningRows.map((item) => item.id);
@@ -167,32 +180,32 @@ async function loadExport(userId: string) {
       .from(comments)
       .where(
         cardIds.length
-          ? or(inArray(comments.cardId, cardIds), eq(comments.authorId, userId))
-          : eq(comments.authorId, userId),
+          ? or(inArray(comments.cardId, cardIds), ownComments)
+          : ownComments,
       ),
     db
       .select()
       .from(attachments)
       .where(
         cardIds.length
-          ? or(inArray(attachments.cardId, cardIds), eq(attachments.uploadedBy, userId))
-          : eq(attachments.uploadedBy, userId),
+          ? or(inArray(attachments.cardId, cardIds), ownAttachments)
+          : ownAttachments,
       ),
     db
       .select()
       .from(activities)
       .where(
         ownedProjectIds.length
-          ? or(inArray(activities.projectId, ownedProjectIds), eq(activities.actorId, userId))
-          : eq(activities.actorId, userId),
+          ? or(inArray(activities.projectId, ownedProjectIds), ownActivities)
+          : ownActivities,
       ),
     db
       .select()
       .from(invites)
       .where(
         ownedProjectIds.length
-          ? or(inArray(invites.projectId, ownedProjectIds), eq(invites.createdBy, userId))
-          : eq(invites.createdBy, userId),
+          ? or(inArray(invites.projectId, ownedProjectIds), ownInvites)
+          : ownInvites,
       ),
     learningIds.length
       ? db.select().from(learningMilestones).where(inArray(learningMilestones.itemId, learningIds))

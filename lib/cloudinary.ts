@@ -19,9 +19,32 @@ function signParams(params: Record<string, string | number>): string {
 
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
 const MAX_BYTES = 10 * 1024 * 1024;
+// Signed into every upload, so Cloudinary itself rejects any other format
+// (video included). Cloudinary has no signable max-file-size parameter; the
+// per-file cap it enforces is the plan's own (10 MB for images and raw files
+// on Free), the same as MAX_BYTES.
+export const ALLOWED_FORMATS = "jpg,png,webp,gif,pdf";
+
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+
+/**
+ * True when `publicId` has exactly the shape createUploadSignature hands out
+ * for this user: `wrangle/<userId>/<uuid>` (attachments) or
+ * `wrangle/<userId>/receipts/<uuid>` (receipts), optionally with `.pdf`.
+ * A prefix check would let `wrangle/<me>/../<victim>/…` through.
+ */
+export function isOwnUploadPublicId(
+  publicId: string,
+  userId: string,
+  subfolder?: "receipts",
+): boolean {
+  if (!new RegExp(`^${UUID}$`, "i").test(userId)) return false;
+  const folder = subfolder ? `${userId}/${subfolder}` : userId;
+  return new RegExp(`^wrangle/${folder}/${UUID}(\\.pdf)?$`, "i").test(publicId);
+}
 
 export type UploadSignature =
-  | { ok: true; cloudName: string; apiKey: string; publicId: string; timestamp: number; signature: string; folder: string }
+  | { ok: true; cloudName: string; apiKey: string; publicId: string; timestamp: number; signature: string; folder: string; allowedFormats: string }
   | { ok: false; error: string };
 
 export function createUploadSignature(
@@ -54,11 +77,13 @@ export function createUploadSignature(
     publicId,
     timestamp,
     signature: signParams({
+      allowed_formats: ALLOWED_FORMATS,
       public_id: publicId,
       timestamp,
       folder,
     }),
     folder,
+    allowedFormats: ALLOWED_FORMATS,
   };
 }
 

@@ -9,8 +9,10 @@ import type { ExpenseCategory } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import {
   createUploadSignature,
+  isOwnUploadPublicId,
   receiptDeliveryUrl,
 } from "@/lib/cloudinary";
+import { isHexColor, isValidAmountMinor } from "@/lib/money";
 import { failure, type ActionResult } from "@/lib/actions/types";
 
 const MAX_NOTE = 500;
@@ -55,14 +57,11 @@ export async function addExpense(
   const receiptPublicId =
     String(formData.get("receiptPublicId") ?? "").trim().slice(0, 300) || null;
 
-  if (!amountMinor || !Number.isInteger(amountMinor) || amountMinor <= 0 || amountMinor > 100_000_000) {
+  if (!isValidAmountMinor(amountMinor)) {
     return failure("Enter an amount above zero");
   }
   if (!spentOn) return failure("Invalid date");
-  if (
-    receiptPublicId &&
-    !receiptPublicId.startsWith(`wrangle/${userId}/receipts/`)
-  ) {
+  if (receiptPublicId && !isOwnUploadPublicId(receiptPublicId, userId, "receipts")) {
     return failure("Invalid receipt upload");
   }
   const category = await ownCategory(userId, categoryId);
@@ -109,7 +108,7 @@ export async function updateExpense(
   const amountMinor = Number(formData.get("amountMinor"));
   const spentOn = cleanDate(formData.get("spentOn"));
 
-  if (!amountMinor || !Number.isInteger(amountMinor) || amountMinor <= 0) {
+  if (!isValidAmountMinor(amountMinor)) {
     return failure("Invalid amount");
   }
   if (!spentOn) return failure("Invalid date");
@@ -122,7 +121,7 @@ export async function updateExpense(
   if (formData.has("receiptPublicId")) {
     const publicId =
       String(formData.get("receiptPublicId") ?? "").trim().slice(0, 300) || null;
-    if (publicId && !publicId.startsWith(`wrangle/${userId}/receipts/`)) {
+    if (publicId && !isOwnUploadPublicId(publicId, userId, "receipts")) {
       return failure("Invalid receipt upload");
     }
     receiptPatch.receiptPublicId = publicId;
@@ -194,6 +193,7 @@ export async function createCategory(
   const emoji = String(formData.get("emoji") ?? "").slice(0, 4) || null;
   const color = String(formData.get("color") ?? "#8b5cf6");
   if (!name || name.length > 40) return failure("Name required (≤40)");
+  if (!isHexColor(color)) return failure("Invalid colour");
 
   const row = await db.transaction(async (tx) => {
     await tx.execute(
@@ -231,6 +231,7 @@ export async function updateCategory(
   const emoji = String(formData.get("emoji") ?? "").slice(0, 4) || null;
   const color = String(formData.get("color") ?? "#8b5cf6");
   if (!name || name.length > 40) return failure("Name required (≤40)");
+  if (!isHexColor(color)) return failure("Invalid colour");
 
   const result = await db
     .update(expenseCategories)
@@ -274,6 +275,7 @@ export async function signReceiptUpload(
     timestamp: number;
     signature: string;
     folder: string;
+    allowedFormats: string;
   }>
 > {
   const userId = await requireUser();
@@ -292,6 +294,7 @@ export async function signReceiptUpload(
       timestamp: sig.timestamp,
       signature: sig.signature,
       folder: sig.folder,
+      allowedFormats: sig.allowedFormats,
     },
   };
 }

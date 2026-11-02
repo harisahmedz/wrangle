@@ -5,7 +5,7 @@ import { and, asc, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db } from "@/db";
 import { memberships, projects } from "@/db/schema";
-import { requireMembership, requireUser } from "@/lib/authz";
+import { requireMembership, requireTrashedProjectOwner, requireUser } from "@/lib/authz";
 import { seedProjectBoards } from "@/lib/kanban/seed";
 import {
   createProjectSchema,
@@ -193,7 +193,7 @@ export async function restoreFromTrash(
   });
   if (!parsed.success) return failure("Invalid project");
 
-  await requireMembership(parsed.data.projectId, "owner");
+  await requireTrashedProjectOwner(parsed.data.projectId);
 
   await db
     .update(projects)
@@ -210,7 +210,7 @@ export async function purgeProject(formData: FormData): Promise<ActionResult> {
   });
   if (!parsed.success) return failure("Invalid project");
 
-  const ctx = await requireMembership(parsed.data.projectId, "owner");
+  const ctx = await requireTrashedProjectOwner(parsed.data.projectId);
   const [project] = await db
     .select({ isPersonal: projects.isPersonal })
     .from(projects)

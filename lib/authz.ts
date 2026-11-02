@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { memberships, projects } from "@/db/schema";
@@ -67,4 +67,34 @@ export async function requireMembership(
   if (!role || !hasMinRole(role, minRole)) notFound();
 
   return { userId, projectId, role };
+}
+
+/**
+ * Owner check for a project that IS in the Trash (soft-deleted). Only
+ * restoreFromTrash/purgeProject use this; every other caller goes through
+ * `requireMembership`, which keeps rejecting trashed projects.
+ */
+export async function requireTrashedProjectOwner(
+  projectId: string,
+): Promise<MembershipContext> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) redirect("/signin");
+
+  const rows = await db
+    .select({ role: memberships.role })
+    .from(memberships)
+    .innerJoin(projects, eq(memberships.projectId, projects.id))
+    .where(
+      and(
+        eq(memberships.projectId, projectId),
+        eq(memberships.userId, userId),
+        eq(memberships.role, "owner"),
+        isNotNull(projects.deletedAt),
+      ),
+    )
+    .limit(1);
+  if (!rows[0]) notFound();
+
+  return { userId, projectId, role: "owner" };
 }

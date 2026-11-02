@@ -56,3 +56,16 @@ export function todayKey(timeZone: string): string {
   });
   return fmt.format(new Date());
 }
+
+/** Upper bound for one expense, shared by addExpense/updateExpense (and the
+ * same as the outbox and Dump schemas): 1,000,000.00 in any currency. */
+export const MAX_AMOUNT_MINOR = 100_000_000;
+
+export function isValidAmountMinor(n: number): boolean {
+  return Number.isInteger(n) && n > 0 && n <= MAX_AMOUNT_MINOR;
+}
+
+/** Category colours are rendered into `style`; only `#rrggbb` is accepted. */
+export function isHexColor(value: string): boolean {
+  return /^#[0-9a-f]{6}$/i.test(value);
+}

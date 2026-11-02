@@ -152,6 +152,7 @@ export function ExpenseSheet({
       form.set("signature", sig.data.signature);
       form.set("public_id", sig.data.publicId);
       form.set("folder", sig.data.folder);
+      form.set("allowed_formats", sig.data.allowedFormats);
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${sig.data.cloudName}/auto/upload`,

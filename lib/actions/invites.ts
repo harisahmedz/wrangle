@@ -203,14 +203,25 @@ export async function removeMember(formData: FormData): Promise<ActionResult> {
     return failure("Not allowed");
   }
 
-  await db
-    .delete(memberships)
-    .where(
-      and(
-        eq(memberships.projectId, parsed.data.projectId),
-        eq(memberships.userId, parsed.data.userId),
-      ),
-    );
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(memberships)
+      .where(
+        and(
+          eq(memberships.projectId, parsed.data.projectId),
+          eq(memberships.userId, parsed.data.userId),
+        ),
+      );
+    // Mark every existing invite of the project as spent for this user, so
+    // redeemInviteForUser (lib/sharing/redeem.ts) refuses them: a removed
+    // member can't rejoin with an old link, only with a new invite.
+    await tx.execute(sql`
+      insert into invite_redemptions (invite_id, user_id)
+      select ${invites.id}, ${parsed.data.userId}::uuid from ${invites}
+      where ${invites.projectId} = ${parsed.data.projectId}
+      on conflict do nothing
+    `);
+  });
 
   await db.insert(activities).values({
     projectId: parsed.data.projectId,

@@ -16,7 +16,7 @@ import {
   memberships,
 } from "@/db/schema";
 import { requireMembership } from "@/lib/authz";
-import { createUploadSignature, receiptDeliveryUrl } from "@/lib/cloudinary";
+import { createUploadSignature, isOwnUploadPublicId, receiptDeliveryUrl } from "@/lib/cloudinary";
 import {
   addChecklistItemSchema,
   addCommentSchema,
@@ -386,7 +386,7 @@ export async function restoreComment(formData: FormData): Promise<ActionResult> 
 
 export async function signUpload(
   formData: FormData,
-): Promise<ActionResult<{ cloudName: string; apiKey: string; publicId: string; timestamp: number; signature: string; folder: string }>> {
+): Promise<ActionResult<{ cloudName: string; apiKey: string; publicId: string; timestamp: number; signature: string; folder: string; allowedFormats: string }>> {
   const parsed = signUploadSchema.safeParse({
     cardId: formData.get("cardId"),
     mime: formData.get("mime"),
@@ -420,6 +420,7 @@ export async function signUpload(
       timestamp: sig.timestamp,
       signature: sig.signature,
       folder: sig.folder,
+      allowedFormats: sig.allowedFormats,
     },
   };
 }
@@ -438,7 +439,7 @@ export async function confirmAttachment(formData: FormData): Promise<ActionResul
 
   const ctx = await requireCard(parsed.data.cardId);
   if (!ctx) return failure("Card not found");
-  if (!parsed.data.publicId.startsWith(`wrangle/${ctx.userId}/`)) {
+  if (!isOwnUploadPublicId(parsed.data.publicId, ctx.userId)) {
     return failure("Invalid upload destination");
   }
 
