@@ -28,6 +28,7 @@ import {
 import { mutate } from "@/lib/mutations";
 import { useOutbox } from "@/lib/outbox/client";
 import { overlayCards } from "@/lib/outbox/overlay";
+import { openIdeas } from "@/lib/kanban/duplicate-idea";
 import { reorderById } from "@/lib/order";
 import { useToast } from "@/components/ui/toast";
 import type { BoardKind } from "@/db/schema";
@@ -218,6 +219,11 @@ export function BoardView({
   const cards = useMemo(
     () => overlayCards(serverCards, columns, outboxEntries, { projectId, boardKind }),
     [serverCards, columns, outboxEntries, projectId, boardKind],
+  );
+
+  const ideas = useMemo(
+    () => (boardKind === "ideas" ? openIdeas(cards) : undefined),
+    [cards, boardKind],
   );
 
   const spRecord = useMemo<BoardSearchRecord>(() => {
@@ -477,6 +483,7 @@ export function BoardView({
                 cards={byColumn.get(col.id) ?? []}
                 onOpenCard={openCard}
                 showScore={boardKind === "ideas"}
+                ideas={ideas}
                 canEdit={canEdit}
                 canManageColumns={canManageColumns}
                 reorderEnabled={reorderEnabled}

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
   KeyboardSensor,
@@ -32,6 +32,7 @@ import { useToast } from "@/components/ui/toast";
 import { mutate } from "@/lib/mutations";
 import { useOutbox } from "@/lib/outbox/client";
 import { overlayCards, syncStateOf } from "@/lib/outbox/overlay";
+import { openIdeas } from "@/lib/kanban/duplicate-idea";
 import { uuidv7 } from "@/lib/uuid";
 import { passesFilters } from "@/lib/kanban/filters";
 import { buildListGroups, reorderEnabledFor } from "@/lib/kanban/list-groups";
@@ -67,12 +68,18 @@ export function ListView({
   showCompleted,
 }: Props) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const pushToast = useToast();
   // The outbox overlay *is* the optimistic row state (OFFLINE-OUTBOX §2.3).
   const { entries: outboxEntries } = useOutbox();
   const cards = useMemo(
     () => overlayCards(serverCards, columns, outboxEntries, { projectId, boardKind }),
     [serverCards, columns, outboxEntries, projectId, boardKind],
+  );
+
+  const ideas = useMemo(
+    () => (boardKind === "ideas" ? openIdeas(cards) : undefined),
+    [cards, boardKind],
   );
 
   const spRecord = useMemo<BoardSearchRecord>(() => {
@@ -252,7 +259,11 @@ export function ListView({
                   whichever column `fallbackColumnId` picked. Hidden until there's
                   a real "due date" to assign (see lib/kanban/list-groups.ts). */}
               {canEdit && group.columnId && groupBy !== "due" && (
-                <InlineAdd onAdd={(title) => addCard(group.columnId!, title)} />
+                <InlineAdd
+                  onAdd={(title) => addCard(group.columnId!, title)}
+                  ideas={ideas}
+                  onOpenCard={(id) => router.push(cardHref(id), { scroll: false })}
+                />
               )}
             </section>
           ))}

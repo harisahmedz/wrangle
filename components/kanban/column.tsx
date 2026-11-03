@@ -16,6 +16,7 @@ import {
 } from "@/lib/kanban/actions";
 import { CardChip } from "@/components/kanban/card-chip";
 import { InlineAdd } from "@/components/kanban/inline-add";
+import type { IdeaRef } from "@/lib/kanban/duplicate-idea";
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -42,6 +43,7 @@ export function Column({
   siblings,
   onOpenCard,
   showScore = false,
+  ideas,
   canEdit,
   canManageColumns,
   reorderEnabled,
@@ -53,6 +55,8 @@ export function Column({
   siblings: BoardColumnData[];
   onOpenCard: (id: string) => void;
   showScore?: boolean;
+  /** Open ideas of the whole board, set on ideas boards only: feeds the duplicate hint (V3 S5). */
+  ideas?: IdeaRef[];
   canEdit: boolean;
   canManageColumns: boolean;
   reorderEnabled: boolean;
@@ -360,7 +364,7 @@ export function Column({
           ))}
           {cards.length === 0 && (
             !filtered && canEdit ? (
-              <InlineAdd onAdd={addCard} label="Add the first card" emptyVariant />
+              <InlineAdd onAdd={addCard} label="Add the first card" emptyVariant ideas={ideas} onOpenCard={onOpenCard} />
             ) : (
               <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted">
                 {filtered ? "No cards match" : "No cards"}
@@ -372,7 +376,7 @@ export function Column({
 
       {canEdit && (cards.length > 0 || filtered) && (
         <div className="mt-2">
-          <InlineAdd onAdd={addCard} />
+          <InlineAdd onAdd={addCard} ideas={ideas} onOpenCard={onOpenCard} />
         </div>
       )}
 
