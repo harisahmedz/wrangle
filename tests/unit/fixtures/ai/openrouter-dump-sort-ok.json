@@ -1,0 +1,45 @@
+{
+  "id": "gen-1793697158-teyDTQ4Ezylm17kEZHjU",
+  "object": "chat.completion",
+  "created": 1793697158,
+  "model": "dots-studio/dots-3-note-preview:free",
+  "provider": "AtlasCloud",
+  "system_fingerprint": null,
+  "service_tier": null,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "{\"items\":[{\"kind\":\"idea\",\"line\":1,\"project\":1,\"title\":\"Dark mode for the blog\"},{\"kind\":\"expense\",\"line\":2,\"project\":null,\"title\":\"Pizza with Sam\"},{\"kind\":\"learning\",\"line\":3,\"project\":null,\"title\":\"Rust lifetimes\"},{\"kind\":\"task\",\"line\":4,\"project\":null,\"title\":\"Renew passport\"},{\"kind\":\"idea\",\"line\":5,\"project\":null,\"title\":\"App themes\"},{\"kind\":\"expense\",\"line\":6,\"project\":null,\"title\":\"Borrowed from dad\"}]}",
+        "refusal": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 415,
+    "completion_tokens": 1272,
+    "total_tokens": 1687,
+    "cost": 0,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0,
+      "upstream_inference_prompt_cost": 0,
+      "upstream_inference_completions_cost": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 1104,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

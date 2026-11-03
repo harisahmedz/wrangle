@@ -360,3 +360,12 @@ export function parseDump(raw: string, opts?: ParseDumpOptions): DumpItem[] {
 
   return cleaned.map((segment, i) => classifySegment(segment, `seg-${i}`, now, tz));
 }
+
+/**
+ * The heuristic's only confidence signal: a task with no date is what the
+ * parser falls back to when nothing else matched (no idea prefix, no amount,
+ * no learning cue, no date). Those are the lines the AI may sort (V3 S1).
+ */
+export function isUnplaced(item: DumpItem): boolean {
+  return item.kind === "task" && item.dueAt === null;
+}

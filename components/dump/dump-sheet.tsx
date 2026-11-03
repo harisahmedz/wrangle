@@ -10,7 +10,8 @@ import {
   listLearningTopicsForDump,
   saveDump,
 } from "@/lib/actions/dump";
-import { isoDateKey, parseDump, type DumpItem } from "@/lib/dump/parser";
+import { isoDateKey, isUnplaced, parseDump, type DumpItem } from "@/lib/dump/parser";
+import { useAiAvailable } from "@/lib/ai/available";
 import { useSpeech } from "@/lib/dump/use-speech";
 import { parseAmountToMinor } from "@/lib/money";
 import { cn } from "@/lib/utils";
@@ -96,10 +97,20 @@ export function DumpSheet() {
     },
   });
   const [tz, setTz] = useState("UTC");
+  const { available: aiAvailable } = useAiAvailable();
+  const [sorting, setSorting] = useState(false);
+  const sortAbortRef = useRef<AbortController | null>(null);
+
+  const cancelSort = () => {
+    sortAbortRef.current?.abort();
+    sortAbortRef.current = null;
+    setSorting(false);
+  };
 
   useEffect(() => {
     const onDump = (e: Event) => {
       const detail = (e as CustomEvent<string>).detail;
+      cancelSort();
       suppressFinalizeRef.current = false;
       setOpen(true);
       setStage("capture");
@@ -116,6 +127,7 @@ export function DumpSheet() {
   }, []);
 
   const closeAll = () => {
+    cancelSort();
     suppressFinalizeRef.current = true;
     speech.stop();
     setOpen(false);
@@ -153,6 +165,51 @@ export function DumpSheet() {
     });
   };
 
+  // V3 S1: one AI call for the lines the heuristic couldn't place. Loaded lazily;
+  // any failure leaves the heuristic rows exactly as they are.
+  const sortUnplaced = async (items: DumpItem[], parsedRows: TrayRow[]) => {
+    const targets = items
+      .map((item, i) => ({ row: parsedRows[i], item }))
+      .filter(({ item }) => isUnplaced(item));
+    if (targets.length === 0) return;
+    cancelSort();
+    const controller = new AbortController();
+    sortAbortRef.current = controller;
+    setSorting(true);
+    try {
+      const [{ runTask }, { dumpSortTask, resolveDumpItems, DUMP_SORT_MAX_LINES }] = await Promise.all([
+        import("@/lib/ai"),
+        import("@/lib/ai/tasks/dump-sort"),
+      ]);
+      const sent = targets.slice(0, DUMP_SORT_MAX_LINES);
+      const res = await runTask(
+        dumpSortTask,
+        { lines: sent.map((t) => t.row.title) },
+        { signal: controller.signal },
+      );
+      if (controller.signal.aborted || !res.ok) return;
+      const resolved = resolveDumpItems(res.data.items, sent.length);
+      setRows((prev) =>
+        prev.map((r) => {
+          const idx = sent.findIndex((t) => t.row.id === r.id);
+          const hit = idx >= 0 ? resolved.get(idx) : undefined;
+          // Skip rows the user already edited or recast while the model was thinking.
+          if (!hit || r.kind !== "task" || r.title !== sent[idx].row.title) return r;
+          if (hit.kind === "task") return { ...r, title: hit.title, ai: true };
+          if (hit.kind === "learning") return { ...r, kind: "learning", title: hit.title, minutes: 30, ai: true };
+          return { ...r, kind: hit.kind, title: hit.title, ai: true };
+        }),
+      );
+    } catch {
+      // runTask never throws; a failed lazy import just means no AI.
+    } finally {
+      if (sortAbortRef.current === controller) {
+        sortAbortRef.current = null;
+        setSorting(false);
+      }
+    }
+  };
+
   const openTray = () => {
     const source = text.trim();
     if (!source) return;
@@ -181,6 +238,7 @@ export function DumpSheet() {
     setError(null);
     setStage("tray");
     loadOptions();
+    if (aiAvailable) void sortUnplaced(items, nextRows);
   };
 
   const patchRow = (rowId: string, patch: Partial<TrayRow>) => {
@@ -195,7 +253,7 @@ export function DumpSheet() {
         if (r.id !== rowId) return r;
         const idx = BUCKET_ORDER.findIndex((b) => b.kind === r.kind);
         const nextKind = BUCKET_ORDER[(idx + 1) % BUCKET_ORDER.length].kind;
-        return { ...r, kind: nextKind };
+        return { ...r, kind: nextKind, ai: false };
       }),
     );
   };
@@ -227,6 +285,7 @@ export function DumpSheet() {
 
   const submit = () => {
     if (!rows.length || hasErrors || pending) return;
+    cancelSort();
     const payload = rows.map((row) => {
       if (row.kind === "task") {
         return {
@@ -336,6 +395,11 @@ export function DumpSheet() {
             <h2 className="text-lg font-semibold">
               Sorted: {rows.length} {rows.length === 1 ? "thing" : "things"}
             </h2>
+            {sorting && (
+              <span role="status" className="ml-2 mr-auto text-xs text-muted">
+                Sorting…
+              </span>
+            )}
             <button
               type="button"
               onClick={closeAll}

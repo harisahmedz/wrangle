@@ -29,6 +29,8 @@ export type TrayRow = {
   amountMinor: number | null;
   spentOn: string;
   minutes: number;
+  /** Placed by the AI (V3 S1); cleared when the user recasts it. */
+  ai?: boolean;
 };
 
 function formatDueChip(dueAt: Date, isAllDay: boolean): string {
@@ -97,6 +99,9 @@ export function TrayRowItem({
         >
           <span aria-hidden="true">{meta.emoji}</span>
           <span>{meta.label}</span>
+          {row.ai && (
+            <span className="rounded border border-border px-1 text-xs text-muted">AI</span>
+          )}
         </button>
         <div className="min-w-0 flex-1">
           {row.kind === "task" ? (
