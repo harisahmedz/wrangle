@@ -18,7 +18,13 @@ import type { Theme } from "@/db/schema";
 import { requireMembership, requireUser } from "@/lib/authz";
 import { destroyAsset, isCloudinaryConfigured } from "@/lib/cloudinary";
 import { updateProfileSchema } from "@/lib/validation/settings";
-import { aiPrefSchema, LEARN_VIEW_KEY, viewPrefSchema } from "@/lib/validation/prefs";
+import {
+  aiPrefSchema,
+  LEARN_VIEW_KEY,
+  PLAN_CAP_MAX,
+  planPrefSchema,
+  viewPrefSchema,
+} from "@/lib/validation/prefs";
 import { failure, type ActionResult } from "@/lib/actions/types";
 
 export async function updateProfile(formData: FormData): Promise<ActionResult> {
@@ -60,6 +66,34 @@ export async function setAiMode(formData: FormData): Promise<ActionResult> {
       prefs: sql`coalesce(${users.prefs}, '{}'::jsonb) || jsonb_build_object(
         'ai',
         coalesce(${users.prefs}->'ai', '{}'::jsonb) || ${JSON.stringify(parsed.data)}::jsonb
+      )`,
+    })
+    .where(eq(users.id, userId));
+
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Settings → Plan my week caps (ROADMAP-V3 S6): `users.prefs.plan =
+ * { dailyCap, weekendCap }`, read by `loadPlanInput` when the sheet opens.
+ * Same atomic jsonb merge as `setAiMode` above.
+ */
+export async function setPlanPrefs(formData: FormData): Promise<ActionResult> {
+  const userId = await requireUser();
+
+  const parsed = planPrefSchema.safeParse({
+    dailyCap: Number(formData.get("dailyCap")),
+    weekendCap: Number(formData.get("weekendCap")),
+  });
+  if (!parsed.success) return failure(`Caps must be whole numbers: 1–${PLAN_CAP_MAX} on weekdays, 0–${PLAN_CAP_MAX} at weekends`);
+
+  await db
+    .update(users)
+    .set({
+      prefs: sql`coalesce(${users.prefs}, '{}'::jsonb) || jsonb_build_object(
+        'plan',
+        coalesce(${users.prefs}->'plan', '{}'::jsonb) || ${JSON.stringify(parsed.data)}::jsonb
       )`,
     })
     .where(eq(users.id, userId));

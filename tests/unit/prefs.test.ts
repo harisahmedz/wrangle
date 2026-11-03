@@ -4,6 +4,8 @@ import {
   LEARN_VIEW_KEY,
   mergeViewPref,
   parseUserPrefs,
+  PLAN_CAP_DEFAULTS,
+  planPrefSchema,
   userPrefsSchema,
   viewPrefSchema,
 } from "@/lib/validation/prefs";
@@ -96,5 +98,19 @@ describe("mergeViewPref", () => {
     const result = mergeViewPref({}, LEARN_VIEW_KEY, { layout: "list" });
     expect(result).toEqual({ views: { learn: { layout: "list" } } });
     expect(userPrefsSchema.safeParse(result).success).toBe(true);
+  });
+});
+
+describe("plan prefs (V3 S6)", () => {
+  it("accepts plan caps next to views and ai, with the 1–20 / 0–20 limits", () => {
+    const raw = { ai: { mode: "off" }, plan: { dailyCap: 4, weekendCap: 0 } };
+    expect(parseUserPrefs(raw)).toEqual(raw);
+    expect(planPrefSchema.safeParse({ dailyCap: 1, weekendCap: 20 }).success).toBe(true);
+    expect(planPrefSchema.safeParse({ dailyCap: 0 }).success).toBe(false);
+    expect(planPrefSchema.safeParse({ weekendCap: -1 }).success).toBe(false);
+    expect(planPrefSchema.safeParse({ dailyCap: 21 }).success).toBe(false);
+    expect(planPrefSchema.safeParse({ dailyCap: 2.5 }).success).toBe(false);
+    expect(parseUserPrefs({ plan: { dailyCap: "5" } })).toEqual({});
+    expect(PLAN_CAP_DEFAULTS).toEqual({ dailyCap: 5, weekendCap: 2 });
   });
 });

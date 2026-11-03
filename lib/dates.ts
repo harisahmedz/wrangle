@@ -84,10 +84,29 @@ function fromWall(
   m: number,
   d: number,
   timeZone: string,
+  h = 0,
+  mi = 0,
 ): number {
-  const naive = Date.UTC(y, m - 1, d);
+  const naive = Date.UTC(y, m - 1, d, h, mi);
   const pass1 = naive - tzOffsetMs(naive, timeZone);
   return naive - tzOffsetMs(pass1, timeZone);
+}
+
+/** The wall-clock hour/minute of an instant in `timeZone` (V3 S6, Plan my week keeps a timed card's time of day). */
+export function localTimeOfDay(date: Date, timeZone: string): { h: number; mi: number } {
+  const { h, mi } = localDateTimeParts(date, timeZone);
+  return { h, mi };
+}
+
+/**
+ * The instant at wall-clock `h:mi` on local day `key` ("YYYY-MM-DD") in
+ * `timeZone`, DST-correct — the inverse of `localDateKey` + `localTimeOfDay`.
+ * Used by Plan my week (V3 S6) to move a card to another day while keeping
+ * its time, and to put all-day cards at local noon.
+ */
+export function instantAtLocalTime(key: string, h: number, mi: number, timeZone: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(fromWall(y, m, d, timeZone, h, mi));
 }
 
 export type DayWindow = { start: Date; end: Date };

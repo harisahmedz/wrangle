@@ -6,6 +6,7 @@ import { users } from "@/db/schema";
 import { requireUser } from "@/lib/authz";
 import { dayWindowForDateKey, localDateKey, shiftDateKey, todayWindow } from "@/lib/dates";
 import { loadDueCards } from "@/lib/kanban/due-cards";
+import { loadPlanInput } from "@/lib/plan/candidates";
 import {
   groupUpcomingRows,
   monthLabel,
@@ -17,10 +18,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { buttonStyles } from "@/components/ui/button";
 import { WeekStrip } from "@/components/kanban/week-strip";
 import { OverdueGroup, DayGroupSection } from "@/components/kanban/upcoming-list";
+import { PlanButton } from "@/components/plan/plan-button";
 
 const AGENDA_DAYS = 14;
 
-type Props = { searchParams: Promise<{ from?: string }> };
+/** `?plan=1` opens the Plan my week sheet on load (deep link; the screenshot harness uses it). */
+type Props = { searchParams: Promise<{ from?: string; plan?: string }> };
 
 export const metadata: Metadata = { title: "Upcoming" };
 
@@ -29,7 +32,7 @@ export default async function UpcomingPage({ searchParams }: Props) {
   const sp = await searchParams;
 
   const [user] = await db
-    .select({ timezone: users.timezone })
+    .select({ timezone: users.timezone, prefs: users.prefs })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
@@ -44,12 +47,17 @@ export default async function UpcomingPage({ searchParams }: Props) {
   const untilKey = shiftDateKey(fromKey, AGENDA_DAYS);
   const windowEnd = dayWindowForDateKey(untilKey, timeZone).start;
 
-  const rows = await loadDueCards(
-    userId,
-    timeZone,
-    today,
-    isCurrentWindow ? { end: windowEnd } : { start: windowStart, end: windowEnd },
-  );
+  const [rows, planInput] = await Promise.all([
+    loadDueCards(
+      userId,
+      timeZone,
+      today,
+      isCurrentWindow ? { end: windowEnd } : { start: windowStart, end: windowEnd },
+    ),
+    // Plan my week's candidates ride along with the page so the sheet also
+    // works offline from the SW-cached page (V3 S6).
+    loadPlanInput(userId, timeZone, today, user?.prefs),
+  ]);
 
   const { overdue, days } = groupUpcomingRows(rows, timeZone, {
     fromKey,
@@ -64,7 +72,11 @@ export default async function UpcomingPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Upcoming" subtitle={monthLabel(fromKey)} />
+      <PageHeader
+        title="Upcoming"
+        subtitle={monthLabel(fromKey)}
+        actions={<PlanButton input={planInput} initialOpen={sp.plan === "1"} />}
+      />
 
       <WeekStrip
         days={weekPills}

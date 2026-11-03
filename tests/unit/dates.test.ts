@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { dayWindowForDate, localDayWindow, localDateParts } from "@/lib/dates";
+import {
+  dayWindowForDate,
+  instantAtLocalTime,
+  localDayWindow,
+  localDateParts,
+  localTimeOfDay,
+} from "@/lib/dates";
 import { scoreOf } from "@/lib/kanban/score";
 
 describe("scoreOf (G4-01)", () => {
@@ -45,5 +51,28 @@ describe("dayWindowForDate (DST boundaries)", () => {
     expect(w.start.toISOString()).toBe("2026-11-01T04:00:00.000Z");
     expect(w.end.toISOString()).toBe("2026-11-02T05:00:00.000Z");
     expect(w.end.getTime() - w.start.getTime()).toBe(25 * 3_600_000);
+  });
+});
+
+describe("localTimeOfDay / instantAtLocalTime (V3 S6, Plan my week)", () => {
+  it("round-trips a wall-clock time across the US fall-back day", () => {
+    // 14:30 PDT on Oct 30 2026 is 21:30Z; the same wall time on Nov 5 (PST) is 22:30Z.
+    const before = new Date("2026-10-30T21:30:00.000Z");
+    expect(localTimeOfDay(before, "America/Los_Angeles")).toEqual({ h: 14, mi: 30 });
+    expect(instantAtLocalTime("2026-11-05", 14, 30, "America/Los_Angeles").toISOString()).toBe(
+      "2026-11-05T22:30:00.000Z",
+    );
+  });
+
+  it("midnight matches dayWindowForDate's start, and noon is twelve hours later on a normal day", () => {
+    expect(instantAtLocalTime("2026-11-05", 0, 0, "Asia/Karachi")).toEqual(
+      dayWindowForDate(2026, 11, 5, "Asia/Karachi").start,
+    );
+    expect(instantAtLocalTime("2026-11-05", 12, 0, "Asia/Karachi").toISOString()).toBe("2026-11-05T07:00:00.000Z");
+    expect(instantAtLocalTime("2026-11-05", 12, 0, "UTC").toISOString()).toBe("2026-11-05T12:00:00.000Z");
+  });
+
+  it("reads 00:xx (not 24:xx) just after local midnight", () => {
+    expect(localTimeOfDay(new Date("2026-11-05T00:05:00.000Z"), "UTC")).toEqual({ h: 0, mi: 5 });
   });
 });

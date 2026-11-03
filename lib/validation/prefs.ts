@@ -8,7 +8,8 @@ export { LEARN_VIEW_KEY };
 
 /**
  * users.prefs shape (ROADMAP-V2 D1, F1): `{ views: { [boardId]: ViewPref } }`,
- * plus `ai: { mode }` (ROADMAP-V3 S0). The views key is a plain string so S4b
+ * plus `ai: { mode }` (ROADMAP-V3 S0) and `plan: { dailyCap, weekendCap }`
+ * (ROADMAP-V3 S6). The views key is a plain string so S4b
  * could add `views.learn` without a schema change — only the board page
  * validates/resolves board-id keys today.
  */
@@ -38,9 +39,25 @@ export const aiPrefSchema = z.object({
 });
 export type AiPref = z.infer<typeof aiPrefSchema>;
 
+/**
+ * Settings → Plan my week (ROADMAP-V3 §6, S6): how many cards the scheduler
+ * puts on a weekday and on a weekend day. Defaults match
+ * `DEFAULT_DAILY_CAP`/`DEFAULT_WEEKEND_CAP` in lib/plan/schedule.ts (kept
+ * separate so the lazy plan chunk never imports zod; a unit test pins them).
+ */
+export const PLAN_CAP_DEFAULTS = { dailyCap: 5, weekendCap: 2 } as const;
+export const PLAN_CAP_MAX = 20;
+
+export const planPrefSchema = z.object({
+  dailyCap: z.number().int().min(1).max(PLAN_CAP_MAX).optional(),
+  weekendCap: z.number().int().min(0).max(PLAN_CAP_MAX).optional(),
+});
+export type PlanPref = z.infer<typeof planPrefSchema>;
+
 export const userPrefsSchema = z.object({
   views: z.record(z.string(), viewPrefSchema).optional(),
   ai: aiPrefSchema.optional(),
+  plan: planPrefSchema.optional(),
 });
 export type UserPrefs = z.infer<typeof userPrefsSchema>;
 
