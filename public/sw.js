@@ -4,6 +4,14 @@ const META_CACHE = `${VERSION}-meta`;
 const PAGE_PREFIX = `${VERSION}-pages-`;
 const OFFLINE_URL = "/offline.html";
 const SCOPE_KEY = "/__wrangle_cache_scope__";
+// Voice notes (V3 S7): the Whisper model cache transformers.js owns
+// (lib/voice/model.ts), and the hand-off stash for audio shared into the app
+// (lib/voice/share.ts). Neither is versioned with the SW, so activate() keeps them.
+const KEEP_CACHES = ["wrangle-voice", "wrangle-share"];
+const SHARE_PATH = "/share";
+const SHARE_CACHE = "wrangle-share";
+const SHARE_KEY = "/__wrangle_shared_audio__";
+const SHARE_MAX_BYTES = 50 * 1024 * 1024;
 
 const PRIVATE_PREFIXES = [
   "/today",
@@ -34,7 +42,9 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((key) => !key.startsWith(VERSION)).map((key) => caches.delete(key)),
+          keys
+            .filter((key) => !key.startsWith(VERSION) && !KEEP_CACHES.includes(key))
+            .map((key) => caches.delete(key)),
         ),
       )
       .then(() => self.clients.claim()),
@@ -131,12 +141,48 @@ function isStatic(url) {
   );
 }
 
+// The manifest's share_target (app/manifest.ts) POSTs multipart form data here.
+// Keep the audio on the device: stash it in the Cache API for the Dump to
+// collect (lib/voice/share.ts) and send the browser to /today?voice=1. A text
+// share (no file) is forwarded as query params the way the old GET target was.
+// Nothing reaches the server.
+async function receiveShare(request) {
+  const target = new URL("/today", self.location.origin);
+  try {
+    const form = await request.formData();
+    const audio = form.get("audio");
+    if (audio && typeof audio !== "string" && audio.size > 0 && audio.size <= SHARE_MAX_BYTES) {
+      const cache = await caches.open(SHARE_CACHE);
+      await cache.put(
+        SHARE_KEY,
+        new Response(audio, {
+          headers: {
+            "Content-Type": audio.type || "application/octet-stream",
+            "X-Wrangle-Name": encodeURIComponent(audio.name || ""),
+          },
+        }),
+      );
+      target.searchParams.set("voice", "1");
+    } else {
+      for (const [from, to] of [["title", "title"], ["text", "text"], ["url", "link"]]) {
+        const value = form.get(from);
+        if (typeof value === "string" && value) target.searchParams.set(to, value.slice(0, 1000));
+      }
+    }
+  } catch {}
+  return Response.redirect(target.href, 303);
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== "GET") return;
-
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (url.origin !== self.location.origin) return;
+
+  if (request.method === "POST" && url.pathname === SHARE_PATH) {
+    event.respondWith(receiveShare(request));
+    return;
+  }
+  if (request.method !== "GET" || url.pathname.startsWith("/api/")) return;
 
   if (isStatic(url)) {
     event.respondWith(

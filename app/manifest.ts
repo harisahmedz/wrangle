@@ -52,13 +52,19 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: [{ src: "/icon-192.png", sizes: "192x192" }],
       },
     ],
+    // Text shares and audio files (V3 S7). Files need POST + multipart, which
+    // public/sw.js answers on the device: it stashes the audio for the Dump
+    // and redirects to /today with the text fields as before. app/share/route.ts
+    // is the no-service-worker fallback.
     share_target: {
-      action: "/today",
-      method: "GET",
+      action: "/share",
+      method: "POST",
+      enctype: "multipart/form-data",
       params: {
         title: "title",
         text: "text",
         url: "link",
+        files: [{ name: "audio", accept: ["audio/*"] }],
       },
     },
   };

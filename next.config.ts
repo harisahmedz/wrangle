@@ -28,6 +28,15 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    resolveAlias: {
+      // The voice worker (lib/voice/worker.ts) runs ONNX Runtime's wasm backend
+      // only (VOICE_DEVICE in lib/voice/model.ts). transformers.js imports the
+      // webgpu entry, whose own asset references would also emit a 27 MB
+      // `asyncify` wasm nothing fetches. Drop this alias when enabling WebGPU.
+      "onnxruntime-web/webgpu": "onnxruntime-web/wasm",
+    },
+  },
   async headers() {
     return [
       {

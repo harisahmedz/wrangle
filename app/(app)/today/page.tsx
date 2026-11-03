@@ -12,12 +12,15 @@ import {
   type TodayRow,
 } from "@/components/kanban/today-list";
 import {
+  DumpTrigger,
   QuickAddTrigger,
 } from "@/components/pwa/triggers";
 import { ChevronRightIcon } from "@/components/icons";
 import { PageHeader } from "@/components/ui/page-header";
 
-type Props = { searchParams: Promise<{ title?: string; text?: string; link?: string; quick?: string }> };
+type Props = {
+  searchParams: Promise<{ title?: string; text?: string; link?: string; quick?: string; dump?: string; voice?: string }>;
+};
 
 export const metadata: Metadata = { title: "Today" };
 
@@ -87,6 +90,7 @@ export default async function TodayPage({ searchParams }: Props) {
       {(sharedText || sp.quick || sp.title) && (
         <QuickAddTrigger prefill={sp.title ? `${sp.title} ${sharedText ?? ""}`.trim() : (sharedText ?? "")} />
       )}
+      {(sp.dump || sp.voice) && <DumpTrigger sharedAudio={sp.voice === "1"} />}
       <PageHeader title="Today" />
 
       {onboarding ? (

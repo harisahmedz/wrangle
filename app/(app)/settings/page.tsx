@@ -10,6 +10,7 @@ import { AppearanceForm } from "@/components/settings/appearance-form";
 import { TimezoneForm } from "@/components/settings/timezone-form";
 import { AiPanel } from "@/components/settings/ai-panel";
 import { PlanForm } from "@/components/settings/plan-form";
+import { VoicePanel } from "@/components/settings/voice-panel";
 import { DataAndAccount } from "@/components/settings/data-account";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -77,6 +78,13 @@ export default async function SettingsPage() {
         <h2 className="mb-3 font-semibold">AI</h2>
         <div className="rounded-xl border border-border bg-surface p-4">
           <AiPanel mode={aiMode} />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 font-semibold">Voice</h2>
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <VoicePanel />
         </div>
       </section>
 

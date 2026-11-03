@@ -14,7 +14,10 @@ import { isoDateKey, isUnplaced, parseDump, type DumpItem } from "@/lib/dump/par
 import { useAiAvailable } from "@/lib/ai/available";
 import { useSpeech } from "@/lib/dump/use-speech";
 import { parseAmountToMinor } from "@/lib/money";
+import { takeSharedAudio } from "@/lib/voice/share";
+import { useVoiceNotes } from "@/lib/voice/use-voice-notes";
 import { cn } from "@/lib/utils";
+import { VoiceButtons, VoicePanel } from "@/components/dump/voice-controls";
 import {
   BUCKET_ORDER,
   TrayRowItem,
@@ -97,9 +100,22 @@ export function DumpSheet() {
     },
   });
   const [tz, setTz] = useState("UTC");
-  const { available: aiAvailable } = useAiAvailable();
+  const { available: aiAvailable, offline } = useAiAvailable();
   const [sorting, setSorting] = useState(false);
   const sortAbortRef = useRef<AbortController | null>(null);
+
+  // V3 S7: voice notes. A transcript lands in the textarea like typed text and
+  // then goes through the same parse and AI sort.
+  const voice = useVoiceNotes({
+    onTranscript: (transcript) =>
+      setText((prev) => (prev.trim() ? `${prev.trimEnd()}\n${transcript}` : transcript).slice(0, MAX_DUMP_CHARS)),
+  });
+  const voiceRef = useRef(voice);
+  const pushToastRef = useRef(pushToast);
+  useEffect(() => {
+    voiceRef.current = voice;
+    pushToastRef.current = pushToast;
+  });
 
   const cancelSort = () => {
     sortAbortRef.current?.abort();
@@ -109,7 +125,7 @@ export function DumpSheet() {
 
   useEffect(() => {
     const onDump = (e: Event) => {
-      const detail = (e as CustomEvent<string>).detail;
+      const detail = (e as CustomEvent<unknown>).detail;
       cancelSort();
       suppressFinalizeRef.current = false;
       setOpen(true);
@@ -121,6 +137,14 @@ export function DumpSheet() {
       setTopicSel({});
       setError(null);
       setTz(detectTimezone());
+      // An audio file shared into the app: public/sw.js stashed it and sent the
+      // browser to /today?voice=1, whose DumpTrigger fired this event.
+      if (typeof detail === "object" && detail !== null && (detail as { sharedAudio?: boolean }).sharedAudio) {
+        void takeSharedAudio().then((file) => {
+          if (file) voiceRef.current.addAudio(file);
+          else pushToastRef.current({ message: "Couldn't find the shared audio." });
+        });
+      }
     };
     window.addEventListener("wrangle-dump", onDump);
     return () => window.removeEventListener("wrangle-dump", onDump);
@@ -130,6 +154,7 @@ export function DumpSheet() {
     cancelSort();
     suppressFinalizeRef.current = true;
     speech.stop();
+    voice.reset();
     setOpen(false);
     setStage("capture");
     setText("");
@@ -140,8 +165,10 @@ export function DumpSheet() {
     setError(null);
   };
 
+  const voiceActive = voice.busy || voice.phase === "recording";
+
   const toggleMic = () => {
-    if (!speech.supported) return;
+    if (!speech.supported || voiceActive) return;
     if (speech.listening) {
       speech.stop();
       return;
@@ -335,7 +362,7 @@ export function DumpSheet() {
         <div>
           <h2 className="mb-1 text-lg font-semibold">The Dump</h2>
           <p className="mb-4 text-sm text-muted">
-            Say or paste anything. Wrangle sorts it into tasks, expenses, ideas and learning.
+            Say, record or paste anything. Wrangle sorts it into tasks, expenses, ideas and learning.
           </p>
           <textarea
             autoFocus
@@ -358,9 +385,9 @@ export function DumpSheet() {
                 aria-label={speech.listening ? "Stop voice input" : "Start voice input"}
                 aria-pressed={speech.listening}
                 title={speech.supported ? undefined : "Voice input not supported in this browser"}
-                disabled={!speech.supported}
+                disabled={!speech.supported || voiceActive}
                 className={cn(
-                  "flex h-11 w-11 items-center justify-center rounded-full border transition-colors",
+                  "flex h-11 w-11 items-center justify-center rounded-full border transition-colors disabled:opacity-40",
                   speech.listening
                     ? "border-danger bg-danger/10 text-danger"
                     : "border-border text-muted hover:text-text",
@@ -375,11 +402,13 @@ export function DumpSheet() {
                   Listening…
                 </span>
               )}
+              <VoiceButtons voice={voice} offline={offline} dictating={speech.listening} />
             </div>
             <span className="text-xs text-muted">
               {text.length}/{MAX_DUMP_CHARS}
             </span>
           </div>
+          <VoicePanel voice={voice} offline={offline} />
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost" onClick={closeAll}>
               Cancel
