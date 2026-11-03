@@ -191,7 +191,9 @@ self.addEventListener("fetch", (event) => {
           hit ??
           fetch(request).then((response) => {
             if (response.ok) {
-              caches.open(STATIC_CACHE).then((cache) => cache.put(request, response.clone()));
+              // Clone now, before the body is handed to the page (a later clone throws).
+              const copy = response.clone();
+              caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
             }
             return response;
           }),
