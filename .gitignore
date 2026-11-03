@@ -53,3 +53,11 @@ next-env.d.ts
 
 # perf baseline output (.claude/tools/perf.mjs)
 /.claude/tools/perf
+
+# Agent setup and planning docs: local only, never committed (removed from history 2026-11-03)
+/.claude/
+/.opencode/agents/
+/docs/
+/AGENTS.md
+/CLAUDE.md
+/PROJECT-CONTEXT.md
