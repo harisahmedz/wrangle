@@ -15,7 +15,11 @@ import {
   type RunResult,
 } from "@/lib/ai/types";
 
+/** Per-request timeout for on-device Nano. */
 export const AI_TIMEOUT_MS = 8_000;
+
+/** Per-request timeout for OpenRouter: free models measured 7–20 s per reply (V3 S1/S6 live checks). */
+export const OPENROUTER_TIMEOUT_MS = 25_000;
 
 /** Hard cap on requests to OpenRouter per `runTask`, across models and the repair turn (it is the user's own daily quota). */
 export const MAX_OPENROUTER_REQUESTS = 3;
@@ -148,7 +152,6 @@ export async function runTaskWith<TIn, TOut>(
 
   const schema = toJsonSchema(task.schema);
   const base = buildMessages(task, built);
-  const timeoutMs = deps.timeoutMs ?? AI_TIMEOUT_MS;
   const maxOr = deps.maxOpenRouterRequests ?? MAX_OPENROUTER_REQUESTS;
   let orRequests = 0;
   let repaired = false;
@@ -157,6 +160,7 @@ export async function runTaskWith<TIn, TOut>(
 
   for (const c of deps.candidates) {
     const isOr = c.provider === "openrouter";
+    const timeoutMs = deps.timeoutMs ?? (isOr ? OPENROUTER_TIMEOUT_MS : AI_TIMEOUT_MS);
     if (isOr && orRequests >= maxOr) break;
     const started = Date.now();
     let messages = base;
