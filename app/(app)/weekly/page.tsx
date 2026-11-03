@@ -25,6 +25,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { buttonStyles } from "@/components/ui/button";
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { PageHeader } from "@/components/ui/page-header";
+import { LazyRecapLine } from "@/components/review/recap-line-lazy";
+import { weekRecapFacts } from "@/lib/review/recap-facts";
 
 export const metadata: Metadata = { title: "Weekly review" };
 
@@ -240,6 +242,11 @@ export default async function WeeklyPage({ searchParams }: Props) {
 
       {!isEmptyWeek && (
       <>
+      <LazyRecapLine
+        periodId={`w:${localDateString(win.start, timeZone)}`}
+        period="week"
+        facts={weekRecapFacts(review)}
+      />
       {/* Slipped */}
       <section className="space-y-2 rounded-xl border border-border bg-surface p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">

@@ -17,6 +17,8 @@ import { WrappedDeck } from "@/components/wrapped/deck";
 import { WrappedGateView } from "@/components/wrapped/gate";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { PageHeader } from "@/components/ui/page-header";
+import { LazyRecapLine } from "@/components/review/recap-line-lazy";
+import { monthRecapFacts } from "@/lib/review/recap-facts";
 
 type Props = { searchParams: Promise<{ m?: string }> };
 
@@ -77,11 +79,18 @@ export default async function WrappedPage({ searchParams }: Props) {
       />
 
       {payload.status === "ready" ? (
-        <WrappedDeck
-          monthLabel={payload.monthLabel}
-          stats={payload.stats}
-          archetype={payload.archetype}
-        />
+        <>
+          <LazyRecapLine
+            periodId={`m:${formatYearMonth(target.year, target.monthIndex)}`}
+            period="month"
+            facts={monthRecapFacts(payload.stats)}
+          />
+          <WrappedDeck
+            monthLabel={payload.monthLabel}
+            stats={payload.stats}
+            archetype={payload.archetype}
+          />
+        </>
       ) : (
         <WrappedGateView gate={payload} />
       )}
