@@ -484,7 +484,13 @@ export function CardDetail({
           </div>
         </section>
 
-        <ChecklistSection cardId={card.id} items={checklist} readOnly={!canEdit} />
+        <ChecklistSection
+          cardId={card.id}
+          items={checklist}
+          readOnly={!canEdit}
+          cardTitle={title}
+          cardDescription={description}
+        />
         <LabelsSection
           projectId={projectId}
           cardId={card.id}

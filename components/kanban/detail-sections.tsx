@@ -31,6 +31,7 @@ import { useToast } from "@/components/ui/toast";
 import { CheckIcon, CloseIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { LABEL_COLORS } from "@/lib/palette";
+import { useAiAvailable } from "@/lib/ai";
 
 export type ChecklistRow = { id: string; text: string; isDone: boolean };
 export type LabelRow = { id: string; name: string; color: string };
@@ -80,13 +81,23 @@ export function ChecklistSection({
   cardId,
   items,
   readOnly = false,
+  cardTitle = "",
+  cardDescription = "",
 }: {
   cardId: string;
   items: ChecklistRow[];
   readOnly?: boolean;
+  cardTitle?: string;
+  cardDescription?: string;
 }) {
   const pushToast = useToast();
   const [text, setText] = useState("");
+  // AI "Split into checklist" (V3 S2): suggestions are only a preview until
+  // the user adds them through the normal addChecklistItem path.
+  const { available: aiAvailable } = useAiAvailable();
+  const [split, setSplit] = useState<"idle" | "loading" | "failed">("idle");
+  const [suggested, setSuggested] = useState<{ text: string; on: boolean }[]>([]);
+  const [adding, setAdding] = useState(false);
   // Ticks go through the outbox (`checklist.set`, a SET not a flip — docs/
   // OFFLINE-OUTBOX.md §1); the overlay replaces the old useOptimistic flip.
   const { entries: outboxEntries } = useOutbox();
@@ -110,14 +121,97 @@ export function ChecklistSection({
     setText("");
   };
 
+  const splitCard = async () => {
+    setSplit("loading");
+    setSuggested([]);
+    try {
+      const [{ runTask }, { checklistTask, cleanChecklistItems }] = await Promise.all([
+        import("@/lib/ai"),
+        import("@/lib/ai/tasks/checklist"),
+      ]);
+      const r = await runTask(checklistTask, { title: cardTitle, description: cardDescription });
+      const clean = r.ok
+        ? cleanChecklistItems(r.data.items, optimisticItems.map((i) => i.text), cardTitle)
+        : [];
+      if (clean.length === 0) {
+        setSplit("failed");
+        return;
+      }
+      setSuggested(clean.map((t) => ({ text: t, on: true })));
+      setSplit("idle");
+    } catch {
+      setSplit("failed");
+    }
+  };
+
+  const chosen = suggested.filter((s) => s.on);
+  const addSuggested = async () => {
+    setAdding(true);
+    // One at a time: the server appends each item after the last position.
+    for (const s of chosen) {
+      const fd = new FormData();
+      fd.set("cardId", cardId);
+      fd.set("text", s.text);
+      const res = await addChecklistItem(fd);
+      if (!res.ok) {
+        pushToast({ message: res.error });
+        break;
+      }
+    }
+    setAdding(false);
+    setSuggested([]);
+  };
+
   return (
     <section className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">Checklist</p>
-        <span className="text-xs text-muted">
-          {doneCount}/{optimisticItems.length}
-        </span>
+        <div className="flex items-center gap-2">
+          {!readOnly && aiAvailable && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void splitCard()}
+              disabled={split === "loading" || adding || !cardTitle.trim()}
+            >
+              {split === "loading" ? "Splitting…" : "Split into checklist"}
+            </Button>
+          )}
+          <span className="text-xs text-muted">
+            {doneCount}/{optimisticItems.length}
+          </span>
+        </div>
       </div>
+      {split === "failed" && <p className="text-xs text-muted">Couldn&apos;t split this one.</p>}
+      {suggested.length > 0 && (
+        <div className="space-y-1 rounded-md border border-border bg-surface-2 p-2">
+          <ul>
+            {suggested.map((s, i) => (
+              <li key={s.text}>
+                <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={s.on}
+                    onChange={() =>
+                      setSuggested((cur) => cur.map((c, j) => (j === i ? { ...c, on: !c.on } : c)))
+                    }
+                    className="h-4 w-4 accent-accent"
+                  />
+                  {s.text}
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSuggested([])} disabled={adding}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => void addSuggested()} disabled={chosen.length === 0 || adding}>
+              Add {chosen.length} {chosen.length === 1 ? "item" : "items"}
+            </Button>
+          </div>
+        </div>
+      )}
       {optimisticItems.length > 0 && (
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
           <div
