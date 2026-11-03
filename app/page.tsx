@@ -106,7 +106,25 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* Launch video goes here: a later slice adds a <video> with a poster, preload="none", and no autoplay with sound. */}
+        {/* Launch video (V3 S9v): click to play, silent, preload="none" so it never competes with the hero for LCP. */}
+        <Section className="pt-0 md:pt-0">
+          <div className="mx-auto max-w-4xl">
+            <Frame chrome={false}>
+              <video
+                className="block aspect-video h-auto w-full bg-surface-2"
+                src="/marketing/launch.mp4"
+                poster="/marketing/launch-poster.webp"
+                width={1920}
+                height={1080}
+                controls
+                muted
+                playsInline
+                preload="none"
+                aria-label="A 25-second tour of Wrangle: the Dump sorts a brain dump, Today and Upcoming on a phone, a board, a shared card with a checklist, the weekly review."
+              />
+            </Frame>
+          </div>
+        </Section>
 
         <Section id="how">
           <div className="mb-14 max-w-2xl">
