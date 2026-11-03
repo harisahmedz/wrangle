@@ -1,16 +1,19 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import {
   addExpense,
+  recentCategoryHints,
   deleteExpense,
   restoreExpense,
   updateExpense,
 } from "@/lib/actions/expenses";
 import type { CategoryChip } from "@/components/expenses/types";
+import { useAiAvailable } from "@/lib/ai";
+import { categoryFromHistory, type CategoryHint } from "@/lib/expenses/suggest-category";
 import { ACCENT_HEX } from "@/lib/palette";
 import { mutate } from "@/lib/mutations";
 import { useOutbox } from "@/lib/outbox/client";
@@ -71,8 +74,67 @@ export function ExpenseSheet({
   const [receiptRemoved, setReceiptRemoved] = useState(false);
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+  // Category suggestion (V3 S3): history first, then one AI call. Never auto-picks.
+  const [categoryPicked, setCategoryPicked] = useState(false);
+  const [hints, setHints] = useState<CategoryHint[]>([]);
+  const [aiPick, setAiPick] = useState<{ key: string; id: string } | null>(null);
+  const aiTried = useRef(new Set<string>());
+  const { available: aiAvailable } = useAiAvailable();
   // Receipt upload needs the network (Q7): hide the attach control offline.
   const { offline } = useOutbox();
+
+  const noteKey = note.trim().toLowerCase();
+  const suggesting = open && !editing && !categoryPicked && noteKey.length > 0;
+
+  useEffect(() => {
+    if (!open || editing) return;
+    let live = true;
+    recentCategoryHints()
+      .then((res) => {
+        if (live && res.ok) setHints(res.data.hints);
+      })
+      .catch(() => {}); // offline: keep what we have
+    return () => {
+      live = false;
+    };
+  }, [open, editing]);
+
+  const historyId = useMemo(
+    () =>
+      suggesting
+        ? categoryFromHistory(note, hints, new Set(categories.map((c) => c.id)))
+        : null,
+    [suggesting, note, hints, categories],
+  );
+
+  useEffect(() => {
+    if (!suggesting || historyId || !aiAvailable || aiTried.current.has(noteKey)) return;
+    const ctl = new AbortController();
+    const timer = setTimeout(async () => {
+      aiTried.current.add(noteKey);
+      const [{ runTask }, { categoryTask, pickCategoryId }] = await Promise.all([
+        import("@/lib/ai"),
+        import("@/lib/ai/tasks/category"),
+      ]);
+      const r = await runTask(
+        categoryTask,
+        { note: noteKey.slice(0, 120), names: categories.map((c) => c.name) },
+        { signal: ctl.signal },
+      );
+      if (!r.ok || ctl.signal.aborted) return;
+      const id = pickCategoryId(r.data, categories.map((c) => c.id));
+      if (id) setAiPick({ key: noteKey, id });
+    }, 600);
+    return () => {
+      clearTimeout(timer);
+      ctl.abort();
+    };
+  }, [suggesting, historyId, aiAvailable, noteKey, categories]);
+
+  const suggestedId =
+    suggesting && categoryId ? (historyId ?? (aiPick?.key === noteKey ? aiPick.id : null)) : null;
+  const suggested =
+    suggestedId && suggestedId !== categoryId ? categories.find((c) => c.id === suggestedId) : null;
 
   const storedReceipt =
     editing && editing.receiptUrl && !receiptRemoved
@@ -88,6 +150,8 @@ export function ExpenseSheet({
     if (!editing) {
       setRaw("");
       setNote("");
+      setCategoryPicked(false);
+      setAiPick(null);
       setReceipt(null);
     }
     setUploadError(null);
@@ -298,7 +362,10 @@ export function ExpenseSheet({
           {categories.map((c) => (
             <button
               key={c.id}
-              onClick={() => setCategoryId(c.id)}
+              onClick={() => {
+                setCategoryId(c.id);
+                setCategoryPicked(true);
+              }}
               aria-pressed={categoryId === c.id}
               style={
                 categoryId === c.id
@@ -314,6 +381,18 @@ export function ExpenseSheet({
             </button>
           ))}
         </div>
+
+        {suggested && (
+          <button
+            onClick={() => {
+              setCategoryId(suggested.id);
+              setCategoryPicked(true);
+            }}
+            className="min-h-11 w-fit rounded-full border border-dashed border-accent px-3 py-1.5 text-xs text-text"
+          >
+            {suggested.emoji} {suggested.name}?
+          </button>
+        )}
 
         <div className="flex gap-2">
           <input

@@ -298,3 +298,28 @@ export async function signReceiptUpload(
     },
   };
 }
+
+/** Read-only: the user's 200 most recent expense notes with their category, for the add sheet's suggestion. */
+export async function recentCategoryHints(): Promise<
+  ActionResult<{ hints: { note: string; categoryId: string }[] }>
+> {
+  const userId = await requireUser();
+  const rows = await db
+    .select({ note: expenses.note, categoryId: expenses.categoryId })
+    .from(expenses)
+    .where(
+      and(
+        eq(expenses.userId, userId),
+        isNull(expenses.deletedAt),
+        sql`${expenses.note} is not null and ${expenses.note} <> ''`,
+      ),
+    )
+    .orderBy(desc(expenses.spentOn), desc(expenses.createdAt))
+    .limit(200);
+  return {
+    ok: true,
+    data: {
+      hints: rows.flatMap((r) => (r.note ? [{ note: r.note, categoryId: r.categoryId }] : [])),
+    },
+  };
+}

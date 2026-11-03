@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExpenseSheet } from "@/components/expenses/add-expense-sheet";
+import { ExpenseSheet } from "@/components/expenses/add-expense-sheet-lazy";
 import { Button } from "@/components/ui/button";
 import type { CategoryChip } from "@/components/expenses/types";
 

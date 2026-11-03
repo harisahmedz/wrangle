@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ExpenseSheet } from "@/components/expenses/add-expense-sheet";
+import { ExpenseSheet } from "@/components/expenses/add-expense-sheet-lazy";
 import { formatMinor } from "@/lib/money";
 import { useOutbox } from "@/lib/outbox/client";
 import { overlayExpenses, syncStateOf } from "@/lib/outbox/overlay";
